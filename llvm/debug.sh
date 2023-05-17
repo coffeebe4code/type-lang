@@ -1,9 +1,4 @@
-git clone --depth 1 --branch release/16.x https://github.com/llvm/llvm-project llvm-project-16
-cd llvm-project-16
-git checkout release/16.x
-
-# LLVM
-mkdir llvm/build-debug
+mkdir -p llvm/build-debug
 cd llvm/build-debug
 cmake .. \
   -DCMAKE_INSTALL_PREFIX=$HOME/local/llvm16-debug \
