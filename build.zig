@@ -31,4 +31,12 @@ pub fn build(b: *std.Build) void {
         const test_step = b.step("test", "Run library tests");
         test_step.dependOn(&run_tests.step);
     }
+    const llvm = b.addStaticLibrary(.{
+        .name = "llvm-bindings",
+        .root_source_file = .{ .path = "src/llvm-bindings.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    b.installArtifact(llvm);
 }
