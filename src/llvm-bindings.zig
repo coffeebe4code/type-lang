@@ -1968,9 +1968,4 @@ test "should create context" {
     defer {
         context.dispose();
     }
-
-    const llvm_context = context.LLVMContextCreate();
-    defer {
-        llvm_context.LLVMContextDispose();
-    }
 }

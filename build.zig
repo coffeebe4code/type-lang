@@ -2,8 +2,16 @@ const std = @import("std");
 
 const count = 5;
 
-const names = [count][]const u8{ "token", "span", "lexer", "ast", "parser" };
-const files = [count][]const u8{ "src/token.zig", "src/span.zig", "src/lexer.zig", "src/ast.zig", "src/parser.zig" };
+const names = [count][]const u8{
+    "token", "span", "lexer", "ast", "parser",
+};
+const files = [count][]const u8{
+    "src/token.zig",
+    "src/span.zig",
+    "src/lexer.zig",
+    "src/ast.zig",
+    "src/parser.zig",
+};
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -31,58 +39,12 @@ pub fn build(b: *std.Build) void {
         const test_step = b.step("test", "Run library tests");
         test_step.dependOn(&run_tests.step);
     }
-    const llvm = b.addStaticLibrary(.{
-        .name = "llvm-bindings",
-        .root_source_file = .{ .path = "src/llvm-bindings.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-    for (llvm_libs) |lib_name| {
-        llvm.linkSystemLibrary(lib_name);
-    }
 
-    b.installArtifact(llvm);
+    install_llvm(b, target, optimize) catch |e| {
+        std.debug.print("Unable to link llvm {}\n", .{e});
+    };
 }
 
-const clang_libs = [_][]const u8{
-    "clangFrontendTool",
-    "clangCodeGen",
-    "clangFrontend",
-    "clangDriver",
-    "clangSerialization",
-    "clangSema",
-    "clangStaticAnalyzerFrontend",
-    "clangStaticAnalyzerCheckers",
-    "clangStaticAnalyzerCore",
-    "clangAnalysis",
-    "clangASTMatchers",
-    "clangAST",
-    "clangParse",
-    "clangSema",
-    "clangBasic",
-    "clangEdit",
-    "clangLex",
-    "clangARCMigrate",
-    "clangRewriteFrontend",
-    "clangRewrite",
-    "clangCrossTU",
-    "clangIndex",
-    "clangToolingCore",
-    "clangExtractAPI",
-    "clangSupport",
-};
-const lld_libs = [_][]const u8{
-    "lldMinGW",
-    "lldELF",
-    "lldCOFF",
-    "lldWasm",
-    "lldMachO",
-    "lldCommon",
-};
-// This list can be re-generated with `llvm-config --libfiles` and then
-// reformatting using your favorite text editor. Note we do not execute
-// `llvm-config` here because we are cross compiling. Also omit LLVMTableGen
-// from these libs.
 const llvm_libs = [_][]const u8{
     "LLVMWindowsManifest",
     "LLVMXRay",
@@ -259,3 +221,91 @@ const llvm_libs = [_][]const u8{
     "LLVMSupport",
     "LLVMDemangle",
 };
+
+const clang_libs = [_][]const u8{
+    "clangFrontendTool",
+    "clangCodeGen",
+    "clangFrontend",
+    "clangDriver",
+    "clangSerialization",
+    "clangSema",
+    "clangStaticAnalyzerFrontend",
+    "clangStaticAnalyzerCheckers",
+    "clangStaticAnalyzerCore",
+    "clangAnalysis",
+    "clangASTMatchers",
+    "clangAST",
+    "clangParse",
+    "clangSema",
+    "clangBasic",
+    "clangEdit",
+    "clangLex",
+    "clangARCMigrate",
+    "clangRewriteFrontend",
+    "clangRewrite",
+    "clangCrossTU",
+    "clangIndex",
+    "clangToolingCore",
+    "clangExtractAPI",
+    "clangSupport",
+};
+const lld_libs = [_][]const u8{
+    "lldMinGW",
+    "lldELF",
+    "lldCOFF",
+    "lldWasm",
+    "lldMachO",
+    "lldCommon",
+};
+
+pub fn install_llvm(
+    b: *std.Build,
+    target: std.zig.CrossTarget,
+    optimize: std.builtin.Mode,
+) !void {
+    const llvm = b.addStaticLibrary(.{
+        .name = "llvm-zig",
+        .root_source_file = .{ .path = "src/llvm.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    for (llvm_libs) |lib_name| {
+        llvm.linkSystemLibrary(lib_name);
+    }
+    //for (clang_libs) |lib_name| {
+    //    llvm_tests.linkSystemLibrary(lib_name);
+    //}
+    //for (lld_libs) |lib_name| {
+    //    llvm_tests.linkSystemLibrary(lib_name);
+    //}
+    llvm.addIncludePath("local/llvm16-release/include");
+    llvm.addLibraryPath("local/llvm16-release/lib");
+    llvm.linkLibC();
+    llvm.linkSystemLibraryName("stdc++");
+    llvm.linkLibCpp();
+    const lib_suffix = llvm.target.dynamicLibSuffix()[1..];
+    const objName = b.fmt("libstdc++.{s}", .{lib_suffix});
+    if (!std.process.can_spawn)
+        return error.RequiredLibraryNotFound;
+    const path_padded = b.exec(&.{ "clang", b.fmt("-print-file-name={s}", .{objName}) });
+    var tokenizer = std.mem.tokenize(u8, path_padded, "\r\n");
+    const path_unpadded = tokenizer.next().?;
+    if (std.mem.eql(u8, path_unpadded, objName)) {
+        std.debug.print("Unable to determine path to {s}\n", .{objName});
+        return error.RequiredLibraryNotFound;
+    }
+    llvm.addObjectFile(path_unpadded);
+    b.installArtifact(llvm);
+
+    const llvm_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/llvm.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    llvm_tests.linkLibrary(llvm);
+
+    const run_tests = b.addRunArtifact(llvm_tests);
+
+    const test_step = b.step("test", "Run library tests");
+    test_step.dependOn(&run_tests.step);
+}
