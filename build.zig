@@ -13,6 +13,14 @@ const files = [count][]const u8{
     "src/parser.zig",
 };
 
+const llvm_count = 1;
+const llvm_names = [llvm_count][]const u8{
+    "llvm",
+};
+const llvm_files = [llvm_count][]const u8{
+    "src/llvm.zig",
+};
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
 
@@ -40,9 +48,33 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_tests.step);
     }
 
-    install_llvm(b, target, optimize) catch |e| {
-        std.debug.print("Unable to link llvm {}\n", .{e});
-    };
+    for (0..llvm_count) |i| {
+        const s_lib = b.addStaticLibrary(.{
+            .name = llvm_names[i],
+            .root_source_file = .{ .path = llvm_files[i] },
+            .target = target,
+            .optimize = optimize,
+        });
+        link_llvm(b, s_lib) catch |e| {
+            std.debug.print("Unable to link llvm {}\n", .{e});
+        };
+
+        b.installArtifact(s_lib);
+
+        const s_tests = b.addTest(.{
+            .root_source_file = .{ .path = llvm_files[i] },
+            .target = target,
+            .optimize = optimize,
+        });
+        link_llvm(b, s_tests) catch |e| {
+            std.debug.print("Unable to link llvm {}\n", .{e});
+        };
+
+        const run_tests = b.addRunArtifact(s_tests);
+
+        const test_step = b.step("test", "Run library tests step");
+        test_step.dependOn(&run_tests.step);
+    }
 }
 
 const llvm_libs = [_][]const u8{
@@ -258,19 +290,12 @@ const lld_libs = [_][]const u8{
     "lldCommon",
 };
 
-pub fn install_llvm(
+pub fn link_llvm(
     b: *std.Build,
-    target: std.zig.CrossTarget,
-    optimize: std.builtin.Mode,
+    step: *std.build.CompileStep,
 ) !void {
-    const llvm = b.addStaticLibrary(.{
-        .name = "llvm-zig",
-        .root_source_file = .{ .path = "src/llvm.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
     for (llvm_libs) |lib_name| {
-        llvm.linkSystemLibrary(lib_name);
+        step.linkSystemLibrary(lib_name);
     }
     //for (clang_libs) |lib_name| {
     //    llvm_tests.linkSystemLibrary(lib_name);
@@ -278,12 +303,12 @@ pub fn install_llvm(
     //for (lld_libs) |lib_name| {
     //    llvm_tests.linkSystemLibrary(lib_name);
     //}
-    llvm.addIncludePath("local/llvm16-release/include");
-    llvm.addLibraryPath("local/llvm16-release/lib");
-    llvm.linkLibC();
-    llvm.linkSystemLibraryName("stdc++");
-    llvm.linkLibCpp();
-    const lib_suffix = llvm.target.dynamicLibSuffix()[1..];
+    step.addIncludePath("../../local/llvm16-release/include");
+    step.addLibraryPath("../../local/llvm16-release/lib");
+    step.linkLibC();
+    step.linkSystemLibraryName("stdc++");
+    step.linkLibCpp();
+    const lib_suffix = step.target.dynamicLibSuffix()[1..];
     const objName = b.fmt("libstdc++.{s}", .{lib_suffix});
     if (!std.process.can_spawn)
         return error.RequiredLibraryNotFound;
@@ -294,18 +319,5 @@ pub fn install_llvm(
         std.debug.print("Unable to determine path to {s}\n", .{objName});
         return error.RequiredLibraryNotFound;
     }
-    llvm.addObjectFile(path_unpadded);
-    b.installArtifact(llvm);
-
-    const llvm_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/llvm.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-    llvm_tests.linkLibrary(llvm);
-
-    const run_tests = b.addRunArtifact(llvm_tests);
-
-    const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&run_tests.step);
+    step.addObjectFile(path_unpadded);
 }
