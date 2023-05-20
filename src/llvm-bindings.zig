@@ -1962,10 +1962,3 @@ pub const DIFlags = opaque {
     pub const LittleEndian = 1 << 28;
     pub const AllCallsDescribed = 1 << 29;
 };
-
-test "should create context" {
-    const context = Context.create();
-    defer {
-        context.dispose();
-    }
-}
