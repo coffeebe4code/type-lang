@@ -1,0 +1,17 @@
+[package]
+name = "cranelift-export"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+panic="abort"
+
+[profile.dev]
+panic="abort"
+
+[lib]
+name = "craneliftc"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+cranelift = "0.96.1"
