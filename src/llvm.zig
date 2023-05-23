@@ -1,6 +1,7 @@
 const llvm_b = @import("./llvm-bindings.zig");
-const build_options = @import("build_options");
 const std = @import("std");
+const Target = @import("std").Target;
+const builtin = @import("builtin");
 const Allocator = @import("std").mem.Allocator;
 
 pub const CodeModel = enum {
@@ -19,21 +20,19 @@ pub const Relocation = enum {
 
 pub const Optimize = enum {
     None,
+    Debug,
     Full,
 };
 
 pub const GlobalOptions = struct {
-    target_arch: std.Target.Cpu.Arch,
-    target_os: std.Target.Os.Tag,
-    target_abi: std.Target.Abi,
-    target_model: std.Target.Cpu.Model,
+    target: std.Target,
     code_model: CodeModel,
+    optimize: Optimize,
+    pic: Relocation,
 };
 
 pub const ModuleOptions = struct {
     file_name: []const u8,
-    optimize: Optimize,
-    pic: Relocation,
 };
 
 pub const GlobalContext = struct {
@@ -47,26 +46,26 @@ pub const GlobalContext = struct {
         const context = llvm_b.Context.create();
         errdefer context.dispose();
 
-        initializeLLVMTarget(opts.target_arch);
+        initializeLLVMTarget(opts.target.cpu.arch);
 
         const llvm_target_triple = try targetTriple(allocator, opts);
         defer allocator.free(llvm_target_triple);
 
         var error_message: [*:0]const u8 = undefined;
-        var target: *llvm_b.Target = undefined;
-        if (llvm_b.Target.getFromTriple(llvm_target_triple.ptr, &target, &error_message).toBool()) {
+        var target_llvm: *llvm_b.Target = undefined;
+        if (llvm_b.Target.getFromTriple(llvm_target_triple.ptr, &target_llvm, &error_message).toBool()) {
             defer llvm_b.disposeMessage(error_message);
 
             std.log.err("LLVM failed to parse '{s}': {s}", .{ llvm_target_triple, error_message });
             return error.InvalidLlvmTriple;
         }
 
-        const opt_level: llvm_b.CodeGenOptLevel = if (opts.optimize_mode == .Debug)
+        const opt_level: llvm_b.CodeGenOptLevel = if (opts.optimize == .Debug)
             .None
         else
             .Aggressive;
 
-        const reloc_mode: llvm_b.RelocMode = if (opts.reloc_mode)
+        const reloc_mode: llvm_b.RelocMode = if (opts.pic == .PIC)
             .PIC
         else
             .Static;
@@ -79,23 +78,43 @@ pub const GlobalContext = struct {
             .medium => .Medium,
             .large => .Large,
         };
-        _ = code_model;
 
         const float_abi: llvm_b.ABIType = .Default;
-        _ = float_abi;
+        const llvm_cpu_features: ?[*:0]const u8 = blk: {
+            var buf = std.ArrayList(u8).init(allocator);
+            for (opts.target.cpu.arch.allFeaturesList(), 0..) |feature, index_usize| {
+                const index = @intCast(Target.Cpu.Feature.Set.Index, index_usize);
+                const is_enabled = opts.target.cpu.features.isEnabled(index);
+
+                if (feature.llvm_name) |llvm_name| {
+                    const plus_or_minus = "-+"[@boolToInt(is_enabled)];
+                    try buf.ensureUnusedCapacity(2 + llvm_name.len);
+                    buf.appendAssumeCapacity(plus_or_minus);
+                    buf.appendSliceAssumeCapacity(llvm_name);
+                    buf.appendSliceAssumeCapacity(",");
+                }
+            }
+            if (!std.mem.endsWith(u8, buf.items, ",")) {
+                return error.FeatureSetError;
+            }
+            buf.items[buf.items.len - 1] = 0;
+            buf.shrinkAndFree(buf.items.len);
+            break :blk buf.items[0 .. buf.items.len - 1 :0].ptr;
+        };
 
         const target_machine = llvm_b.TargetMachine.create(
-            target,
+            target_llvm,
             llvm_target_triple.ptr,
-            if (opts.target_model.llvm_name) |s| s.ptr else null,
-            opts.llvm_cpu_features,
+            null,
+            llvm_cpu_features,
             opt_level,
             reloc_mode,
             code_model,
             opts.function_sections,
             float_abi,
-            if (target_util.llvmMachineAbi(opts.target)) |s| s.ptr else null,
+            null,
         );
+        _ = target_machine;
         return GlobalContext{
             .context = context,
             .options = opts,
@@ -239,13 +258,11 @@ fn initializeLLVMTarget(arch: std.Target.Cpu.Arch) void {
             llvm_b.LLVMInitializeX86AsmParser();
         },
         .xtensa => {
-            if (build_options.llvm_has_xtensa) {
-                llvm_b.LLVMInitializeXtensaTarget();
-                llvm_b.LLVMInitializeXtensaTargetInfo();
-                llvm_b.LLVMInitializeXtensaTargetMC();
-                llvm_b.LLVMInitializeXtensaAsmPrinter();
-                llvm_b.LLVMInitializeXtensaAsmParser();
-            }
+            llvm_b.LLVMInitializeXtensaTarget();
+            llvm_b.LLVMInitializeXtensaTargetInfo();
+            llvm_b.LLVMInitializeXtensaTargetMC();
+            llvm_b.LLVMInitializeXtensaAsmPrinter();
+            llvm_b.LLVMInitializeXtensaAsmParser();
         },
         .xcore => {
             llvm_b.LLVMInitializeXCoreTarget();
@@ -255,22 +272,18 @@ fn initializeLLVMTarget(arch: std.Target.Cpu.Arch) void {
             // There is no LLVMInitializeXCoreAsmParser function.
         },
         .m68k => {
-            if (build_options.llvm_has_m68k) {
-                llvm_b.LLVMInitializeM68kTarget();
-                llvm_b.LLVMInitializeM68kTargetInfo();
-                llvm_b.LLVMInitializeM68kTargetMC();
-                llvm_b.LLVMInitializeM68kAsmPrinter();
-                llvm_b.LLVMInitializeM68kAsmParser();
-            }
+            llvm_b.LLVMInitializeM68kTarget();
+            llvm_b.LLVMInitializeM68kTargetInfo();
+            llvm_b.LLVMInitializeM68kTargetMC();
+            llvm_b.LLVMInitializeM68kAsmPrinter();
+            llvm_b.LLVMInitializeM68kAsmParser();
         },
         .csky => {
-            if (build_options.llvm_has_csky) {
-                llvm_b.LLVMInitializeCSKYTarget();
-                llvm_b.LLVMInitializeCSKYTargetInfo();
-                llvm_b.LLVMInitializeCSKYTargetMC();
-                // There is no LLVMInitializeCSKYAsmPrinter function.
-                llvm_b.LLVMInitializeCSKYAsmParser();
-            }
+            llvm_b.LLVMInitializeCSKYTarget();
+            llvm_b.LLVMInitializeCSKYTargetInfo();
+            llvm_b.LLVMInitializeCSKYTargetMC();
+            // There is no LLVMInitializeCSKYAsmPrinter function.
+            llvm_b.LLVMInitializeCSKYAsmParser();
         },
         .ve => {
             llvm_b.LLVMInitializeVETarget();
@@ -280,13 +293,11 @@ fn initializeLLVMTarget(arch: std.Target.Cpu.Arch) void {
             llvm_b.LLVMInitializeVEAsmParser();
         },
         .arc => {
-            if (build_options.llvm_has_arc) {
-                llvm_b.LLVMInitializeARCTarget();
-                llvm_b.LLVMInitializeARCTargetInfo();
-                llvm_b.LLVMInitializeARCTargetMC();
-                llvm_b.LLVMInitializeARCAsmPrinter();
-                // There is no LLVMInitializeARCAsmParser function.
-            }
+            llvm_b.LLVMInitializeARCTarget();
+            llvm_b.LLVMInitializeARCTargetInfo();
+            llvm_b.LLVMInitializeARCTargetMC();
+            llvm_b.LLVMInitializeARCAsmPrinter();
+            // There is no LLVMInitializeARCAsmParser function.
         },
 
         // LLVM backends that have no initialization functions.
@@ -320,7 +331,7 @@ pub fn targetTriple(allocator: Allocator, opts: GlobalOptions) ![:0]u8 {
     var llvm_triple = std.ArrayList(u8).init(allocator);
     defer llvm_triple.deinit();
 
-    const llvm_arch = switch (opts.target_arch) {
+    const llvm_arch = switch (opts.target.cpu.arch) {
         .arm => "arm",
         .armeb => "armeb",
         .aarch64 => "aarch64",
@@ -386,7 +397,7 @@ pub fn targetTriple(allocator: Allocator, opts: GlobalOptions) ![:0]u8 {
     try llvm_triple.appendSlice(llvm_arch);
     try llvm_triple.appendSlice("-unknown-");
 
-    const llvm_os = switch (opts.target_os) {
+    const llvm_os = switch (opts.target.os.tag) {
         .freestanding => "unknown",
         .ananas => "ananas",
         .cloudabi => "cloudabi",
@@ -435,8 +446,8 @@ pub fn targetTriple(allocator: Allocator, opts: GlobalOptions) ![:0]u8 {
     };
     try llvm_triple.appendSlice(llvm_os);
 
-    if (opts.target_os.isDarwin()) {
-        const min_version = opts.target_os.version_range.semver.min;
+    if (opts.target.os.tag.isDarwin()) {
+        const min_version = opts.target.os.version_range.semver.min;
         try llvm_triple.writer().print("{d}.{d}.{d}", .{
             min_version.major,
             min_version.minor,
@@ -445,7 +456,7 @@ pub fn targetTriple(allocator: Allocator, opts: GlobalOptions) ![:0]u8 {
     }
     try llvm_triple.append('-');
 
-    const llvm_abi = switch (opts.target_abi) {
+    const llvm_abi = switch (opts.target.abi) {
         .none => "unknown",
         .gnu => "gnu",
         .gnuabin32 => "gnuabin32",
@@ -491,8 +502,17 @@ pub fn targetTriple(allocator: Allocator, opts: GlobalOptions) ![:0]u8 {
 
     return llvm_triple.toOwnedSliceSentinel(0);
 }
-test "should create context" {
-    const module = try Module.init(.{
+
+test "should create module" {
+    const test_allocator = std.testing.allocator;
+    const global = GlobalOptions{
+        .target = builtin.target,
+        .code_model = CodeModel.small,
+        .optimize = Optimize.None,
+        .pic = Relocation.PIC,
+    };
+    const context = try GlobalContext.init(test_allocator, global);
+    const module = try Module.init(test_allocator, context, .{
         .file_name = "first_lib",
     });
     defer module.deinit();
