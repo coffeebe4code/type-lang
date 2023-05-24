@@ -66,7 +66,8 @@ pub fn build(b: *std.Build) void {
         }
         // TODO:: find this file instead
         const full_path = b.fmt("{s}/lib/libstd-89bc084783fdc439.so", .{path_unpadded});
-        s_lib.addObjectFile(full_path);
+        _ = full_path;
+        //s_lib.addObjectFile(full_path);
         b.installArtifact(s_lib);
 
         const s_tests = b.addTest(.{
@@ -75,8 +76,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         });
         s_tests.linkSystemLibrary("craneliftc");
+        s_tests.linkSystemLibrary("unwind");
         s_tests.addLibraryPath("./cranelift/target/release");
-        s_tests.addObjectFile(full_path);
+        //s_tests.addObjectFile(full_path);
 
         const run_tests = b.addRunArtifact(s_tests);
 

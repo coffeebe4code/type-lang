@@ -3,11 +3,11 @@ name = "cranelift-export"
 version = "0.1.0"
 edition = "2021"
 
-[profile.release]
-panic="abort"
-
-[profile.dev]
-panic="abort"
+#[profile.release]
+#panic="abort"
+#
+#[profile.dev]
+#panic="abort"
 
 [lib]
 name = "craneliftc"
