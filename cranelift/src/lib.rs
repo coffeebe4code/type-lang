@@ -1,10 +1,41 @@
+use core::mem::drop;
 use cranelift::codegen::ir::*;
 use cranelift::codegen::isa::*;
 use cranelift::frontend::Variable;
 use cranelift::frontend::*;
 use cranelift::prelude::types::*;
 
-// macro rules rules:
+macro_rules! dispose {
+    ($namespace:ident) => {
+        paste::paste! {
+            #[no_mangle]
+            pub extern "C" fn [<CL_ $namespace _dispose >](val: *mut *mut [< $namespace >]) -> () {
+                unsafe {
+                    drop(Box::from_raw(val));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! type_invoke {
+    ($namespace:ident, $func_name: ident, $invoke_name: ident, $($variant:tt)*) => {
+        paste::paste! {
+            #[no_mangle]
+            pub extern "C" fn [<CL_ $namespace _ $func_name >](val: *mut *mut $namespace) -> () {
+                unsafe {
+                    *val = Box::into_raw(Box::new([< $namespace >]::[< $invoke_name >]($($variant)*)));
+                }
+            }
+        }
+    }
+}
+
+/*
+ *
+ *
+ *
+*/
 
 macro_rules! two_invoke_return {
     ($namespace:ident, $func_name:ident, $one:ident, $two:ident, $ret: ident) => {
@@ -55,17 +86,6 @@ macro_rules! empty_invoke_return {
     };
 }
 
-//macro_rules! one_invoke_void {
-//    ($namespace:ident, $func_name:ident, $one:ident) => {
-//        paste::paste! {
-//            #[no_mangle]
-//            pub extern "C" fn [<CL_ $namespace _ $func_name>](val: *mut $namespace, val2: *mut $one) -> () {
-//                [< $namespace >]::[< $func_name >](val, val2);
-//            }
-//        }
-//    };
-//}
-
 macro_rules! self_one_deref_invoke_void {
     ($namespace:ident, $func_name:ident, $one:ident) => {
         paste::paste! {
@@ -79,27 +99,6 @@ macro_rules! self_one_deref_invoke_void {
     };
 }
 
-macro_rules! empty_dispose {
-    ($namespace:ident) => {
-        paste::paste! {
-            #[no_mangle]
-            pub extern "C" fn [<CL_ $namespace _dispose >](val: *mut [< $namespace >]) -> () {
-                core::mem::drop(val);
-            }
-        }
-    };
-}
-
-macro_rules! type_new {
-    ($namespace:ident, $func_name: ident, $($variant:tt)*) => {
-        paste::paste! {
-            #[no_mangle]
-            pub extern "C" fn [<CL_ $namespace _ $func_name >]() -> *mut [< $namespace >] {
-                let mut val = [< $namespace >]::new($($variant)*);
-                return &mut val;
-            }
-        }
-    } }
 //
 //
 //
@@ -108,24 +107,24 @@ macro_rules! type_new {
 //
 //
 
-//UserFuncName
-empty_dispose!(UserFuncName);
+//USERFUNCNAME
+dispose!(UserFuncName);
 two_invoke_return!(UserFuncName, user, u32, u32, UserFuncName);
 
-// Variable
-empty_dispose!(Variable);
+// VARIABLE
+dispose!(Variable);
 one_invoke_return!(Variable, from_u32, u32, Variable);
 
 // ABIPARAM
-empty_dispose!(AbiParam);
-type_new!(AbiParam, i32, I32);
+dispose!(AbiParam);
+type_invoke!(AbiParam, new_i32, new, I32);
 
 // SIGNATURE
-empty_dispose!(Signature);
-type_new!(Signature, systemv, CallConv::SystemV);
+dispose!(Signature);
+type_invoke!(Signature, new_systemv, new, CallConv::SystemV);
 
 // FUNCTION
-empty_dispose!(Function);
+dispose!(Function);
 empty_invoke_return!(Function, new, Function);
 
 #[no_mangle]
@@ -139,7 +138,7 @@ pub extern "C" fn CL_Function_with_name_signature(
 }
 
 // FUNCTION BUILDER
-empty_dispose!(FunctionBuilder);
+dispose!(FunctionBuilder);
 self_one_invoke_return!(FunctionBuilder, create_block, FunctionBuilder, Block);
 
 self_one_deref_invoke_void!(
@@ -171,5 +170,5 @@ pub extern "C" fn CL_FunctionBuilder_new<'a>(
 }
 
 // FUNCTION BUILDER CONTEXT
-empty_dispose!(FunctionBuilderContext);
+dispose!(FunctionBuilderContext);
 empty_invoke_return!(FunctionBuilderContext, new, FunctionBuilderContext);
