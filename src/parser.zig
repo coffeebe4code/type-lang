@@ -32,6 +32,50 @@ const Parser = struct {
         self.asts.deinit();
     }
 
+    pub fn or_cmp(self: *Parser) anyerror!usize {
+        var left = try self.and_cmp();
+        while (try self.lexer.collect_if(Token.Or)) |bin| {
+            const right = try self.and_cmp();
+            const expr = try ast.make_binop(left, bin, right);
+            try self.asts.append(expr);
+            left = self.last_idx();
+        }
+        return self.last_idx();
+    }
+
+    pub fn and_cmp(self: *Parser) anyerror!usize {
+        var left = try self.equality();
+        while (try self.lexer.collect_if(Token.And)) |bin| {
+            const right = try self.equality();
+            const expr = try ast.make_binop(left, bin, right);
+            try self.asts.append(expr);
+            left = self.last_idx();
+        }
+        return self.last_idx();
+    }
+
+    pub fn equality(self: *Parser) anyerror!usize {
+        var left = try self.cmp();
+        while (try self.lexer.collect_if_of(&[_]Token{ Token.Equality, Token.NotEquality })) |bin| {
+            const right = try self.cmp();
+            const expr = try ast.make_binop(left, bin, right);
+            try self.asts.append(expr);
+            left = self.last_idx();
+        }
+        return self.last_idx();
+    }
+
+    pub fn cmp(self: *Parser) anyerror!usize {
+        var left = try self.low_bin();
+        while (try self.lexer.collect_if_of(&[_]Token{ Token.Gt, Token.GtEq, Token.Lt, Token.LtEq })) |bin| {
+            const right = try self.low_bin();
+            const expr = try ast.make_binop(left, bin, right);
+            try self.asts.append(expr);
+            left = self.last_idx();
+        }
+        return self.last_idx();
+    }
+
     pub fn low_bin(self: *Parser) anyerror!usize {
         var left = try self.high_bin();
         while (try self.lexer.collect_if_of(&[_]Token{ Token.Plus, Token.Sub })) |bin| {
