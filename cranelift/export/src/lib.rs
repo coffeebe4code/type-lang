@@ -1,66 +1,29 @@
 use cranelift::prelude::*;
-use cranelift_codegen::binemit::NullTrapSink;
-use cranelift_codegen::ir::*;
-use cranelift_codegen::isa::CallConv;
-use cranelift_module::{DataContext, DataId, FuncId, Linkage, Module};
-use cranelift_object::{ObjectBackend, ObjectBuilder};
+use cranelift::codegen::ir::*;
+use cranelift::codegen::ir::types::*;
+use cranelift::codegen::isa::*;
+use cranelift_object::ObjectBuilder;
+use cranelift_module::*;
+use target_lexicon::*;
 use libc::c_char;
 use std::boxed::Box;
 use std::ffi::{CStr, CString};
 use std::fmt::Display;
+use std::str::FromStr;
 use std::fs::File;
 use std::io::Write;
-use std::slice;
-use std::str::FromStr;
-use target_lexicon::*;
 
 pub struct ModuleData {
     builder_ctx: FunctionBuilderContext,
     ctx: codegen::Context,
     data_ctx: DataContext,
     module: Option<Module<ObjectBackend>>,
-    userdata: usize,
-    error_callback: Option<fn(userdata: usize, *const c_char, *const c_char) -> ()>,
-    message_callback: Option<fn(userdata: usize, *const c_char, *const c_char) -> ()>,
+    userdata: usize
 }
-// C:\projects\wasmtime\cranelift\codegen\meta\src\shared\settings.rs
 pub struct FunctionData<'a> {
     variable_counter: u32,
     builder: FunctionBuilder<'a>,
-    module: &'a mut Module<ObjectBackend>,
-}
-
-impl ModuleData {
-    fn emit_error(&self, err: &dyn Display, filename: Option<&str>) {
-        let error = err.to_string();
-        if let Some(cb) = &self.error_callback {
-            cb(
-                self.userdata,
-                CString::new(error).unwrap().as_ptr() as *const c_char,
-                filename.unwrap_or("").as_ptr() as *const c_char,
-            );
-        }
-    }
-
-    fn emit_error_string(&self, err: &str, filename: Option<&str>) {
-        if let Some(cb) = &self.error_callback {
-            cb(
-                self.userdata,
-                err.as_ptr() as *const c_char,
-                filename.unwrap_or("").as_ptr() as *const c_char,
-            );
-        }
-    }
-
-    fn emit_message_string(&self, err: &str, filename: Option<&str>) {
-        if let Some(cb) = &self.message_callback {
-            cb(
-                self.userdata,
-                err.as_ptr() as *const c_char,
-                filename.unwrap_or("").as_ptr() as *const c_char,
-            );
-        }
-    }
+    module: &'a mut Module<ObjectBackend>
 }
 
 #[no_mangle]
@@ -68,9 +31,8 @@ pub extern "C" fn cranelift_module_new(
     target_triple: *const c_char,
     flags: *const c_char,
     name: *const c_char,
+    err: *const c_char,
     userdata: usize,
-    error_cb: Option<fn(userdata: usize, *const c_char, *const c_char) -> ()>,
-    message_cb: Option<fn(userdata: usize, *const c_char, *const c_char) -> ()>,
 ) -> *mut ModuleData {
     let mut flag_builder = settings::builder();
     let trip: &str = unsafe { CStr::from_ptr(target_triple) }.to_str().unwrap();
@@ -84,27 +46,19 @@ pub extern "C" fn cranelift_module_new(
             let n = s.find(",");
             if n.is_none() {
                 let res = flag_builder.enable(s);
-                if res.is_err() && error_cb.is_some() {
+                if res.is_err() {
                     let dd: &dyn Display = &res.err().unwrap();
-                    error_cb.unwrap()(
-                        userdata,
-                        CString::new(dd.to_string()).unwrap().as_ptr() as *const c_char,
-                        0 as *const c_char,
-                    );
-                    return 0 as *mut ModuleData;
+                    let error = dd.to_string();
+                    err = CString::new(format! ("userdata {}: {}", userdata, error)).unwrap().as_ptr() as *const c_char;
                 }
                 res.unwrap();
             } else {
                 let args = s.split_at(n.unwrap());
                 let res = flag_builder.set(args.0, args.1);
-                if res.is_err() && error_cb.is_some() {
+                if res.is_err() {
                     let dd: &dyn Display = &res.err().unwrap();
-                    error_cb.unwrap()(
-                        userdata,
-                        CString::new(dd.to_string()).unwrap().as_ptr() as *const c_char,
-                        0 as *const c_char,
-                    );
-                    return 0 as *mut ModuleData;
+                    let error = dd.to_string();
+                    err = CString::new(format! ("userdata {}: {}", userdata, error)).unwrap().as_ptr() as *const c_char;
                 }
                 res.unwrap();
             }
@@ -114,7 +68,7 @@ pub extern "C" fn cranelift_module_new(
     let isa = isa_builder.finish(settings::Flags::new(flag_builder));
 
     let builder = ObjectBuilder::new(
-        isa,
+        isa.unwrap(),
         name_str.to_owned(),
         cranelift_module::default_libcall_names(),
     );
@@ -125,9 +79,7 @@ pub extern "C" fn cranelift_module_new(
         ctx: module.make_context(),
         data_ctx: DataContext::new(),
         module: Some(module),
-        userdata,
-        message_callback: message_cb,
-        error_callback: error_cb,
+        userdata
     }));
 }
 
@@ -165,6 +117,7 @@ pub extern "C" fn cranelift_define_data(
     name: *const c_char,
     linkage: CraneliftLinkage,
     data_flags: CraneliftDataFlags,
+    err: *const c_char,
     align: u8,
     id: *mut u32,
 ) -> bool {
@@ -188,8 +141,9 @@ pub extern "C" fn cranelift_define_data(
     );
 
     if intid.is_err() {
-        inst.emit_error(&intid.err().unwrap(), None);
-        return false;
+        let dd: &dyn Display = &intid.err().unwrap();
+        let error = dd.to_string();
+        err = CString::new(format! ("cranelift_define_data: {}", error)).unwrap().as_ptr() as *const c_char; 
     }
     unsafe {
         *id = intid.unwrap().as_u32();
@@ -201,6 +155,7 @@ pub extern "C" fn cranelift_define_data(
 pub extern "C" fn cranelift_declare_function(
     ptr: *mut ModuleData,
     name: *const c_char,
+    err: *const c_char,
     linkage: CraneliftLinkage,
     id: *mut u32,
 ) -> bool {
@@ -218,8 +173,9 @@ pub extern "C" fn cranelift_declare_function(
     );
 
     if intid.is_err() {
-        inst.emit_error(&intid.err().unwrap(), None);
-        return false;
+        let dd: &dyn Display = &intid.err().unwrap();
+        let error = dd.to_string();
+        err = CString::new(format! ("cranelift_declare_function: {}", error)).unwrap().as_ptr() as *const c_char; 
     }
     unsafe {
         *id = intid.unwrap().as_u32();
@@ -228,7 +184,7 @@ pub extern "C" fn cranelift_declare_function(
 }
 
 #[no_mangle]
-pub extern "C" fn cranelift_define_function(ptr: *mut ModuleData, func: u32) -> i32 {
+pub extern "C" fn cranelift_define_function(ptr: *mut ModuleData, func: u32, err: *const c_char) -> i32 {
     let inst = unsafe {
         assert!(!ptr.is_null());
         &mut *ptr
@@ -239,8 +195,9 @@ pub extern "C" fn cranelift_define_function(ptr: *mut ModuleData, func: u32) -> 
         &mut NullTrapSink {},
     );
     if res.is_err() {
-        inst.emit_error(&res.err().unwrap(), None);
-        return -1;
+        let dd: &dyn Display = &res.err().unwrap();
+        let error = dd.to_string();
+        err = CString::new(format! ("cranelift_define_function: {}", error)).unwrap().as_ptr() as *const c_char; 
     }
     return res.unwrap().size as i32;
 }
@@ -259,8 +216,7 @@ pub extern "C" fn cranelift_set_data_value(
     if content.is_null() {
         inst.data_ctx.define_zeroinit(length as usize);
     } else {
-        //let data = Vec::from_raw_parts(content, length as usize, length as usize);
-        let data = unsafe { slice::from_raw_parts(content, length as usize).to_vec() };
+        let data = unsafe { core::slice::from_raw_parts(content, length as usize).to_vec() };
         inst.data_ctx.define(data.into_boxed_slice());
     }
     true
@@ -341,7 +297,7 @@ pub extern "C" fn cranelift_write_function_in_data(
 }
 
 #[no_mangle]
-pub extern "C" fn cranelift_assign_data_to_global(ptr: *mut ModuleData, id: u32) -> bool {
+pub extern "C" fn cranelift_assign_data_to_global(ptr: *mut ModuleData, id: u32, err: *const c_char) -> bool {
     let inst = unsafe {
         assert!(!ptr.is_null());
         &mut *ptr
@@ -352,8 +308,10 @@ pub extern "C" fn cranelift_assign_data_to_global(ptr: *mut ModuleData, id: u32)
         .unwrap()
         .define_data(DataId::from_u32(id), &inst.data_ctx);
     if res.is_err() {
-        inst.emit_error(&res.err().unwrap(), None);
-        return false;
+        let dd: &dyn Display = &res.err().unwrap();
+        let error = dd.to_string();
+        err = CString::new(format! ("cranelift_declare_function: {}", error)).unwrap().as_ptr() as *const c_char; 
+        res.unwrap()
     }
     inst.data_ctx.clear();
     true
@@ -422,8 +380,6 @@ pub enum CraneliftCallConv {
     CraneliftCallConvCold = 1,
     CraneliftCallConvSystemV = 2,
     CraneliftCallConvWindowsFastcall = 3,
-    CraneliftCallConvBaldrdashSystemV = 4,
-    CraneliftCallConvBaldrdashWindows = 5,
     CraneliftCallConvProbestack = 6,
 }
 
@@ -465,242 +421,242 @@ pub enum CraneliftFloatCC {
 /// CPU flags representing the result of an integer comparison. These flags
 /// can be tested with an :u8:`intcc` condition code.
 #[allow(non_upper_case_globals)]
-pub const TypeIFLAGS: u8 = (0x1);
+pub const TypeIFLAGS: u8 = 0x1;
 
 /// CPU flags representing the result of a floating point comparison. These
 /// flags can be tested with a :u8:`floatcc` condition code.
 #[allow(non_upper_case_globals)]
-pub const TypeFFLAGS: u8 = (0x2);
+pub const TypeFFLAGS: u8 = 0x2;
 
 /// A boolean u8 with 1 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeB1: u8 = (0x70);
+pub const TypeB1: u8 = 0x70;
 
 /// A boolean u8 with 8 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeB8: u8 = (0x71);
+pub const TypeB8: u8 = 0x71;
 
 /// A boolean u8 with 16 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeB16: u8 = (0x72);
+pub const TypeB16: u8 = 0x72;
 
 /// A boolean u8 with 32 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeB32: u8 = (0x73);
+pub const TypeB32: u8 = 0x73;
 
 /// A boolean u8 with 64 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeB64: u8 = (0x74);
+pub const TypeB64: u8 = 0x74;
 
 /// A boolean u8 with 128 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeB128: u8 = (0x75);
+pub const TypeB128: u8 = 0x75;
 
 /// An integer u8 with 8 bits.
 /// WARNING: arithmetic on 8bit integers is incomplete
 #[allow(non_upper_case_globals)]
-pub const TypeI8: u8 = (0x76);
+pub const TypeI8: u8 = 0x76;
 
 /// An integer u8 with 16 bits.
 /// WARNING: arithmetic on 16bit integers is incomplete
 #[allow(non_upper_case_globals)]
-pub const TypeI16: u8 = (0x77);
+pub const TypeI16: u8 = 0x77;
 
 /// An integer u8 with 32 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeI32: u8 = (0x78);
+pub const TypeI32: u8 = 0x78;
 
 /// An integer u8 with 64 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeI64: u8 = (0x79);
+pub const TypeI64: u8 = 0x79;
 
 /// An integer u8 with 128 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeI128: u8 = (0x7a);
+pub const TypeI128: u8 = 0x7a;
 
 /// A 32-bit floating point u8 represented in the IEEE 754-2008
 /// *binary32* interchange format. This corresponds to the :c:u8:`float`
 /// u8 in most C implementations.
 #[allow(non_upper_case_globals)]
-pub const TypeF32: u8 = (0x7b);
+pub const TypeF32: u8 = 0x7b;
 
 /// A 64-bit floating point u8 represented in the IEEE 754-2008
 /// *binary64* interchange format. This corresponds to the :c:u8:`double`
 /// u8 in most C implementations.
 #[allow(non_upper_case_globals)]
-pub const TypeF64: u8 = (0x7c);
+pub const TypeF64: u8 = 0x7c;
 
 /// An opaque reference u8 with 32 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeR32: u8 = (0x7e);
+pub const TypeR32: u8 = 0x7e;
 
 /// An opaque reference u8 with 64 bits.
 #[allow(non_upper_case_globals)]
-pub const TypeR64: u8 = (0x7f);
+pub const TypeR64: u8 = 0x7f;
 
 /// A SIMD vector with 8 lanes containing a `b8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB8X8: u8 = (0xa1);
+pub const TypeB8X8: u8 = 0xa1;
 
 /// A SIMD vector with 4 lanes containing a `b16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB16X4: u8 = (0x92);
+pub const TypeB16X4: u8 = 0x92;
 
 /// A SIMD vector with 2 lanes containing a `b32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB32X2: u8 = (0x83);
+pub const TypeB32X2: u8 = 0x83;
 
 /// A SIMD vector with 8 lanes containing a `i8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI8X8: u8 = (0xa6);
+pub const TypeI8X8: u8 = 0xa6;
 
 /// A SIMD vector with 4 lanes containing a `i16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI16X4: u8 = (0x97);
+pub const TypeI16X4: u8 = 0x97;
 
 /// A SIMD vector with 2 lanes containing a `i32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI32X2: u8 = (0x88);
+pub const TypeI32X2: u8 = 0x88;
 
 /// A SIMD vector with 2 lanes containing a `f32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeF32X2: u8 = (0x8b);
+pub const TypeF32X2: u8 = 0x8b;
 
 /// A SIMD vector with 16 lanes containing a `b8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB8X16: u8 = (0xb1);
+pub const TypeB8X16: u8 = 0xb1;
 
 /// A SIMD vector with 8 lanes containing a `b16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB16X8: u8 = (0xa2);
+pub const TypeB16X8: u8 = 0xa2;
 
 /// A SIMD vector with 4 lanes containing a `b32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB32X4: u8 = (0x93);
+pub const TypeB32X4: u8 = 0x93;
 
 /// A SIMD vector with 2 lanes containing a `b64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB64X2: u8 = (0x84);
+pub const TypeB64X2: u8 = 0x84;
 
 /// A SIMD vector with 16 lanes containing a `i8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI8X16: u8 = (0xb6);
+pub const TypeI8X16: u8 = 0xb6;
 
 /// A SIMD vector with 8 lanes containing a `i16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI16X8: u8 = (0xa7);
+pub const TypeI16X8: u8 = 0xa7;
 
 /// A SIMD vector with 4 lanes containing a `i32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI32X4: u8 = (0x98);
+pub const TypeI32X4: u8 = 0x98;
 
 /// A SIMD vector with 2 lanes containing a `i64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI64X2: u8 = (0x89);
+pub const TypeI64X2: u8 = 0x89;
 
 /// A SIMD vector with 4 lanes containing a `f32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeF32X4: u8 = (0x9b);
+pub const TypeF32X4: u8 = 0x9b;
 
 /// A SIMD vector with 2 lanes containing a `f64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeF64X2: u8 = (0x8c);
+pub const TypeF64X2: u8 = 0x8c;
 
 /// A SIMD vector with 32 lanes containing a `b8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB8X32: u8 = (0xc1);
+pub const TypeB8X32: u8 = 0xc1;
 
 /// A SIMD vector with 16 lanes containing a `b16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB16X16: u8 = (0xb2);
+pub const TypeB16X16: u8 = 0xb2;
 
 /// A SIMD vector with 8 lanes containing a `b32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB32X8: u8 = (0xa3);
+pub const TypeB32X8: u8 = 0xa3;
 
 /// A SIMD vector with 4 lanes containing a `b64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB64X4: u8 = (0x94);
+pub const TypeB64X4: u8 = 0x94;
 
 /// A SIMD vector with 2 lanes containing a `b128` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB128X2: u8 = (0x85);
+pub const TypeB128X2: u8 = 0x85;
 
 /// A SIMD vector with 32 lanes containing a `i8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI8X32: u8 = (0xc6);
+pub const TypeI8X32: u8 = 0xc6;
 
 /// A SIMD vector with 16 lanes containing a `i16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI16X16: u8 = (0xb7);
+pub const TypeI16X16: u8 = 0xb7;
 
 /// A SIMD vector with 8 lanes containing a `i32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI32X8: u8 = (0xa8);
+pub const TypeI32X8: u8 = 0xa8;
 
 /// A SIMD vector with 4 lanes containing a `i64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI64X4: u8 = (0x99);
+pub const TypeI64X4: u8 = 0x99;
 
 /// A SIMD vector with 2 lanes containing a `i128` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI128X2: u8 = (0x8a);
+pub const TypeI128X2: u8 = 0x8a;
 
 /// A SIMD vector with 8 lanes containing a `f32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeF32X8: u8 = (0xab);
+pub const TypeF32X8: u8 = 0xab;
 
 /// A SIMD vector with 4 lanes containing a `f64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeF64X4: u8 = (0x9c);
+pub const TypeF64X4: u8 = 0x9c;
 
 /// A SIMD vector with 64 lanes containing a `b8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB8X64: u8 = (0xd1);
+pub const TypeB8X64: u8 = 0xd1;
 
 /// A SIMD vector with 32 lanes containing a `b16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB16X32: u8 = (0xc2);
+pub const TypeB16X32: u8 = 0xc2;
 
 /// A SIMD vector with 16 lanes containing a `b32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB32X16: u8 = (0xb3);
+pub const TypeB32X16: u8 = 0xb3;
 
 /// A SIMD vector with 8 lanes containing a `b64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB64X8: u8 = (0xa4);
+pub const TypeB64X8: u8 = 0xa4;
 
 /// A SIMD vector with 4 lanes containing a `b128` each.
 #[allow(non_upper_case_globals)]
-pub const TypeB128X4: u8 = (0x95);
+pub const TypeB128X4: u8 = 0x95;
 
 /// A SIMD vector with 64 lanes containing a `i8` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI8X64: u8 = (0xd6);
+pub const TypeI8X64: u8 = 0xd6;
 
 /// A SIMD vector with 32 lanes containing a `i16` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI16X32: u8 = (0xc7);
+pub const TypeI16X32: u8 = 0xc7;
 
 /// A SIMD vector with 16 lanes containing a `i32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI32X16: u8 = (0xb8);
+pub const TypeI32X16: u8 = 0xb8;
 
 /// A SIMD vector with 8 lanes containing a `i64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI64X8: u8 = (0xa9);
+pub const TypeI64X8: u8 = 0xa9;
 
 /// A SIMD vector with 4 lanes containing a `i128` each.
 #[allow(non_upper_case_globals)]
-pub const TypeI128X4: u8 = (0x9a);
+pub const TypeI128X4: u8 = 0x9a;
 
 /// A SIMD vector with 16 lanes containing a `f32` each.
 #[allow(non_upper_case_globals)]
-pub const TypeF32X16: u8 = (0xbb);
+pub const TypeF32X16: u8 = 0xbb;
 
 /// A SIMD vector with 8 lanes containing a `f64` each.
 #[allow(non_upper_case_globals)]
-pub const TypeF64X8: u8 = (0xac);
+pub const TypeF64X8: u8 = 0xac;
 type Type = u8;
 
 type TrapCode = u32;
@@ -709,7 +665,7 @@ type TrapCode = u32;
 /// On some platforms, a stack overflow may also be indicated by a segmentation fault from the
 /// stack guard page.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeStackOverflow: u32 = (1 << 16);
+pub const TrapCodeStackOverflow: u32 = 1 << 16;
 
 /// A `heap_addr` instruction detected an out-of-bounds error.
 ///
@@ -717,40 +673,40 @@ pub const TrapCodeStackOverflow: u32 = (1 << 16);
 /// some are detected by a segmentation fault on the heap unmapped or
 /// offset-guard pages.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeHeapOutOfBounds: u32 = (2 << 16);
+pub const TrapCodeHeapOutOfBounds: u32 = 2 << 16;
 
 /// A `table_addr` instruction detected an out-of-bounds error.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeTableOutOfBounds: u32 = (3 << 16);
+pub const TrapCodeTableOutOfBounds: u32 = 3 << 16;
 
 /// Indirect call to a null table entry.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeIndirectCallToNull: u32 = (5 << 16);
+pub const TrapCodeIndirectCallToNull: u32 = 5 << 16;
 
 /// Signature mismatch on indirect call.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeBadSignature: u32 = (6 << 16);
+pub const TrapCodeBadSignature: u32 = 6 << 16;
 
 /// An integer arithmetic operation caused an overflow.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeIntegerOverflow: u32 = (7 << 16);
+pub const TrapCodeIntegerOverflow: u32 = 7 << 16;
 
 /// An integer division by zero.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeIntegerDivisionByZero: u32 = (8 << 16);
+pub const TrapCodeIntegerDivisionByZero: u32 = 8 << 16;
 
 /// Failed float-to-int conversion.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeBadConversionToInteger: u32 = (9 << 16);
+pub const TrapCodeBadConversionToInteger: u32 = 9 << 16;
 
 /// Code that was supposed to have been unreachable was reached.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeUnreachableCodeReached: u32 = (10 << 16);
+pub const TrapCodeUnreachableCodeReached: u32 = 10 << 16;
 
 /// Execution has potentially run too long and may be interrupted.
 /// This trap is resumable.
 #[allow(non_upper_case_globals)]
-pub const TrapCodeInterrupt: u32 = (11 << 16);
+pub const TrapCodeInterrupt: u32 = 11 << 16;
 
 #[no_mangle]
 pub extern "C" fn cranelift_get_pointer_type(ptr: *mut ModuleData) -> Type {
@@ -798,8 +754,6 @@ fn convert_cc(cc: CraneliftCallConv, default: CallConv) -> CallConv {
         CraneliftCallConv::CraneliftCallConvProbestack => CallConv::Probestack,
         CraneliftCallConv::CraneliftCallConvFast => CallConv::Fast,
         CraneliftCallConv::CraneliftCallConvCold => CallConv::Cold,
-        CraneliftCallConv::CraneliftCallConvBaldrdashWindows => CallConv::BaldrdashWindows,
-        CraneliftCallConv::CraneliftCallConvBaldrdashSystemV => CallConv::BaldrdashSystemV,
     };
 }
 
@@ -820,69 +774,34 @@ pub extern "C" fn cranelift_signature_builder_reset(ptr: *mut ModuleData, cc: Cr
     ));
 }
 
-fn convert_type(typ: Type) -> cranelift_codegen::ir::types::Type {
+fn convert_type(typ: Type) -> codegen::ir::types::Type {
     #[allow(non_upper_case_globals)]
     return match typ {
-        TypeIFLAGS => cranelift_codegen::ir::types::IFLAGS,
-        TypeFFLAGS => cranelift_codegen::ir::types::FFLAGS,
-        TypeB1 => cranelift_codegen::ir::types::B1,
-        TypeB8 => cranelift_codegen::ir::types::B8,
-        TypeB16 => cranelift_codegen::ir::types::B16,
-        TypeB32 => cranelift_codegen::ir::types::B32,
-        TypeB64 => cranelift_codegen::ir::types::B64,
-        TypeB128 => cranelift_codegen::ir::types::B128,
-        TypeI8 => cranelift_codegen::ir::types::I8,
-        TypeI16 => cranelift_codegen::ir::types::I16,
-        TypeI32 => cranelift_codegen::ir::types::I32,
-        TypeI64 => cranelift_codegen::ir::types::I64,
-        TypeI128 => cranelift_codegen::ir::types::I128,
-        TypeF32 => cranelift_codegen::ir::types::F32,
-        TypeF64 => cranelift_codegen::ir::types::F64,
-        TypeR32 => cranelift_codegen::ir::types::R32,
-        TypeR64 => cranelift_codegen::ir::types::R64,
-        TypeB8X8 => cranelift_codegen::ir::types::B8X8,
-        TypeB16X4 => cranelift_codegen::ir::types::B16X4,
-        TypeB32X2 => cranelift_codegen::ir::types::B32X2,
-        TypeI8X8 => cranelift_codegen::ir::types::I8X8,
-        TypeI16X4 => cranelift_codegen::ir::types::I16X4,
-        TypeI32X2 => cranelift_codegen::ir::types::I32X2,
-        TypeF32X2 => cranelift_codegen::ir::types::F32X2,
-        TypeB8X16 => cranelift_codegen::ir::types::B8X16,
-        TypeB16X8 => cranelift_codegen::ir::types::B16X8,
-        TypeB32X4 => cranelift_codegen::ir::types::B32X4,
-        TypeB64X2 => cranelift_codegen::ir::types::B64X2,
-        TypeI8X16 => cranelift_codegen::ir::types::I8X16,
-        TypeI16X8 => cranelift_codegen::ir::types::I16X8,
-        TypeI32X4 => cranelift_codegen::ir::types::I32X4,
-        TypeI64X2 => cranelift_codegen::ir::types::I64X2,
-        TypeF32X4 => cranelift_codegen::ir::types::F32X4,
-        TypeF64X2 => cranelift_codegen::ir::types::F64X2,
-        TypeB8X32 => cranelift_codegen::ir::types::B8X32,
-        TypeB16X16 => cranelift_codegen::ir::types::B16X16,
-        TypeB32X8 => cranelift_codegen::ir::types::B32X8,
-        TypeB64X4 => cranelift_codegen::ir::types::B64X4,
-        TypeB128X2 => cranelift_codegen::ir::types::B128X2,
-        TypeI8X32 => cranelift_codegen::ir::types::I8X32,
-        TypeI16X16 => cranelift_codegen::ir::types::I16X16,
-        TypeI32X8 => cranelift_codegen::ir::types::I32X8,
-        TypeI64X4 => cranelift_codegen::ir::types::I64X4,
-        TypeI128X2 => cranelift_codegen::ir::types::I128X2,
-        TypeF32X8 => cranelift_codegen::ir::types::F32X8,
-        TypeF64X4 => cranelift_codegen::ir::types::F64X4,
-        TypeB8X64 => cranelift_codegen::ir::types::B8X64,
-        TypeB16X32 => cranelift_codegen::ir::types::B16X32,
-        TypeB32X16 => cranelift_codegen::ir::types::B32X16,
-        TypeB64X8 => cranelift_codegen::ir::types::B64X8,
-        TypeB128X4 => cranelift_codegen::ir::types::B128X4,
-        TypeI8X64 => cranelift_codegen::ir::types::I8X64,
-        TypeI16X32 => cranelift_codegen::ir::types::I16X32,
-        TypeI32X16 => cranelift_codegen::ir::types::I32X16,
-        TypeI64X8 => cranelift_codegen::ir::types::I64X8,
-        TypeI128X4 => cranelift_codegen::ir::types::I128X4,
-        TypeF32X16 => cranelift_codegen::ir::types::F32X16,
-        TypeF64X8 => cranelift_codegen::ir::types::F64X8,
+        TypeI8 => I8,
+        TypeI16 => I16,
+        TypeI32 => I32,
+        TypeI64 => I64,
+        TypeI128 => I128,
+        TypeF32 => F32,
+        TypeF64 => F64,
+        TypeR32 => R32,
+        TypeR64 => R64,
+        TypeI8X8 => I8X8,
+        TypeI16X4 => I16X4,
+        TypeI32X2 => I32X2,
+        TypeF32X2 => F32X2,
+        TypeI8X16 => I8X16,
+        TypeI16X8 => I16X8,
+        TypeI32X4 => I32X4,
+        TypeI64X2 => I64X2,
+        TypeF32X4 => F32X4,
+        TypeF64X2 => F64X2,
+        TypeF32X8 => F32X8,
+        TypeF64X4 => F64X4,
+        TypeF32X16 => F32X16,
+        TypeF64X8 => F64X8,
 
-        _ => cranelift_codegen::ir::types::I32,
+        _ => I32,
     };
 }
 
@@ -1119,7 +1038,7 @@ pub extern "C" fn cranelift_create_jump_table(
         assert!(!ptr.is_null());
         &mut *ptr
     };
-    let mut jt = JumpTableData::new();
+    let mut jt = JumpTableData::default_block();
     for i in 0..count {
         jt.push_entry(Block::from_u32(unsafe { *targets.offset(i as isize) }));
     }
