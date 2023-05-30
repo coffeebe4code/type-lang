@@ -5,6 +5,7 @@ const cl = @cImport({
 const std = @import("std");
 
 test "should create module" {
-    const context = cl.CL_FunctionBuilderContext_new();
-    defer context.FunctionBuilderContext_dispose();
+    const builder = cl.CL_Builder_builder();
+    var flags = cl.CL_Flags_new(builder);
+    _ = flags;
 }

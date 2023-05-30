@@ -60,12 +60,12 @@ pub fn build(b: *std.Build) void {
         // TODO:: use debug/release with an option, and supported targets
         s_lib.addLibraryPath("./cranelift/target/debug");
         s_lib.addIncludePath("./cranelift/headers");
-        const rustc_lib = b.exec(&.{ "rustc", "--print=sysroot" });
-        var tokenizer = std.mem.tokenize(u8, rustc_lib, "\r\n");
-        const path_unpadded = tokenizer.next().?;
-        if (std.mem.eql(u8, path_unpadded, rustc_lib)) {
-            std.debug.print("Unable to determine path to {s}\n", .{rustc_lib});
-        }
+        //const rustc_lib = b.exec(&.{ "rustc", "--print=sysroot" });
+        //var tokenizer = std.mem.tokenize(u8, rustc_lib, "\r\n");
+        //const path_unpadded = tokenizer.next().?;
+        //if (std.mem.eql(u8, path_unpadded, rustc_lib)) {
+        //    std.debug.print("Unable to determine path to {s}\n", .{rustc_lib});
+        //}
         b.installArtifact(s_lib);
 
         const s_tests = b.addTest(.{
@@ -73,10 +73,10 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
-        s_tests.linkSystemLibrary("craneliftc");
-        s_tests.linkSystemLibrary("unwind");
         s_tests.addLibraryPath("./cranelift/target/debug");
         s_tests.addIncludePath("./cranelift/headers");
+        s_tests.linkSystemLibrary("craneliftc");
+        s_tests.linkSystemLibrary("unwind");
 
         const run_tests = b.addRunArtifact(s_tests);
 

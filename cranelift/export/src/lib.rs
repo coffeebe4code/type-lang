@@ -1,13 +1,9 @@
-use std::marker::PhantomData;
-
-use cranelift::codegen::ir::types::*;
-use cranelift::codegen::ir::*;
-use cranelift::codegen::isa::*;
+use cranelift::codegen::ir::{types::*, Function, UserFuncName};
 use cranelift::codegen::verifier::verify_function;
-use cranelift::codegen::*;
-use cranelift::prelude::settings::{Builder, Flags};
-use cranelift::prelude::*;
+use cranelift::prelude::isa::CallConv;
+use cranelift::prelude::settings::{self, Builder, Flags};
 pub use cranelift::prelude::{AbiParam, Value, Variable};
+use cranelift::prelude::{Block, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature};
 
 #[repr(C)]
 pub enum CType {
