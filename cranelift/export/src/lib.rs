@@ -1,12 +1,15 @@
+use std::marker::PhantomData;
+
 use cranelift::codegen::ir::types::*;
 use cranelift::codegen::ir::*;
 use cranelift::codegen::isa::*;
 use cranelift::codegen::verifier::verify_function;
+use cranelift::codegen::*;
 use cranelift::prelude::settings::{Builder, Flags};
 use cranelift::prelude::*;
 pub use cranelift::prelude::{AbiParam, Value, Variable};
 
-#[repr(u16)]
+#[repr(C)]
 pub enum CType {
     I8,
     I16,
@@ -33,15 +36,15 @@ pub enum CType {
     F64X8,
 }
 
-#[repr(C)]
+#[repr(transparent)]
 pub struct CVariable(u32);
-#[repr(C)]
+#[repr(transparent)]
 pub struct CBlock(u32);
-#[repr(C)]
+#[repr(transparent)]
 pub struct CValue(u32);
-#[repr(C)]
+#[repr(transparent)]
 pub struct CInstr(u32);
-#[repr(C)]
+#[repr(transparent)]
 pub struct CFuncRef(u32);
 
 #[repr(u8)]
