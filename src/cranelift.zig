@@ -41,6 +41,7 @@ test "should create simple function" {
         cl.CL_FunctionBuilder_def_var(fbuilder, y, temp);
     }
 
+    // add them together and return z.
     {
         const x1 = cl.CL_FunctionBuilder_use_var(fbuilder, x);
         const y1 = cl.CL_FunctionBuilder_use_var(fbuilder, y);
@@ -48,7 +49,7 @@ test "should create simple function" {
         const temp = cl.CL_FunctionBuilder_iadd(fbuilder, x1, y1);
         cl.CL_FunctionBuilder_def_var(fbuilder, z, temp);
         const result = cl.CL_FunctionBuilder_use_var(fbuilder, z);
-        _ = cl.CL_FunctionBuilder_return_(fbuilder, &[1]cl.CValue{result}, 1);
+        _ = cl.CL_FunctionBuilder_return_(fbuilder, @constCast(&[1]cl.CValue{result}), 1);
     }
 
     const builder = cl.CL_Builder_builder();
@@ -57,15 +58,13 @@ test "should create simple function" {
     cl.CL_Function_verify(func, flags);
     const output = cl.CL_Function_display(func);
 
-    const expected: []u8 = "" ++
-        "u0:0(i32) -> i32 system_v {" ++
-        "block0(v0: i32):" ++
-        "    v1 = iconst.i32 2" ++
-        "    v2 = iadd v0, v1  ; v1 = 2" ++
-        "    return v2" ++
-        "}";
-
-    try std.testing.expect(std.mem.eql(u8, output, expected));
+    const expected: [:0]const u8 = "function u0:0(i32) -> i32 system_v {\n" ++
+        "block0(v0: i32):\n" ++
+        "    v1 = iconst.i32 2\n" ++
+        "    v2 = iadd v0, v1  ; v1 = 2\n" ++
+        "    return v2\n" ++
+        "}\n";
+    try std.testing.expect(std.mem.eql(u8, std.mem.span(output), expected));
 
     cl.cstr_free(output);
 }

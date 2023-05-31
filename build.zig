@@ -26,6 +26,8 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
+    const test_step = b.step("test", "Run library tests step");
+
     for (0..count) |i| {
         const s_lib = b.addStaticLibrary(.{
             .name = names[i],
@@ -44,7 +46,6 @@ pub fn build(b: *std.Build) void {
 
         const run_tests = b.addRunArtifact(s_tests);
 
-        const test_step = b.step("test", "Run library tests");
         test_step.dependOn(&run_tests.step);
     }
 
@@ -80,7 +81,6 @@ pub fn build(b: *std.Build) void {
 
         const run_tests = b.addRunArtifact(s_tests);
 
-        const test_step = b.step("test", "Run library tests step");
         test_step.dependOn(&run_tests.step);
     }
 }
