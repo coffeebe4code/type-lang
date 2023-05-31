@@ -13,18 +13,20 @@ const files = [count][]const u8{
     "src/parser.zig",
 };
 
-const llvm_count = 1;
-const llvm_names = [llvm_count][]const u8{
-    "llvm",
+const cranelift_count = 1;
+const cranelift_names = [cranelift_count][]const u8{
+    "cranelift",
 };
-const llvm_files = [llvm_count][]const u8{
-    "src/llvm.zig",
+const cranelift_files = [cranelift_count][]const u8{
+    "src/cranelift.zig",
 };
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
 
     const optimize = b.standardOptimizeOption(.{});
+
+    const test_step = b.step("test", "Run library tests step");
 
     for (0..count) |i| {
         const s_lib = b.addStaticLibrary(.{
@@ -44,280 +46,41 @@ pub fn build(b: *std.Build) void {
 
         const run_tests = b.addRunArtifact(s_tests);
 
-        const test_step = b.step("test", "Run library tests");
         test_step.dependOn(&run_tests.step);
     }
 
-    for (0..llvm_count) |i| {
+    for (0..cranelift_count) |i| {
         const s_lib = b.addStaticLibrary(.{
-            .name = llvm_names[i],
-            .root_source_file = .{ .path = llvm_files[i] },
+            .name = cranelift_names[i],
+            .root_source_file = .{ .path = cranelift_files[i] },
             .target = target,
             .optimize = optimize,
         });
-        link_llvm(b, s_lib) catch |e| {
-            std.debug.print("Unable to link llvm {}\n", .{e});
-        };
-
+        s_lib.linkSystemLibrary("craneliftc");
+        s_lib.linkSystemLibrary("unwind");
+        // TODO:: use debug/release with an option, and supported targets
+        s_lib.addLibraryPath("./cranelift/target/debug");
+        s_lib.addIncludePath("./cranelift/headers");
+        //const rustc_lib = b.exec(&.{ "rustc", "--print=sysroot" });
+        //var tokenizer = std.mem.tokenize(u8, rustc_lib, "\r\n");
+        //const path_unpadded = tokenizer.next().?;
+        //if (std.mem.eql(u8, path_unpadded, rustc_lib)) {
+        //    std.debug.print("Unable to determine path to {s}\n", .{rustc_lib});
+        //}
         b.installArtifact(s_lib);
 
         const s_tests = b.addTest(.{
-            .root_source_file = .{ .path = llvm_files[i] },
+            .root_source_file = .{ .path = cranelift_files[i] },
             .target = target,
             .optimize = optimize,
         });
-        link_llvm(b, s_tests) catch |e| {
-            std.debug.print("Unable to link llvm {}\n", .{e});
-        };
+        s_tests.addLibraryPath("./cranelift/target/debug");
+        s_tests.addIncludePath("./cranelift/headers");
+        s_tests.linkSystemLibrary("craneliftc");
+        s_tests.linkSystemLibrary("unwind");
 
         const run_tests = b.addRunArtifact(s_tests);
 
-        const test_step = b.step("test", "Run library tests step");
         test_step.dependOn(&run_tests.step);
     }
-}
-
-const llvm_libs = [_][]const u8{
-    "LLVMWindowsManifest",
-    "LLVMXRay",
-    "LLVMLibDriver",
-    "LLVMDlltoolDriver",
-    "LLVMCoverage",
-    "LLVMLineEditor",
-    "LLVMXCoreDisassembler",
-    "LLVMXCoreCodeGen",
-    "LLVMXCoreDesc",
-    "LLVMXCoreInfo",
-    "LLVMX86TargetMCA",
-    "LLVMX86Disassembler",
-    "LLVMX86AsmParser",
-    "LLVMX86CodeGen",
-    "LLVMX86Desc",
-    "LLVMX86Info",
-    "LLVMWebAssemblyDisassembler",
-    "LLVMWebAssemblyAsmParser",
-    "LLVMWebAssemblyCodeGen",
-    "LLVMWebAssemblyDesc",
-    "LLVMWebAssemblyUtils",
-    "LLVMWebAssemblyInfo",
-    "LLVMVEDisassembler",
-    "LLVMVEAsmParser",
-    "LLVMVECodeGen",
-    "LLVMVEDesc",
-    "LLVMVEInfo",
-    "LLVMSystemZDisassembler",
-    "LLVMSystemZAsmParser",
-    "LLVMSystemZCodeGen",
-    "LLVMSystemZDesc",
-    "LLVMSystemZInfo",
-    "LLVMSparcDisassembler",
-    "LLVMSparcAsmParser",
-    "LLVMSparcCodeGen",
-    "LLVMSparcDesc",
-    "LLVMSparcInfo",
-    "LLVMRISCVTargetMCA",
-    "LLVMRISCVDisassembler",
-    "LLVMRISCVAsmParser",
-    "LLVMRISCVCodeGen",
-    "LLVMRISCVDesc",
-    "LLVMRISCVInfo",
-    "LLVMPowerPCDisassembler",
-    "LLVMPowerPCAsmParser",
-    "LLVMPowerPCCodeGen",
-    "LLVMPowerPCDesc",
-    "LLVMPowerPCInfo",
-    "LLVMNVPTXCodeGen",
-    "LLVMNVPTXDesc",
-    "LLVMNVPTXInfo",
-    "LLVMMSP430Disassembler",
-    "LLVMMSP430AsmParser",
-    "LLVMMSP430CodeGen",
-    "LLVMMSP430Desc",
-    "LLVMMSP430Info",
-    "LLVMMipsDisassembler",
-    "LLVMMipsAsmParser",
-    "LLVMMipsCodeGen",
-    "LLVMMipsDesc",
-    "LLVMMipsInfo",
-    "LLVMLoongArchDisassembler",
-    "LLVMLoongArchAsmParser",
-    "LLVMLoongArchCodeGen",
-    "LLVMLoongArchDesc",
-    "LLVMLoongArchInfo",
-    "LLVMLanaiDisassembler",
-    "LLVMLanaiCodeGen",
-    "LLVMLanaiAsmParser",
-    "LLVMLanaiDesc",
-    "LLVMLanaiInfo",
-    "LLVMHexagonDisassembler",
-    "LLVMHexagonCodeGen",
-    "LLVMHexagonAsmParser",
-    "LLVMHexagonDesc",
-    "LLVMHexagonInfo",
-    "LLVMBPFDisassembler",
-    "LLVMBPFAsmParser",
-    "LLVMBPFCodeGen",
-    "LLVMBPFDesc",
-    "LLVMBPFInfo",
-    "LLVMAVRDisassembler",
-    "LLVMAVRAsmParser",
-    "LLVMAVRCodeGen",
-    "LLVMAVRDesc",
-    "LLVMAVRInfo",
-    "LLVMARMDisassembler",
-    "LLVMARMAsmParser",
-    "LLVMARMCodeGen",
-    "LLVMARMDesc",
-    "LLVMARMUtils",
-    "LLVMARMInfo",
-    "LLVMAMDGPUTargetMCA",
-    "LLVMAMDGPUDisassembler",
-    "LLVMAMDGPUAsmParser",
-    "LLVMAMDGPUCodeGen",
-    "LLVMAMDGPUDesc",
-    "LLVMAMDGPUUtils",
-    "LLVMAMDGPUInfo",
-    "LLVMAArch64Disassembler",
-    "LLVMAArch64AsmParser",
-    "LLVMAArch64CodeGen",
-    "LLVMAArch64Desc",
-    "LLVMAArch64Utils",
-    "LLVMAArch64Info",
-    "LLVMOrcJIT",
-    "LLVMWindowsDriver",
-    "LLVMMCJIT",
-    "LLVMJITLink",
-    "LLVMInterpreter",
-    "LLVMExecutionEngine",
-    "LLVMRuntimeDyld",
-    "LLVMOrcTargetProcess",
-    "LLVMOrcShared",
-    "LLVMDWP",
-    "LLVMDebugInfoLogicalView",
-    "LLVMDebugInfoGSYM",
-    "LLVMOption",
-    "LLVMObjectYAML",
-    "LLVMObjCopy",
-    "LLVMMCA",
-    "LLVMMCDisassembler",
-    "LLVMLTO",
-    "LLVMPasses",
-    "LLVMCFGuard",
-    "LLVMCoroutines",
-    "LLVMipo",
-    "LLVMVectorize",
-    "LLVMLinker",
-    "LLVMInstrumentation",
-    "LLVMFrontendOpenMP",
-    "LLVMFrontendOpenACC",
-    "LLVMFrontendHLSL",
-    "LLVMExtensions",
-    "LLVMDWARFLinkerParallel",
-    "LLVMDWARFLinker",
-    "LLVMGlobalISel",
-    "LLVMMIRParser",
-    "LLVMAsmPrinter",
-    "LLVMSelectionDAG",
-    "LLVMCodeGen",
-    "LLVMObjCARCOpts",
-    "LLVMIRPrinter",
-    "LLVMInterfaceStub",
-    "LLVMFileCheck",
-    "LLVMFuzzMutate",
-    "LLVMTarget",
-    "LLVMScalarOpts",
-    "LLVMInstCombine",
-    "LLVMAggressiveInstCombine",
-    "LLVMTransformUtils",
-    "LLVMBitWriter",
-    "LLVMAnalysis",
-    "LLVMProfileData",
-    "LLVMSymbolize",
-    "LLVMDebugInfoPDB",
-    "LLVMDebugInfoMSF",
-    "LLVMDebugInfoDWARF",
-    "LLVMObject",
-    "LLVMTextAPI",
-    "LLVMMCParser",
-    "LLVMIRReader",
-    "LLVMAsmParser",
-    "LLVMMC",
-    "LLVMDebugInfoCodeView",
-    "LLVMBitReader",
-    "LLVMFuzzerCLI",
-    "LLVMCore",
-    "LLVMRemarks",
-    "LLVMBitstreamReader",
-    "LLVMBinaryFormat",
-    "LLVMTargetParser",
-    "LLVMSupport",
-    "LLVMDemangle",
-};
-
-const clang_libs = [_][]const u8{
-    "clangFrontendTool",
-    "clangCodeGen",
-    "clangFrontend",
-    "clangDriver",
-    "clangSerialization",
-    "clangSema",
-    "clangStaticAnalyzerFrontend",
-    "clangStaticAnalyzerCheckers",
-    "clangStaticAnalyzerCore",
-    "clangAnalysis",
-    "clangASTMatchers",
-    "clangAST",
-    "clangParse",
-    "clangSema",
-    "clangBasic",
-    "clangEdit",
-    "clangLex",
-    "clangARCMigrate",
-    "clangRewriteFrontend",
-    "clangRewrite",
-    "clangCrossTU",
-    "clangIndex",
-    "clangToolingCore",
-    "clangExtractAPI",
-    "clangSupport",
-};
-const lld_libs = [_][]const u8{
-    "lldMinGW",
-    "lldELF",
-    "lldCOFF",
-    "lldWasm",
-    "lldMachO",
-    "lldCommon",
-};
-
-pub fn link_llvm(
-    b: *std.Build,
-    step: *std.build.CompileStep,
-) !void {
-    for (llvm_libs) |lib_name| {
-        step.linkSystemLibrary(lib_name);
-    }
-    //for (clang_libs) |lib_name| {
-    //    llvm_tests.linkSystemLibrary(lib_name);
-    //}
-    //for (lld_libs) |lib_name| {
-    //    llvm_tests.linkSystemLibrary(lib_name);
-    //}
-    step.addIncludePath("../../local/llvm16-release/include");
-    step.addLibraryPath("../../local/llvm16-release/lib");
-    step.linkLibC();
-    step.linkSystemLibraryName("stdc++");
-    step.linkLibCpp();
-    const lib_suffix = step.target.dynamicLibSuffix()[1..];
-    const objName = b.fmt("libstdc++.{s}", .{lib_suffix});
-    if (!std.process.can_spawn)
-        return error.RequiredLibraryNotFound;
-    const path_padded = b.exec(&.{ "clang", b.fmt("-print-file-name={s}", .{objName}) });
-    var tokenizer = std.mem.tokenize(u8, path_padded, "\r\n");
-    const path_unpadded = tokenizer.next().?;
-    if (std.mem.eql(u8, path_unpadded, objName)) {
-        std.debug.print("Unable to determine path to {s}\n", .{objName});
-        return error.RequiredLibraryNotFound;
-    }
-    step.addObjectFile(path_unpadded);
 }

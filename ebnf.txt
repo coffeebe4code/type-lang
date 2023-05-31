@@ -1,3 +1,7 @@
+<or> ::= <and> ("||" <and>)*
+<and> ::= <equality> ("&&" <equality>)*
+<equality> ::= <cmp> (("!=" | "==") <cmp>)*
+<cmp> ::= <low_bin> ((">" | ">=" | "<" | "<=") <low_bin>)*
 <low_bin> ::= <high_bin> (("+" | "-") <high_bin>)*
 <high_bin> ::= <unary> (("*" | "/") <unary>)*
 <unary> ::= (("!" | "-") <unary>) | <terminal>

@@ -90,7 +90,7 @@ pub const Lexer = struct {
 
 test "collect if of" {
     const buf = "const";
-    var lex = Lexer.new(buf);
+    var lex = Lexer.new(buf, .{});
 
     var collect = try lex.collect_if_of(&[_]Token{ .K_Let, .K_Const });
 
@@ -98,7 +98,7 @@ test "collect if of" {
     try testing.expect(collect.?.token == Token.K_Const);
 }
 
-test "collect if of" {
+test "collect if" {
     const buf = "const";
     var lex = Lexer.new(buf, .{});
 
@@ -109,7 +109,7 @@ test "collect if of" {
     collect = try lex.collect();
 }
 
-test "collect if" {
+test "collect if and peek" {
     const buf = "const";
     var lex = Lexer.new(buf, .{});
 

@@ -12,3 +12,4 @@ _deps
 zig-cache
 zig-out
 llvm/llvm-project-16
+**/target
