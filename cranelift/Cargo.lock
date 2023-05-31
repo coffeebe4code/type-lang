@@ -108,14 +108,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd196a2c0a5c1551961b7d38c651dea82b30a97e1abc60163e2309f021c78fab"
 
 [[package]]
-name = "cranelift-export"
-version = "0.1.0"
-dependencies = [
- "cranelift",
- "paste",
-]
-
-[[package]]
 name = "cranelift-frontend"
 version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -132,6 +124,14 @@ name = "cranelift-isle"
 version = "0.96.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c64943f43f5b476e7b07b2b34b772695d3cee05160812294ec358e3d73b4866b"
+
+[[package]]
+name = "craneliftc"
+version = "0.1.0"
+dependencies = [
+ "cranelift",
+ "paste",
+]
 
 [[package]]
 name = "fallible-iterator"
@@ -174,10 +174,6 @@ dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
 ]
-
-[[package]]
-name = "isa"
-version = "0.1.0"
 
 [[package]]
 name = "log"

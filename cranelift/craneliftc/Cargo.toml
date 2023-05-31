@@ -1,5 +1,5 @@
 [package]
-name = "cranelift-export"
+name = "craneliftc"
 version = "0.1.0"
 edition = "2021"
 
