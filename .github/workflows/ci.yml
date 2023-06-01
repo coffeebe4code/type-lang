@@ -1,0 +1,69 @@
+name: ci
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  lint-cranelift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        working-directory: ./cranelift
+        with:
+          toolchain: nightly
+        env:
+          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+      - run: |
+          cargo install cbindgen
+          cargo build --release
+          cargo +nightly fmt --all -- --check
+          cbindgen --config cbindgen.toml --crate craneliftc --output ./headers/craneliftc.h
+          git diff --quiet
+          cargo publish -p craneliftc --token $CARGO_TOKEN --dry-run
+  test-cranelift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        working-directory: ./cranelift
+        with:
+          toolchain: nightly
+      - run: |
+          cargo build --release
+          cargo test
+  test-and-lint-debug:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        working-directory: ./cranelift
+        with:
+          toolchain: nightly
+      - run: |
+          cargo build --release
+      - uses: goto-bus-stop/setup-zig@v2
+      - run: |
+          zig build test
+          zig fmt ./src/*.zig --check
+          zig fmt build.zig --check
+  test-release:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        working-directory: ./cranelift
+        with:
+          toolchain: nightly
+      - run: |
+          cargo build --release
+      - uses: goto-bus-stop/setup-zig@v2
+      - run: |
+          zig build -Doptimize=ReleaseSafe
+          zig build test -Doptimize=ReleaseSafe

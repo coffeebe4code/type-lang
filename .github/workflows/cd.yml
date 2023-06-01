@@ -1,0 +1,52 @@
+name: cd
+on:
+  push:
+    branches:
+      - main
+jobs:
+  crate-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        working-directory: ./cranelift
+        with:
+          toolchain: nightly
+        env:
+          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+      - run: |
+          cargo build --release
+          cargo package
+          cargo publish -p craneliftc --token $CARGO_TOKEN 
+  release:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        working-directory: ./cranelift
+        with:
+          toolchain: nightly
+      - run: |
+          cargo build --release
+      - uses: goto-bus-stop/setup-zig@v2
+      - run: |
+          zig build -Doptimize=ReleaseSafe
+  debug:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        working-directory: ./cranelift
+        with:
+          toolchain: nightly
+      - run: |
+          cargo build --debug
+      - uses: goto-bus-stop/setup-zig@v2
+      - run: |
+          zig build
