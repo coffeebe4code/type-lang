@@ -53,7 +53,7 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
           zig build test
-          zig fmt ./src/*.zig --check
+          zig fmt ./src --check
           zig fmt build.zig --check
   test-release:
     strategy:
