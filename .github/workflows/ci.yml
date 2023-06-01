@@ -4,11 +4,12 @@ on:
     branches:
       - main
 jobs:
-  lint-cranelift:
+  lint-craneliftc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+        name: build and check craneliftc
         working-directory: ./cranelift
         with:
           toolchain: nightly
@@ -21,11 +22,12 @@ jobs:
           cbindgen --config cbindgen.toml --crate craneliftc --output ./headers/craneliftc.h
           git diff --quiet
           cargo publish -p craneliftc --token $CARGO_TOKEN --dry-run
-  test-cranelift:
+  test-craneliftc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+        name: test craneliftc
         working-directory: ./cranelift
         with:
           toolchain: nightly
@@ -40,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+        name: build craneliftc
         working-directory: ./cranelift
         with:
           toolchain: nightly
@@ -58,6 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
+        name: build craneliftc
         working-directory: ./cranelift
         with:
           toolchain: nightly
