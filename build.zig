@@ -59,7 +59,7 @@ pub fn build(b: *std.Build) void {
         s_lib.linkSystemLibrary("craneliftc");
         s_lib.linkSystemLibrary("unwind");
         // TODO:: use debug/release with an option, and supported targets
-        s_lib.addLibraryPath("./cranelift/target/debug");
+        s_lib.addLibraryPath("./cranelift/target/release");
         s_lib.addIncludePath("./cranelift/headers");
         //const rustc_lib = b.exec(&.{ "rustc", "--print=sysroot" });
         //var tokenizer = std.mem.tokenize(u8, rustc_lib, "\r\n");
@@ -74,7 +74,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
-        s_tests.addLibraryPath("./cranelift/target/debug");
+        s_tests.addLibraryPath("./cranelift/target/release");
         s_tests.addIncludePath("./cranelift/headers");
         s_tests.linkSystemLibrary("craneliftc");
         s_tests.linkSystemLibrary("unwind");

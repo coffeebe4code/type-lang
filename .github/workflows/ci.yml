@@ -17,6 +17,7 @@ jobs:
         env:
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       - run: |
+          rustup component add rustfmt --toolchain nightly
           cargo install cbindgen
           cargo build --release
           cargo +nightly fmt --all -- --check
