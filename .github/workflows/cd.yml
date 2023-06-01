@@ -6,7 +6,9 @@ on:
 jobs:
   crate-linux:
     runs-on: ubuntu-latest
-    working-directory: ./cranelift
+    defaults:
+        run:
+          working-directory: ./cranelift
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1

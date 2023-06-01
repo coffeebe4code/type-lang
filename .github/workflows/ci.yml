@@ -6,7 +6,9 @@ on:
 jobs:
   lint-craneliftc:
     runs-on: ubuntu-latest
-    working-directory: ./cranelift
+    defaults:
+        run:
+          working-directory: ./cranelift
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -23,7 +25,9 @@ jobs:
           cargo publish -p craneliftc --token $CARGO_TOKEN --dry-run
   test-craneliftc:
     runs-on: ubuntu-latest
-    working-directory: ./cranelift
+    defaults:
+        run:
+          working-directory: ./cranelift
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
