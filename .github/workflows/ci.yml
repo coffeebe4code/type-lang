@@ -23,7 +23,7 @@ jobs:
           cargo +nightly fmt --all -- --check
           cbindgen --config cbindgen.toml --crate craneliftc --output ./headers/craneliftc.h
           git diff --quiet
-          cargo publish -p craneliftc --token $CARGO_TOKEN --dry-run
+          cargo publish -p craneliftc --token "$CARGO_TOKEN" --dry-run
   test-craneliftc:
     runs-on: ubuntu-latest
     defaults:
