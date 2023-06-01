@@ -6,10 +6,10 @@ on:
 jobs:
   crate-linux:
     runs-on: ubuntu-latest
+    working-directory: ./cranelift
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        working-directory: ./cranelift
         with:
           toolchain: nightly
         env:
@@ -26,10 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        working-directory: ./cranelift
         with:
           toolchain: nightly
       - run: |
+          cd cranelift
           cargo build --release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
@@ -42,10 +42,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        working-directory: ./cranelift
         with:
           toolchain: nightly
       - run: |
+          cd cranelift
           cargo build --debug
       - uses: goto-bus-stop/setup-zig@v2
       - run: |

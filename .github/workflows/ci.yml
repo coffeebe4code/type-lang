@@ -6,11 +6,10 @@ on:
 jobs:
   lint-craneliftc:
     runs-on: ubuntu-latest
+    working-directory: ./cranelift
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        name: build and check craneliftc
-        working-directory: ./cranelift
         with:
           toolchain: nightly
         env:
@@ -24,11 +23,10 @@ jobs:
           cargo publish -p craneliftc --token $CARGO_TOKEN --dry-run
   test-craneliftc:
     runs-on: ubuntu-latest
+    working-directory: ./cranelift
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        name: test craneliftc
-        working-directory: ./cranelift
         with:
           toolchain: nightly
       - run: |
@@ -42,11 +40,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        name: build craneliftc
-        working-directory: ./cranelift
         with:
           toolchain: nightly
       - run: |
+          cd cranelift
           cargo build --release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
@@ -61,11 +58,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
-        name: build craneliftc
         working-directory: ./cranelift
         with:
           toolchain: nightly
       - run: |
+          cd cranelift
           cargo build --release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
