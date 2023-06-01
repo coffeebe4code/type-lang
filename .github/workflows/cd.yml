@@ -10,8 +10,8 @@ jobs:
         run:
           working-directory: ./cranelift
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
         env:
@@ -26,8 +26,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{matrix.os}}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
       - run: |
@@ -42,8 +42,8 @@ jobs:
           #        os: [ubuntu-latest, macos-latest, windows-latest]
           #    runs-on: ${{matrix.os}}
           #    steps:
-          #      - uses: actions/checkout@v2
-          #      - uses: actions-rs/toolchain@v1
+          #      - uses: actions/checkout@v3
+          #      - uses: dtolnay/rust-toolchain@stable
           #        with:
           #          toolchain: nightly
           #      - run: |
