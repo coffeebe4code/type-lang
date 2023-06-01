@@ -18,7 +18,7 @@ jobs:
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       - run: |
           rustup component add rustfmt --toolchain nightly
-          cargo install cbindgen
+          cargo +nightly install cbindgen
           cargo +nightly build
           cargo +nightly fmt --all -- --check
           cbindgen --config cbindgen.toml --crate craneliftc --output ./headers/craneliftc.h
