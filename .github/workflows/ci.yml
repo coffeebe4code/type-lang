@@ -19,7 +19,7 @@ jobs:
       - run: |
           rustup component add rustfmt --toolchain nightly
           cargo install cbindgen
-          cargo build --release
+          cargo build
           cargo +nightly fmt --all -- --check
           cbindgen --config cbindgen.toml --crate craneliftc --output ./headers/craneliftc.h
           git diff --quiet
