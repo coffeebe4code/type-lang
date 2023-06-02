@@ -19,7 +19,7 @@ jobs:
       - run: |
           cargo build --release
           cargo package
-          cargo publish -p craneliftc --token $CARGO_TOKEN 
+          cargo publish -p craneliftc --token "$CARGO_TOKEN"
   release:
     strategy:
       matrix:
