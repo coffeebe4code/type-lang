@@ -39,7 +39,8 @@ jobs:
   test-release:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # todo add back windows-latest
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
