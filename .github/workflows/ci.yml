@@ -4,19 +4,6 @@ on:
     branches:
       - main
 jobs:
-  test-craneliftc:
-    runs-on: ubuntu-latest
-    defaults:
-        run:
-          working-directory: ./cranelift
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
-      - run: |
-          cargo build --release
-          cargo test
   test-and-lint-debug:
     strategy:
       matrix:
