@@ -1,0 +1,39 @@
+name: cd
+on:
+  push:
+    branches:
+      - main
+jobs:
+  release:
+    strategy:
+      matrix:
+        # todo add back windows-latest
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cd cranelift
+          cargo build --release
+      - uses: goto-bus-stop/setup-zig@v2
+      - run: |
+          zig build -Doptimize=ReleaseSafe
+          #  debug:
+          #    strategy:
+          #      matrix:
+          #        os: [ubuntu-latest, macos-latest, windows-latest]
+          #    runs-on: ${{matrix.os}}
+          #    steps:
+          #      - uses: actions/checkout@v3
+          #      - uses: dtolnay/rust-toolchain@stable
+          #        with:
+          #          toolchain: nightly
+          #      - run: |
+          #          cd cranelift
+          #          cargo build --debug
+          #      - uses: goto-bus-stop/setup-zig@v2
+          #      - run: |
+          #          zig build

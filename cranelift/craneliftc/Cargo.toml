@@ -2,12 +2,9 @@
 name = "craneliftc"
 version = "0.1.0"
 edition = "2021"
-
-#[profile.release]
-#panic="abort"
-#
-#[profile.dev]
-#panic="abort"
+description = "light c compatible ffi wrapper around cranelift"
+license-file = "../LICENSE"
+readme = "../README.md"
 
 [lib]
 name = "craneliftc"
