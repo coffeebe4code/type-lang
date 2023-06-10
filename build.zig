@@ -22,6 +22,10 @@ const cranelift_files = [cranelift_count][]const u8{
 };
 
 pub fn build(b: *std.Build) void {
+    //    const cl_debug = b.option(bool, "cl_debug", "use the debug path for cranelift") orelse false;
+    //    _ = cl_debug;
+    //    const cl_target = b.option(?[]const u8, "cl_target", "use the provided target for cranelift") orelse undefined;
+    //    _ = cl_target;
     const target = b.standardTargetOptions(.{});
 
     const optimize = b.standardOptimizeOption(.{});
@@ -58,12 +62,24 @@ pub fn build(b: *std.Build) void {
         });
         s_lib.linkSystemLibrary("craneliftc");
         if (target.isWindows()) {
+            // TODO:: fix windows when zig fixes windows.
             s_lib.linkSystemLibrary("msvcrt");
         }
         s_lib.linkSystemLibrary("unwind");
         // TODO:: use debug/release with an option, and supported targets
-        s_lib.addLibraryPath("./cranelift/target/release");
-        s_lib.addIncludePath("./cranelift/headers");
+        const cl_path = "../craneliftc/target/release";
+        //var cl_path = "../craneliftc/target";
+        //if (cl_target) |ctarget| {
+        //    cl_path = _path ++ "/" ++ ctarget;
+        //}
+        //if (cl_debug) {
+        //    cl_path = cl_path ++ "/debug";
+        //} else {
+        //    cl_path = cl_path ++ "/release";
+        //}
+
+        s_lib.addLibraryPath(cl_path);
+        s_lib.addIncludePath("../craneliftc/headers");
         b.installArtifact(s_lib);
 
         const s_tests = b.addTest(.{
@@ -71,8 +87,8 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         });
-        s_tests.addLibraryPath("./cranelift/target/release");
-        s_tests.addIncludePath("./cranelift/headers");
+        s_tests.addLibraryPath(cl_path);
+        s_tests.addIncludePath("../craneliftc/headers");
         s_tests.linkSystemLibrary("craneliftc");
         if (target.isWindows()) {
             s_tests.linkSystemLibrary("msvcrt");

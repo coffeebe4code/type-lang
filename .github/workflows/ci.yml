@@ -4,40 +4,56 @@ on:
     branches:
       - main
 jobs:
-  test-and-lint-debug:
+  lint:
     strategy:
       matrix:
-        # todo add back windows-latest
+        # TODO:: add back windows-latest
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
-      - run: |
-          cd cranelift
-          cargo build --release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
-          zig build test
           zig fmt ./src --check
           zig fmt build.zig --check
   test-release:
     strategy:
       matrix:
-        # todo add back windows-latest
+        # TODO:: add back windows-latest
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
+        with:
+          repository: coffeebe4code/craneliftc
+          path: craneliftc
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
       - run: |
-          cd cranelift
-          cargo build --release
+          make release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
           zig build -Doptimize=ReleaseSafe
           zig build test -Doptimize=ReleaseSafe
+  test-debug:
+    strategy:
+      matrix:
+        # TODO:: add back windows-latest
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: coffeebe4code/craneliftc
+          path: craneliftc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      # TODO:: make debug when build supports debug
+      - run: |
+          make release
+      - uses: goto-bus-stop/setup-zig@v2
+      - run: |
+          zig build
+          zig build test
