@@ -7,19 +7,25 @@ jobs:
   release:
     strategy:
       matrix:
-        # todo add back windows-latest
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
+        with:
+          path: type-lang
+      - uses: actions/checkout@v3
+        with:
+          repository: coffeebe4code/craneliftc
+          path: craneliftc
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
       - run: |
-          cd cranelift
-          cargo build --release
+          cd craneliftc
+          make release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
+          cd type-lang
           zig build -Doptimize=ReleaseSafe
           #  debug:
           #    strategy:

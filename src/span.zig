@@ -8,7 +8,6 @@ pub const Span = struct {
 pub const FullSpan = struct {
     slice: []const u8,
     token: Token,
-    pos: usize,
     col: usize,
     row: usize,
 };
