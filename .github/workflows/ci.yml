@@ -26,9 +26,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: coffeebe4code/craneliftc
-          path: craneliftc
       - uses: dtolnay/rust-toolchain@stable
         with:
+          path: ../craneliftc
           toolchain: nightly
       - run: |
           make release
@@ -46,9 +46,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: coffeebe4code/craneliftc
-          path: craneliftc
       - uses: dtolnay/rust-toolchain@stable
         with:
+          path: ../craneliftc
           toolchain: nightly
       # TODO:: make debug when build supports debug
       - run: |
