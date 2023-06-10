@@ -22,19 +22,26 @@ jobs:
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
+        with:
+          path: type-lang
       - uses: actions/checkout@v3
         with:
           repository: coffeebe4code/craneliftc
+          path: craneliftc
       - uses: dtolnay/rust-toolchain@stable
         with:
-          path: ../craneliftc
           toolchain: nightly
       - run: |
+          ls
+          cd craneliftc
+          echo 'cd craneliftc'
+          ls
           make release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
           ls
-          cd ..
+          cd type-lang
+          echo 'cd type-lang'
           ls
           zig build -Doptimize=ReleaseSafe
           zig build test -Doptimize=ReleaseSafe
