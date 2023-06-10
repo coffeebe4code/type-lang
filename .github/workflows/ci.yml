@@ -22,6 +22,7 @@ jobs:
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           repository: coffeebe4code/craneliftc
       - uses: dtolnay/rust-toolchain@stable
@@ -30,7 +31,6 @@ jobs:
           toolchain: nightly
       - run: |
           make release
-      - uses: actions/checkout@v3
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
           zig build -Doptimize=ReleaseSafe
@@ -42,6 +42,7 @@ jobs:
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           repository: coffeebe4code/craneliftc
       - uses: dtolnay/rust-toolchain@stable
@@ -50,7 +51,6 @@ jobs:
           toolchain: nightly
       - run: |
           make release
-      - uses: actions/checkout@v3
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
           zig build
