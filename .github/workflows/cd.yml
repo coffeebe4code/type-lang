@@ -22,9 +22,6 @@ jobs:
           make release
       - uses: goto-bus-stop/setup-zig@v2
       - run: |
-          ls
-          cd ..
-          ls
           zig build -Doptimize=ReleaseSafe
           #  debug:
           #    strategy:
