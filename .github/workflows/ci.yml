@@ -22,6 +22,7 @@ jobs:
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           repository: coffeebe4code/craneliftc
       - uses: dtolnay/rust-toolchain@stable
@@ -42,6 +43,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{matrix.os}}
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/checkout@v3
         with:
           repository: coffeebe4code/craneliftc
