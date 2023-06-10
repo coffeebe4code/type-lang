@@ -3,7 +3,11 @@ const std = @import("std");
 const count = 5;
 
 const names = [count][]const u8{
-    "token", "span", "lexer", "ast", "parser",
+    "token",
+    "span",
+    "lexer",
+    "ast",
+    "parser",
 };
 const files = [count][]const u8{
     "src/token.zig",
