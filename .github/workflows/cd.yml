@@ -20,6 +20,7 @@ jobs:
       - run: |
           make release
       - uses: goto-bus-stop/setup-zig@v2
+        with:
           path: ../type-lang
       - run: |
           zig build -Doptimize=ReleaseSafe
