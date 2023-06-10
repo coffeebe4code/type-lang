@@ -33,6 +33,7 @@ jobs:
       - run: |
           make release
       - uses: goto-bus-stop/setup-zig@v2
+          path: ../type-lang
       - run: |
           zig build -Doptimize=ReleaseSafe
           zig build test -Doptimize=ReleaseSafe
@@ -54,6 +55,7 @@ jobs:
       - run: |
           make release
       - uses: goto-bus-stop/setup-zig@v2
+          path: ../type-lang
       - run: |
           zig build
           zig build test
