@@ -6,6 +6,16 @@ pub const DeveloperAstError = error{
 };
 
 pub const AstTag = enum {
+    Function,
+    TypeVoid,
+    TypeAny,
+    TypeStruct,
+    TypeScalar,
+    TypeArray,
+    TypeIdent,
+    TypeFunction,
+    ArgWSig,
+    ArgNSig,
     BinOpAdd,
     BinOpSub,
     BinOpMul,
@@ -18,6 +28,7 @@ pub const AstTag = enum {
     Ident,
     True,
     False,
+    Never,
     Undefined,
     Self,
     Num,
@@ -34,7 +45,13 @@ pub const UnOpStruct = struct {
     op: Span,
 };
 
+pub const FunctionStruct = struct {
+    args: ?[]usize,
+    ret: ?usize,
+};
+
 pub const Ast = union(AstTag) {
+    Function: FunctionStruct,
     BinOpAdd: BinOpStruct,
     BinOpSub: BinOpStruct,
     BinOpMul: BinOpStruct,
@@ -45,6 +62,7 @@ pub const Ast = union(AstTag) {
     UnOpMutRef: UnOpStruct,
     UnOpConstRef: UnOpStruct,
     Ident: Span,
+    Never: Span,
     True: Span,
     False: Span,
     Undefined: Span,
@@ -80,9 +98,9 @@ pub fn make_binop(left: usize, op: Span, right: usize) DeveloperAstError!Ast {
     }
 }
 
-pub fn make_unop(left: usize, op: Span) DeveloperAstError!Ast {
+pub fn make_unop(val: usize, op: Span) DeveloperAstError!Ast {
     const local = UnOpStruct{
-        .left = left,
+        .left = val,
         .op = op,
     };
     switch (op.token) {
@@ -129,6 +147,9 @@ pub fn make_terminal(span: Span) DeveloperAstError!Ast {
         },
         Token.K_False => {
             return Ast{ .False = span };
+        },
+        Token.K_Never => {
+            return Ast{ .Never = span };
         },
         else => {
             return DeveloperAstError.TokenNotInList;
