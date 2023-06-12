@@ -9,13 +9,11 @@ pub const AstTag = enum {
     Function,
     TypeVoid,
     TypeAny,
-    TypeStruct,
+    TypeObj,
     TypeScalar,
     TypeArray,
     TypeIdent,
     TypeFunction,
-    ArgWSig,
-    ArgNSig,
     BinOpAdd,
     BinOpSub,
     BinOpMul,
@@ -46,12 +44,29 @@ pub const UnOpStruct = struct {
 };
 
 pub const FunctionStruct = struct {
+    name: usize,
     args: ?[]usize,
     ret: ?usize,
+    body: usize,
+};
+
+pub const TypeStruct = struct {
+    val: Span,
+};
+
+pub const TypeIdentStruct = struct {
+    val: usize,
 };
 
 pub const Ast = union(AstTag) {
     Function: FunctionStruct,
+    TypeVoid: TypeStruct,
+    TypeAny: TypeStruct,
+    TypeObj: TypeStruct,
+    TypeScalar: TypeStruct,
+    TypeArray: TypeStruct,
+    TypeIdent: TypeIdentStruct,
+    TypeFunction: TypeStruct,
     BinOpAdd: BinOpStruct,
     BinOpSub: BinOpStruct,
     BinOpMul: BinOpStruct,
@@ -120,6 +135,33 @@ pub fn make_unop(val: usize, op: Span) DeveloperAstError!Ast {
             return DeveloperAstError.TokenNotInList;
         },
     }
+}
+
+pub fn make_type(span: *Span) Ast {
+    switch (span.token) {
+        Token.K_Num => {
+            return Ast{ .TypeScalar = span };
+        },
+        Token.K_Void => {
+            return Ast{ .TypeVoid = span };
+        },
+        Token.K_Any => {
+            return Ast{ .TypeAny = span };
+        },
+        Token.OBrace => {
+            return Ast{ .TypeObj = span };
+        },
+        Token.OArray => {
+            return Ast{ .TypeArray = span };
+        },
+        else => {
+            return DeveloperAstError.TokenNotInList;
+        },
+    }
+}
+
+pub fn make_type_ident(val: usize) Ast {
+    return Ast{ .TypeIdent = val };
 }
 
 pub fn make_ident(span: *Span) Ast {

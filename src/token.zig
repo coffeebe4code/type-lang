@@ -88,6 +88,7 @@ pub const Token = enum(u8) {
     K_TypeOf,
     K_Self,
     K_Frame,
+    K_Any,
     // non keyword
     OParen,
     CParen,
@@ -491,6 +492,7 @@ const keywords = [_][]const u8{
     "typeof",
     "self",
     "frame",
+    "any",
 };
 
 test "word len check regular" {
