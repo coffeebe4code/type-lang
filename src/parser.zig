@@ -19,17 +19,33 @@ const ParserError = error{
 const Parser = struct {
     lexer: Lexer,
     asts: ArrayList(Ast),
+    blocks: ArrayList(ArrayList(usize)),
+    types: ArrayList(ArrayList(usize)),
+    allocator: Allocator,
 
     pub fn init(lexer: Lexer, allocator: Allocator) anyerror!Parser {
-        var asts: ArrayList(Ast) = std.ArrayList(Ast).init(allocator);
+        const asts: ArrayList(Ast) = std.ArrayList(Ast).init(allocator);
+        const blocks = std.ArrayList(ArrayList(usize)).init(allocator);
+        const types = std.ArrayList(ArrayList(usize)).init(allocator);
         return Parser{
             .lexer = lexer,
             .asts = asts,
+            .allocator = allocator,
+            .blocks = blocks,
+            .types = types,
         };
     }
 
     pub fn deinit(self: *Parser) void {
         self.asts.deinit();
+        for (self.blocks.items) |b| {
+            b.deinit();
+        }
+        self.blocks.deinit();
+        for (self.types.items) |t| {
+            t.deinit();
+        }
+        self.types.deinit();
     }
 
     pub fn ty(self: *Parser) anyerror!usize {
@@ -42,81 +58,106 @@ const Parser = struct {
         span = try self.lexer.collect_if_of(&[_]Token{ Token.OBrace, Token.OArray });
         if (span) |cap| {
             const next = try self.lexer.collect_if_of(&[_]Token{ Token.CBrace, Token.CArray });
-            if ((cap == Token.OBrace and next == Token.CBrace) or (cap == Token.OArray and next == Token.CArray)) {
-                const expr = try ast.make_type(cap);
-                try self.asts.append(expr);
-                return self.last_idx();
+            if (next == null) {
+                if ((cap.token == Token.OBrace and next.?.token == Token.CBrace) or (cap.token == Token.OArray and next.?.token == Token.CArray)) {
+                    const expr = try ast.make_type(cap);
+                    try self.asts.append(expr);
+                    return self.last_idx();
+                }
             }
-            if (cap == Token.OBrace) {
+            if (cap.token == Token.OBrace) {
                 return ParserError.ExpectedOneOfFound;
             } else {
                 return ParserError.ExpectedOneOfFound;
             }
         }
-        span = try self.ident();
-        if (span) |cap| {
-            const expr = try ast.make_type_ident(cap);
+        const m_ident = try self.ident();
+        if (m_ident) |cap| {
+            const expr = ast.make_type_ident(cap);
             try self.asts.append(expr);
             return self.last_idx();
         }
-        span = try self.fn_type();
+        return try self.fn_type();
     }
-    
+
+    pub fn args(self: *Parser) anyerror!usize {
+        _ = self;
+    }
+
     pub fn func(self: *Parser) anyerror!usize {
         const has_pub = try self.lexer.collect_if(Token.K_Pub);
-        _ = has_pub;
-        var mutability = try self.lexer.collect_if(Token.K_Const);
-        if (!mutability) {
-            mutability = try self.lexer.collect_if(Token.K_Let);
-            if (!mutability) {
-                return ParserError.ExpectedOneOfFound;
-            }
+        var mutability = try self.lexer.collect_if_of(&[_]Token{ Token.K_Const, Token.K_Let });
+        if (mutability == null) {
+            return ParserError.ExpectedOneOfFound;
         }
         const identifier = try self.ident();
-        if (identifier) {
-            const eq = try self.lexer.collect_if(Token.As);
-            if (eq) {
-                
-
-            }
+        if (identifier == null) {
+            return ParserError.ExpectedOneOfFound;
         }
+        const eq = try self.lexer.collect_if(Token.As);
+        if (eq == null) {
+            return ParserError.ExpectedOneOfFound;
+        }
+        const func_span = try self.lexer.collect_if(Token.K_Fn);
+        if (func_span == null) {
+            return ParserError.ExpectedOneOfFound;
+        }
+        const oparen = try self.lexer.collect_if(Token.OParen);
+        if (oparen == null) {
+            return ParserError.ExpectedOneOfFound;
+        }
+
+        const cparen = try self.lexer.collect_if(Token.CParen);
+        if (cparen == null) {
+            return ParserError.ExpectedOneOfFound;
+        }
+
+        const ret = try self.ret_type();
+        const blk = try self.block();
+        const expr = ast.make_func(
+            identifier.?,
+            has_pub != null,
+            mutability.?.token == Token.K_Let,
+            null,
+            ret,
+            blk,
+        );
+        try self.asts.append(expr);
+        return self.last_idx();
     }
 
     pub fn fn_type(self: *Parser) anyerror!usize {
+        var types: ArrayList(usize) = std.ArrayList(usize).init(self.allocator);
+        errdefer {
+            types.deinit();
+        }
         const func_span = try self.lexer.collect_if(Token.K_Fn);
-        if(func_span) {
-        while (try self.ty()) |t| {
-            const right = try self.and_cmp();
-            const expr = try ast.make_binop(left, bin, right);
-            try self.asts.append(expr);
-            left = self.last_idx();
+        if (func_span == null) {
+            return ParserError.ExpectedOneOfFound;
         }
-             
-
+        const oparen = try self.lexer.collect_if(Token.OParen);
+        if (oparen == null) {
+            return ParserError.ExpectedOneOfFound;
         }
-        var mutability = try self.lexer.collect_if(Token.K_Const);
-        if (!mutability) {
-            mutability = try self.lexer.collect_if(Token.K_Let);
-            if (!mutability) {
-                return ParserError.ExpectedOneOfFound;
+        const paren = try self.lexer.collect_if(Token.CParen);
+        if (paren == null) {
+            while (true) {
+                const span = try self.ty();
+                try types.append(span);
+                const cparen = try self.lexer.collect_if(Token.CParen);
+                if (cparen != null) {
+                    break;
+                }
+                const comma = try self.lexer.collect_if(Token.Comma);
+                if (comma != null) {
+                    return ParserError.ExpectedOneOfFound;
+                }
             }
         }
-        const identifier = try self.ident();
-        if (identifier) {
-            const eq = try self.lexer.collect_if(Token.As);
-            if (eq) |cap| {
-                
-
-            }
-        }
-
-
-        while (try self.ty()) |t| {
-            const right = try self.and_cmp();
-            const expr = try ast.make_binop(left, bin, right);
-            try self.asts.append(expr);
-            left = self.last_idx();
-        }
+        const ret = try self.ret_type();
+        const expr = ast.make_fn_type(&types.items, ret);
+        try self.asts.append(expr);
+        try self.types.append(types);
         return self.last_idx();
     }
 
@@ -128,6 +169,31 @@ const Parser = struct {
             return self.last_idx();
         }
         return try self.ty();
+    }
+
+    pub fn block(self: *Parser) anyerror!usize {
+        var exprs: ArrayList(usize) = std.ArrayList(usize).init(self.allocator);
+        errdefer {
+            exprs.deinit();
+        }
+        var obrace = try self.lexer.collect_if(Token.OBrace);
+        const brace = try self.lexer.collect_if(Token.CBrace);
+        if (obrace != null) {
+            if (brace == null) {
+                while (true) {
+                    const span = try self.or_cmp();
+                    try exprs.append(span);
+                    const cbrace = try self.lexer.collect_if(Token.CBrace);
+                    if (cbrace != null) {
+                        break;
+                    }
+                }
+            }
+        }
+        const expr = ast.make_block(&exprs.items);
+        try self.asts.append(expr);
+        try self.blocks.append(exprs);
+        return self.last_idx();
     }
 
     pub fn or_cmp(self: *Parser) anyerror!usize {
@@ -222,7 +288,11 @@ const Parser = struct {
             try self.asts.append(local);
             return self.last_idx();
         }
-        return try self.num();
+        const m_num = try self.num();
+        if (m_num) |cap| {
+            return cap;
+        }
+        return try self.ident();
     }
 
     pub fn ident(self: *Parser) anyerror!?usize {
@@ -334,6 +404,31 @@ test "parse terminal" {
     try testing.expect(root.True.token == Token.K_True);
 }
 
+test "parse ident" {
+    const buf = "ident";
+    const lex = Lexer.new(buf, .{ .skip = true });
+    var parser = try Parser.init(lex, std.testing.allocator);
+    defer parser.deinit();
+    const result = try parser.terminal();
+    const root = parser.asts.items[result.?];
+
+    try testing.expect(std.mem.eql(u8, root.Ident.slice, buf));
+}
+
+test "parse block" {
+    const buf = "{ 5 || 5 }";
+    const lex = Lexer.new(buf, .{ .skip = true });
+    var parser = try Parser.init(lex, std.testing.allocator);
+    defer parser.deinit();
+    const result = try parser.block();
+    const root = parser.asts.items[result];
+    const compare = parser.asts.items[2];
+    const node = parser.asts.items[compare.BinOpOrCmp.left];
+
+    try testing.expect(root.Block.exprs.len == 1);
+    try testing.expect(std.mem.eql(u8, node.Num.slice, "5"));
+}
+
 test "parse num" {
     const buf = "5";
     const lex = Lexer.new(buf, .{ .skip = true });
@@ -355,4 +450,40 @@ test "parse unary" {
     const left = parser.asts.items[result];
 
     try testing.expect(left.UnOpNot.op.token == Token.Not);
+}
+
+test "parse function" {
+    const buf = "pub const main = fn () void {}";
+    const lex = Lexer.new(buf, .{ .skip = true });
+    var parser = try Parser.init(lex, std.testing.allocator);
+    defer parser.deinit();
+    const result = try parser.func();
+    const root = parser.asts.items[result];
+
+    try testing.expect(root.Function.args == null);
+    try testing.expect(root.Function.ret == 1);
+}
+
+test "parse fn type empty" {
+    const buf = "fn () void";
+    const lex = Lexer.new(buf, .{ .skip = true });
+    var parser = try Parser.init(lex, std.testing.allocator);
+    defer parser.deinit();
+    const result = try parser.fn_type();
+    const root = parser.asts.items[result];
+
+    try testing.expect(root.TypeFunction.types.len == 0);
+    try testing.expect(root.TypeFunction.ret_type == 0);
+}
+
+test "parse fn type" {
+    const buf = "fn (any) void";
+    const lex = Lexer.new(buf, .{ .skip = true });
+    var parser = try Parser.init(lex, std.testing.allocator);
+    defer parser.deinit();
+    const result = try parser.fn_type();
+    const root = parser.asts.items[result];
+
+    try testing.expect(root.TypeFunction.types.len == 1);
+    try testing.expect(root.TypeFunction.ret_type == 1);
 }

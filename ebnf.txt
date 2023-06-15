@@ -1,6 +1,6 @@
 // https://bnfplayground.pauliankline.com/
 <fn> ::= "pub"? ("const" | "let") <ident> "=" "fn" "(" <args> ")" <ret_type> <block>
-<fn_type> ::= "fn" "(" <type> ("," <type>)* ")" <ret_type>
+<fn_type> ::= "fn" "(" (<type> ("," <type>)*)* ")" <ret_type>
 <ret_type> "void" | <type>
 <args> ::= (<self_arg> | <arg>) ("," <arg>)*
 <self_arg> ::= "self" ":" (("*" | "&") | ("let" | "const"))?<type>
