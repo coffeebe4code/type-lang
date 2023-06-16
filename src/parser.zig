@@ -21,18 +21,21 @@ const Parser = struct {
     asts: ArrayList(Ast),
     blocks: ArrayList(ArrayList(usize)),
     types: ArrayList(ArrayList(usize)),
+    args_list: ArrayList(ArrayList(usize)),
     allocator: Allocator,
 
     pub fn init(lexer: Lexer, allocator: Allocator) anyerror!Parser {
         const asts: ArrayList(Ast) = std.ArrayList(Ast).init(allocator);
         const blocks = std.ArrayList(ArrayList(usize)).init(allocator);
         const types = std.ArrayList(ArrayList(usize)).init(allocator);
+        const args_list = std.ArrayList(ArrayList(usize)).init(allocator);
         return Parser{
             .lexer = lexer,
             .asts = asts,
             .allocator = allocator,
             .blocks = blocks,
             .types = types,
+            .args_list = args_list,
         };
     }
 
@@ -49,7 +52,7 @@ const Parser = struct {
     }
 
     pub fn ty(self: *Parser) anyerror!usize {
-        var span = try self.lexer.collect_if_of(&[_]Token{ Token.K_Num, Token.K_Any });
+        var span = try self.lexer.collect_if_of(&[_]Token{ Token.K_Num, Token.K_Any, Token.K_U64 });
         if (span) |cap| {
             const expr = try ast.make_type(cap);
             try self.asts.append(expr);
@@ -80,8 +83,60 @@ const Parser = struct {
         return try self.fn_type();
     }
 
-    pub fn args(self: *Parser) anyerror!usize {
-        _ = self;
+    pub fn args(self: *Parser) anyerror!?usize {
+        var exprs: ArrayList(usize) = std.ArrayList(usize).init(self.allocator);
+        errdefer {
+            exprs.deinit();
+        }
+        const expr = try self.arg();
+        if (expr == null) {
+            try self.args_list.append(exprs);
+            return null;
+        }
+
+        while (true) {
+            const comma = try self.lexer.collect_if(Token.Comma);
+            if (comma == null) {
+                break;
+            }
+            const m_arg = try self.arg();
+            if (m_arg == null) {
+                return ParserError.ExpectedOneOfFound;
+            }
+            try exprs.append(m_arg.?);
+        }
+        const ast_args = ast.make_args(&exprs.items);
+        try self.asts.append(ast_args);
+        try self.args_list.append(exprs);
+        return self.last_idx();
+    }
+
+    pub fn arg(self: *Parser) anyerror!?usize {
+        const m_ident = try self.ident();
+        var s: ?Span = undefined;
+        if (m_ident == null) {
+            s = try self.lexer.collect_if(Token.K_Self);
+            if (s == null) {
+                return ParserError.ExpectedOneOfFound;
+            }
+        }
+        const semi = try self.lexer.collect_if(Token.SColon);
+        if (semi == null) {
+            return self.last_idx();
+        }
+        const mutability = try self.lexer.collect_if_of(&[_]Token{ Token.Mul, Token.AndLog, Token.K_Let, Token.K_Const });
+
+        const typ = try self.ty();
+
+        if (m_ident == null) {
+            const ast_args = ast.make_selfarg(mutability.?, typ);
+            try self.asts.append(ast_args);
+            return self.last_idx();
+        } else {
+            const ast_args = ast.make_arg(m_ident.?, mutability, typ);
+            try self.asts.append(ast_args);
+            return self.last_idx();
+        }
     }
 
     pub fn func(self: *Parser) anyerror!usize {
@@ -107,19 +162,21 @@ const Parser = struct {
             return ParserError.ExpectedOneOfFound;
         }
 
+        const m_args = try self.args();
+
         const cparen = try self.lexer.collect_if(Token.CParen);
         if (cparen == null) {
             return ParserError.ExpectedOneOfFound;
         }
 
-        const ret = try self.ret_type();
+        const ret_t = try self.ret_type();
         const blk = try self.block();
         const expr = ast.make_func(
             identifier.?,
             has_pub != null,
             mutability.?.token == Token.K_Let,
-            null,
-            ret,
+            m_args,
+            ret_t,
             blk,
         );
         try self.asts.append(expr);
@@ -154,8 +211,8 @@ const Parser = struct {
                 }
             }
         }
-        const ret = try self.ret_type();
-        const expr = ast.make_fn_type(&types.items, ret);
+        const ret_t = try self.ret_type();
+        const expr = ast.make_fn_type(&types.items, ret_t);
         try self.asts.append(expr);
         try self.types.append(types);
         return self.last_idx();
@@ -171,6 +228,24 @@ const Parser = struct {
         return try self.ty();
     }
 
+    pub fn ret(self: *Parser) anyerror!usize {
+        const span = try self.lexer.collect_if(Token.K_Return);
+        if (span == null) {
+            return ParserError.ExpectedOneOfFound;
+        }
+        const has_semi = try self.lexer.collect_if(Token.SColon);
+        var get: usize = undefined;
+        if (has_semi == null) {
+            get = try self.or_cmp();
+            const expr = ast.make_ret(span.?, get);
+            try self.asts.append(expr);
+            return self.last_idx();
+        }
+        const expr = ast.make_retvoid(span.?);
+        try self.asts.append(expr);
+        return self.last_idx();
+    }
+
     pub fn block(self: *Parser) anyerror!usize {
         var exprs: ArrayList(usize) = std.ArrayList(usize).init(self.allocator);
         errdefer {
@@ -181,7 +256,7 @@ const Parser = struct {
         if (obrace != null) {
             if (brace == null) {
                 while (true) {
-                    const span = try self.or_cmp();
+                    const span = try self.ret();
                     try exprs.append(span);
                     const cbrace = try self.lexer.collect_if(Token.CBrace);
                     if (cbrace != null) {
@@ -416,7 +491,7 @@ test "parse ident" {
 }
 
 test "parse block" {
-    const buf = "{ 5 || 5 }";
+    const buf = "{ return 5 || 5; }";
     const lex = Lexer.new(buf, .{ .skip = true });
     var parser = try Parser.init(lex, std.testing.allocator);
     defer parser.deinit();
@@ -452,7 +527,7 @@ test "parse unary" {
     try testing.expect(left.UnOpNot.op.token == Token.Not);
 }
 
-test "parse function" {
+test "parse function empty" {
     const buf = "pub const main = fn () void {}";
     const lex = Lexer.new(buf, .{ .skip = true });
     var parser = try Parser.init(lex, std.testing.allocator);
@@ -463,6 +538,17 @@ test "parse function" {
     try testing.expect(root.Function.args == null);
     try testing.expect(root.Function.ret == 1);
 }
+
+//test "parse function" {
+//    const buf = "const main = fn (count: u64) u64 { return 0 + 1; }";
+//    const lex = Lexer.new(buf, .{ .skip = true });
+//    var parser = try Parser.init(lex, std.testing.allocator);
+//    defer parser.deinit();
+//    const result = try parser.func();
+//    const root = parser.asts.items[result];
+//
+//    try testing.expect(root.Function.ret == 1);
+//}
 
 test "parse fn type empty" {
     const buf = "fn () void";

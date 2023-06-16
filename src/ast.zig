@@ -9,6 +9,11 @@ pub const AstTag = enum {
     DeclFunction,
     Function,
     Block,
+    RetVoid,
+    Ret,
+    Arg,
+    Args,
+    SelfArg,
     TypeVoid,
     TypeAny,
     TypeObj,
@@ -46,12 +51,36 @@ pub const BinOpStruct = struct {
     right: usize,
 };
 
+pub const RetStruct = struct {
+    span: Span,
+    expr: usize,
+};
+
+pub const RetVoidStruct = struct {
+    span: Span,
+};
+
+pub const SelfArgStruct = struct {
+    ty: ?usize,
+    mutability: ?Span,
+};
+
+pub const ArgStruct = struct {
+    ident: usize,
+    mutability: ?Span,
+    ty: ?usize,
+};
+
 pub const UnOpStruct = struct {
     left: usize,
     op: Span,
 };
 
 pub const BlockStruct = struct {
+    exprs: *[]const usize,
+};
+
+pub const ArgsStruct = struct {
     exprs: *[]const usize,
 };
 
@@ -85,6 +114,11 @@ pub const Ast = union(AstTag) {
     DeclFunction: DeclStruct,
     Function: FunctionStruct,
     Block: BlockStruct,
+    SelfArg: SelfArgStruct,
+    Arg: ArgStruct,
+    Args: ArgsStruct,
+    RetVoid: RetVoidStruct,
+    Ret: RetStruct,
     TypeVoid: TypeStruct,
     TypeAny: TypeStruct,
     TypeObj: TypeStruct,
@@ -160,6 +194,23 @@ pub fn make_binop(left: usize, op: Span, right: usize) DeveloperAstError!Ast {
             return DeveloperAstError.TokenNotInList;
         },
     }
+}
+
+pub fn make_retvoid(span: Span) Ast {
+    return Ast{
+        .RetVoid = RetVoidStruct{
+            .span = span,
+        },
+    };
+}
+
+pub fn make_ret(span: Span, expr: usize) Ast {
+    return Ast{
+        .Ret = RetStruct{
+            .span = span,
+            .expr = expr,
+        },
+    };
 }
 
 pub fn make_fn_type(types: *[]const usize, ret: usize) Ast {
@@ -238,6 +289,27 @@ pub fn make_type(span: Span) DeveloperAstError!Ast {
             return DeveloperAstError.TokenNotInList;
         },
     }
+}
+
+pub fn make_args(args: *[]const usize) Ast {
+    return Ast{ .Args = ArgsStruct{
+        .exprs = args,
+    } };
+}
+
+pub fn make_arg(ident: usize, mutability: ?Span, ty: ?usize) Ast {
+    return Ast{ .Arg = ArgStruct{
+        .ident = ident,
+        .mutability = mutability,
+        .ty = ty,
+    } };
+}
+
+pub fn make_selfarg(mutability: ?Span, ty: ?usize) Ast {
+    return Ast{ .SelfArg = SelfArgStruct{
+        .mutability = mutability,
+        .ty = ty,
+    } };
 }
 
 pub fn make_type_ident(val: usize) Ast {
