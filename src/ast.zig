@@ -282,6 +282,9 @@ pub fn make_type(span: Span) DeveloperAstError!Ast {
         Token.OBrace => {
             return Ast{ .TypeObj = local };
         },
+        Token.K_U64 => {
+            return Ast{ .TypeScalar = local };
+        },
         Token.OArray => {
             return Ast{ .TypeArray = local };
         },

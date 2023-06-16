@@ -58,18 +58,16 @@ const Parser = struct {
     pub fn ty(self: *Parser) anyerror!usize {
         var span = try self.lexer.collect_if_of(&[_]Token{ Token.K_Num, Token.K_Any, Token.K_U64 });
         if (span) |cap| {
-            const expr = try ast.make_type(cap);
-            try self.asts.append(expr);
-            return self.last_idx();
+            const local = try ast.make_type(cap);
+            return try self.append_ast(local);
         }
         span = try self.lexer.collect_if_of(&[_]Token{ Token.OBrace, Token.OArray });
         if (span) |cap| {
             const next = try self.lexer.collect_if_of(&[_]Token{ Token.CBrace, Token.CArray });
             if (next == null) {
                 if ((cap.token == Token.OBrace and next.?.token == Token.CBrace) or (cap.token == Token.OArray and next.?.token == Token.CArray)) {
-                    const expr = try ast.make_type(cap);
-                    try self.asts.append(expr);
-                    return self.last_idx();
+                    const local = try ast.make_type(cap);
+                    return try self.append_ast(local);
                 }
             }
             if (cap.token == Token.OBrace) {
@@ -80,9 +78,8 @@ const Parser = struct {
         }
         const m_ident = try self.ident();
         if (m_ident) |cap| {
-            const expr = ast.make_type_ident(cap);
-            try self.asts.append(expr);
-            return self.last_idx();
+            const local = ast.make_type_ident(cap);
+            return try self.append_ast(local);
         }
         return try self.fn_type();
     }
@@ -95,10 +92,10 @@ const Parser = struct {
         while (true) {
             const expr = try self.arg();
             const comma = try self.lexer.collect_if(Token.Comma);
+            try exprs.append(expr);
             if (comma == null) {
                 break;
             }
-            try exprs.append(expr);
         }
         const local = ast.make_args(&exprs.items);
         try self.args_list.append(exprs);
@@ -111,12 +108,10 @@ const Parser = struct {
             return cap;
         }
         const id = try expect_ast(try self.ident());
-        const semi = try self.lexer.collect_if(Token.SColon);
-        if (semi != null) {
+        const colon = try self.lexer.collect_if(Token.Colon);
+        if (colon != null) {
             const mutability = try self.lexer.collect_if_of(&[_]Token{ Token.Mul, Token.AndLog, Token.K_Let, Token.K_Const });
-
             const typ = try self.ty();
-
             const local = ast.make_arg(id, mutability, typ);
             return try self.append_ast(local);
         }
@@ -160,7 +155,7 @@ const Parser = struct {
         var get_args: ?usize = null;
         if (cparen == null) {
             get_args = try self.args();
-            cparen = try expect_span(try self.lexer.collect_if(Token.CParen));
+            _ = try expect_span(try self.lexer.collect_if(Token.CParen));
         }
 
         const ret_t = try self.ret_type();
@@ -534,7 +529,11 @@ test "parse function" {
     const result = try parser.func();
     const root = parser.asts.items[result];
 
-    try testing.expect(root.Function.ret == 1);
+    try testing.expect(root.Function.ret == 5);
+    try testing.expect(root.Function.name == 0);
+    try testing.expect(root.Function.mutable == false);
+    try testing.expect(root.Function.args.? == 4);
+    try testing.expect(parser.asts.items[9].Ret.expr == 8);
 }
 
 test "parse fn type empty" {

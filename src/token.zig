@@ -347,7 +347,7 @@ inline fn word_len_check(buf: []const u8) usize {
     var len: usize = 1;
     while (buf.len != len) {
         const c = buf[len];
-        if (ascii.isAlphabetic(c)) {
+        if (ascii.isAlphanumeric(c)) {
             len += 1;
         } else {
             switch (c) {
@@ -606,6 +606,13 @@ test "keywords tokens" {
 
     try testing.expect(len == 6);
     try testing.expect(tok == Token.K_Export);
+
+    buf = "u64";
+    len = 0;
+    tok = tokenize_chars(buf, &len);
+
+    try testing.expect(len == 3);
+    try testing.expect(tok == Token.K_U64);
 }
 
 test "get next singular" {
