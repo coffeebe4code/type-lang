@@ -57,7 +57,7 @@ pub const RetStruct = struct {
 };
 
 pub const RetVoidStruct = struct {
-    span: Span,
+    span: ?Span,
 };
 
 pub const SelfArgStruct = struct {
@@ -196,7 +196,7 @@ pub fn make_binop(left: usize, op: Span, right: usize) DeveloperAstError!Ast {
     }
 }
 
-pub fn make_retvoid(span: Span) Ast {
+pub fn make_retvoid(span: ?Span) Ast {
     return Ast{
         .RetVoid = RetVoidStruct{
             .span = span,
