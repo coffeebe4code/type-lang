@@ -19,40 +19,26 @@ const ParserError = error{
 const Parser = struct {
     lexer: Lexer,
     asts: ArrayList(Ast),
-    blocks: ArrayList(ArrayList(usize)),
-    types: ArrayList(ArrayList(usize)),
-    args_list: ArrayList(ArrayList(usize)),
+    extras: ArrayList(ArrayList(usize)),
     allocator: Allocator,
 
     pub fn init(lexer: Lexer, allocator: Allocator) anyerror!Parser {
         const asts: ArrayList(Ast) = std.ArrayList(Ast).init(allocator);
-        const blocks = std.ArrayList(ArrayList(usize)).init(allocator);
-        const types = std.ArrayList(ArrayList(usize)).init(allocator);
-        const args_list = std.ArrayList(ArrayList(usize)).init(allocator);
+        const extras = std.ArrayList(ArrayList(usize)).init(allocator);
         return Parser{
             .lexer = lexer,
             .asts = asts,
             .allocator = allocator,
-            .blocks = blocks,
-            .types = types,
-            .args_list = args_list,
+            .extras = extras,
         };
     }
 
     pub fn deinit(self: *Parser) void {
         self.asts.deinit();
-        for (self.blocks.items) |b| {
-            b.deinit();
+        for (self.extras.items) |e| {
+            e.deinit();
         }
-        self.blocks.deinit();
-        for (self.types.items) |t| {
-            t.deinit();
-        }
-        self.types.deinit();
-        for (self.args_list.items) |a| {
-            a.deinit();
-        }
-        self.args_list.deinit();
+        self.extras.deinit();
     }
 
     pub fn ty(self: *Parser) anyerror!usize {
@@ -98,7 +84,7 @@ const Parser = struct {
             }
         }
         const local = ast.make_args(&exprs.items);
-        try self.args_list.append(exprs);
+        try self.extras.append(exprs);
         return try self.append_ast(local);
     }
 
@@ -197,7 +183,7 @@ const Parser = struct {
         }
         const ret_t = try self.ret_type();
         const expr = ast.make_fn_type(&types.items, ret_t);
-        try self.types.append(types);
+        try self.extras.append(types);
         return try self.append_ast(expr);
     }
 
@@ -245,7 +231,7 @@ const Parser = struct {
             }
         }
         const expr = ast.make_block(&exprs.items);
-        try self.blocks.append(exprs);
+        try self.extras.append(exprs);
         return try self.append_ast(expr);
     }
 
