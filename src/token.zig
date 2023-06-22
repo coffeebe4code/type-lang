@@ -389,7 +389,7 @@ inline fn tokenize_chars(buf: []const u8, len: *usize) Token {
     for (keywords, 0..) |word, idx| {
         if (word.len == len.*) {
             if (std.mem.eql(u8, word, check)) {
-                token = @intToEnum(Token, idx);
+                token = @enumFromInt(Token, idx);
                 return token;
             }
         }
