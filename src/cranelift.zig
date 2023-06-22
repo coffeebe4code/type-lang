@@ -3,10 +3,8 @@ const cl = @cImport({
     @cInclude("craneliftc_extra.h");
 });
 const std = @import("std");
-const Ast = @import("./ast.zig").Ast;
-const AstType = @import("./ast.zig").AstType;
 
-const Fir = struct {
+pub const Fir = struct {
     namespace: u32,
     name: u32,
     cvar: u32,
@@ -98,14 +96,6 @@ const Fir = struct {
 
     pub inline fn finalize(self: *Fir) void {
         return cl.CL_FunctionBuilder_finalize(self.func_builder);
-    }
-
-    pub fn start(self: *Fir, node: *AstType.Function) u32 {
-        _ = self;
-        switch (node) {
-            .Num => std.fmt.parseFloat(node.Num.slice),
-        }
-        return 0;
     }
 
     pub fn deinit(self: Fir) void {

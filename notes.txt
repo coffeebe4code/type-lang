@@ -1,0 +1,13 @@
+//                  any
+//       scalar | {} | [] | () 
+
+// scalar = num, f32, d64, d32, u32, u64, i32, i64 ...
+// {} = { <props> }
+// [] = []<type>
+// () = fn(<args>) <type>
+
+//                  never
+//        undefined       void
+// never is impossible to reach, if it is reached, the program exits immediately with an error
+// undefined is impossible to access as a value.
+// void is basically empty, only used for returns of empty. It is simply a ret instruction with no information capable to convey to caller.

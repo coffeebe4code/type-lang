@@ -88,6 +88,7 @@ pub const Token = enum(u8) {
     K_TypeOf,
     K_Self,
     K_Frame,
+    K_Any,
     // non keyword
     OParen,
     CParen,
@@ -346,7 +347,7 @@ inline fn word_len_check(buf: []const u8) usize {
     var len: usize = 1;
     while (buf.len != len) {
         const c = buf[len];
-        if (ascii.isAlphabetic(c)) {
+        if (ascii.isAlphanumeric(c)) {
             len += 1;
         } else {
             switch (c) {
@@ -388,7 +389,7 @@ inline fn tokenize_chars(buf: []const u8, len: *usize) Token {
     for (keywords, 0..) |word, idx| {
         if (word.len == len.*) {
             if (std.mem.eql(u8, word, check)) {
-                token = @intToEnum(Token, idx);
+                token = @enumFromInt(Token, idx);
                 return token;
             }
         }
@@ -491,6 +492,7 @@ const keywords = [_][]const u8{
     "typeof",
     "self",
     "frame",
+    "any",
 };
 
 test "word len check regular" {
@@ -604,6 +606,13 @@ test "keywords tokens" {
 
     try testing.expect(len == 6);
     try testing.expect(tok == Token.K_Export);
+
+    buf = "u64";
+    len = 0;
+    tok = tokenize_chars(buf, &len);
+
+    try testing.expect(len == 3);
+    try testing.expect(tok == Token.K_U64);
 }
 
 test "get next singular" {
