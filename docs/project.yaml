@@ -1,0 +1,23 @@
+type: project
+name:  
+targets:
+  - 
+hooks:
+---
+type: Exe
+name: ty
+details:
+  source: ty
+  targets:
+    - ref: supported targets
+
+---
+type: Target List
+name: 
+
+---
+type: Package
+name: 
+
+
+

@@ -1,0 +1,17 @@
+[workspace]
+members = [
+  "token",
+  "perror",
+  "lexer",
+  "parser",
+  "slt",
+  "object",
+  "linker",
+  "ast",
+  "project",
+  "ty",
+  "ir",
+  "e2e",
+]
+resolver = "2"
+

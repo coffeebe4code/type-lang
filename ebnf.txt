@@ -1,0 +1,22 @@
+// https://bnfplayground.pauliankline.com/
+<top_decl> ::= "pub"? ("const" | "let") <ident> "=" <fn> | <struct> | <or>
+<fn> ::= "fn" "(" <args>? ")" <block>
+<struct> ::= "struct" "{" <declarators>? "}"
+<declarators> ::= (<declarator> ("," <declarator>)*)?
+<declarator> ::= "pub"? <ident>
+<args> ::= (<arg> ("," <arg>)*)?
+<arg> ::= ("self" | <ident>) (":" ("*" | "&" | "let" | "const")? <type>)?
+<inner_decl> ::= ( "const" | "let") <ident> "=" <or> ";" 
+<block> ::= "{" <inner_decl>* <return> "}"
+<return> ::= "return" <or> ";"
+<or> ::= <and> ("||" <and>)*
+<and> ::= <equality> ("&&" <equality>)*
+<equality> ::= <cmp> (("!=" | "==") <cmp>)*
+<cmp> ::= <low_bin> ((">" | ">=" | "<" | "<=") <low_bin>)*
+<low_bin> ::= <high_bin> (("+" | "-") <high_bin>)*
+<high_bin> ::= <unary> (("*" | "/") <unary>)*
+<unary> ::= (("!" | "-") <unary>) | <terminal>
+<terminal> ::= "true" | "false" | "undefined" | "self" | "never" | <num> | <ident>
+<ident> ::= ([a-z] | [A-Z] | "_") ([A-Z] | [a-z] | [0-9] | "_")*
+<num> ::= ([1-9] [0-9]* "."? ([0-9])+) | [0-9] "." [1-9]+ | [0-9]
+<type> ::= ("num" | "u64" | "any" | <ident>) ("+" "," <type>)*

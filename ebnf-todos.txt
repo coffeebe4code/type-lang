@@ -1,0 +1,5 @@
+NOW
+<arg> ::= <ident>
+
+EXPECTED
+<arg> ::= ("self" | <ident>) (":" ("*" | "&" | "let" | "const")? <type>)?

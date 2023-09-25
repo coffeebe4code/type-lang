@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34031.279
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "MergeModule1", "MergeModule1\MergeModule1.vdproj", "{8F33E51B-99D8-414E-9B58-C86106A2CC03}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "TypeLang", "TypeLangInstaller\TypeLangInstaller.vdproj", "{F20892E9-37E4-48A2-8F4D-615433CEAF59}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Default = Debug|Default
+		Release|Default = Release|Default
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8F33E51B-99D8-414E-9B58-C86106A2CC03}.Debug|Default.ActiveCfg = Debug
+		{8F33E51B-99D8-414E-9B58-C86106A2CC03}.Debug|Default.Build.0 = Debug
+		{8F33E51B-99D8-414E-9B58-C86106A2CC03}.Release|Default.ActiveCfg = Release
+		{8F33E51B-99D8-414E-9B58-C86106A2CC03}.Release|Default.Build.0 = Release
+		{F20892E9-37E4-48A2-8F4D-615433CEAF59}.Debug|Default.ActiveCfg = Debug
+		{F20892E9-37E4-48A2-8F4D-615433CEAF59}.Debug|Default.Build.0 = Debug
+		{F20892E9-37E4-48A2-8F4D-615433CEAF59}.Release|Default.ActiveCfg = Release
+		{F20892E9-37E4-48A2-8F4D-615433CEAF59}.Release|Default.Build.0 = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3C385F53-CB66-49B2-BF4B-CE5E90680455}
+	EndGlobalSection
+EndGlobal
