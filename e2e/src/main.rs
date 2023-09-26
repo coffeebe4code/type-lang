@@ -15,7 +15,7 @@ fn main() {
     let ast_parsed = parse.top_decl().unwrap();
     let mut ir = IRSource::new(0, SLT::new());
     match *ast_parsed {
-        Expr::FuncDef(val) => {
+        Expr::FuncDecl(val) => {
             let result = ir.begin(val);
             println!("{}", ir.get_ir(&result).unwrap());
             if !Path::new(".ty-cache").is_dir() {

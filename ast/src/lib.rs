@@ -1,15 +1,15 @@
 use lexer::Lexeme;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct AsDef {
+pub struct Import {
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
     pub expr: Box<Expr>,
 }
 
-impl AsDef {
+impl Import {
     pub fn new(mutability: Lexeme, identifier: Box<Expr>, expr: Box<Expr>) -> Self {
-        AsDef {
+        Import {
             mutability,
             identifier,
             expr,
@@ -18,21 +18,38 @@ impl AsDef {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct StructDef {
+pub struct InnerDecl {
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub expr: Box<Expr>,
+}
+
+impl InnerDecl {
+    pub fn new(mutability: Lexeme, identifier: Box<Expr>, expr: Box<Expr>) -> Self {
+        InnerDecl {
+            mutability,
+            identifier,
+            expr,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnionDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
     pub declarators: Option<Vec<Box<Expr>>>,
 }
 
-impl StructDef {
+impl UnionDecl {
     pub fn new(
         visibility: Option<Lexeme>,
         mutability: Lexeme,
         identifier: Box<Expr>,
         declarators: Option<Vec<Box<Expr>>>,
     ) -> Self {
-        StructDef {
+        UnionDecl {
             visibility,
             mutability,
             identifier,
@@ -42,7 +59,79 @@ impl StructDef {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct FuncDef {
+pub struct EnumDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub declarators: Option<Vec<Box<Expr>>>,
+}
+
+impl EnumDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        declarators: Option<Vec<Box<Expr>>>,
+    ) -> Self {
+        EnumDecl {
+            visibility,
+            mutability,
+            identifier,
+            declarators,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TagDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub declarators: Option<Vec<Box<Expr>>>,
+}
+
+impl TagDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        declarators: Option<Vec<Box<Expr>>>,
+    ) -> Self {
+        TagDecl {
+            visibility,
+            mutability,
+            identifier,
+            declarators,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub declarators: Option<Vec<Box<Expr>>>,
+}
+
+impl StructDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        declarators: Option<Vec<Box<Expr>>>,
+    ) -> Self {
+        StructDecl {
+            visibility,
+            mutability,
+            identifier,
+            declarators,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MacroDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
@@ -50,7 +139,7 @@ pub struct FuncDef {
     pub block: Box<Expr>,
 }
 
-impl FuncDef {
+impl MacroDecl {
     pub fn new(
         visibility: Option<Lexeme>,
         mutability: Lexeme,
@@ -58,7 +147,7 @@ impl FuncDef {
         args: Option<Vec<Box<Expr>>>,
         block: Box<Expr>,
     ) -> Self {
-        FuncDef {
+        MacroDecl {
             visibility,
             mutability,
             identifier,
@@ -69,13 +158,40 @@ impl FuncDef {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ArgsDef {
+pub struct FuncDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub args: Option<Vec<Box<Expr>>>,
+    pub block: Box<Expr>,
+}
+
+impl FuncDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        args: Option<Vec<Box<Expr>>>,
+        block: Box<Expr>,
+    ) -> Self {
+        FuncDecl {
+            visibility,
+            mutability,
+            identifier,
+            args,
+            block,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArgsDecl {
     pub args: Vec<Box<Expr>>,
 }
 
-impl ArgsDef {
+impl ArgsDecl {
     pub fn new(args: Vec<Box<Expr>>) -> Self {
-        ArgsDef { args }
+        ArgsDecl { args }
     }
 }
 
@@ -134,6 +250,61 @@ impl Symbol {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Never {
+    pub val: Lexeme,
+}
+
+impl Never {
+    pub fn new(val: Lexeme) -> Self {
+        Never { val }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SelfValue {
+    pub val: Lexeme,
+}
+
+impl SelfValue {
+    pub fn new(val: Lexeme) -> Self {
+        SelfValue { val }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UndefinedValue {
+    pub val: Lexeme,
+}
+
+impl UndefinedValue {
+    pub fn new(val: Lexeme) -> Self {
+        UndefinedValue { val }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoolValue {
+    pub val: Lexeme,
+}
+
+impl BoolValue {
+    pub fn new(val: Lexeme) -> Self {
+        BoolValue { val }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CharsValue {
+    pub val: Lexeme,
+}
+
+impl CharsValue {
+    pub fn new(val: Lexeme) -> Self {
+        CharsValue { val }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Number {
     pub val: Lexeme,
 }
@@ -164,12 +335,22 @@ pub enum Expr {
     BinOp(BinOp),
     UnOp(UnOp),
     Number(Number),
+    CharsValue(CharsValue),
+    BoolValue(BoolValue),
     Symbol(Symbol),
     TypeSimple(TypeSimple),
-    ArgsDef(ArgsDef),
-    FuncDef(FuncDef),
-    StructDef(StructDef),
-    AsDef(AsDef),
+    ArgsDecl(ArgsDecl),
+    FuncDecl(FuncDecl),
+    MacroDecl(MacroDecl),
+    UnionDecl(UnionDecl),
+    EnumDecl(EnumDecl),
+    StructDecl(StructDecl),
+    TagDecl(TagDecl),
+    InnerDecl(InnerDecl),
+    Import(Import),
+    UndefinedValue(UndefinedValue),
+    SelfValue(SelfValue),
+    Never(Never),
 }
 
 impl Expr {
