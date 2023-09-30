@@ -6,12 +6,14 @@ members = [
   "parser",
   "slt",
   "object",
+  "objmaker",
   "linker",
   "ast",
   "project",
   "ty",
   "ir",
   "e2e",
+  "tyvm",
 ]
 resolver = "2"
 
