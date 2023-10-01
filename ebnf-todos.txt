@@ -3,3 +3,9 @@ NOW
 
 EXPECTED
 <arg> ::= ("self" | <ident>) (":" ("*" | "&" | "let" | "const")? <type>)?
+
+NOW
+none
+
+EXPECTED
+<type> ::= ("num" | "u64" | "any" | <ident>) ("+" "," <type>)*

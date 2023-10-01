@@ -1,11 +1,18 @@
+// use this to test, and this must pass at all times
 // https://bnfplayground.pauliankline.com/
-<top_decl> ::= "pub"? ("const" | "let") <ident> "=" <fn> | <struct> | <or>
+<top_decl> ::= "pub"? ("const" | "let") <ident> "=" (<macro> | <fn> | <struct> | <union> | <enum> | <tag> | <builtins> | <or>)
+<builtins> ::= "@" (<import>) ";"
+<import> ::= "import" "(" <chars> ")"
+<fn> ::= "macro" "(" <args>? ")" <block>
 <fn> ::= "fn" "(" <args>? ")" <block>
 <struct> ::= "struct" "{" <declarators>? "}"
+<tag> ::= "tag" "{" <declarators>? "}"
+<enum> ::= "enum" "{" <declarators>? "}"
+<union> ::= "union" "{" <declarators>? "}"
 <declarators> ::= (<declarator> ("," <declarator>)*)?
 <declarator> ::= "pub"? <ident>
 <args> ::= (<arg> ("," <arg>)*)?
-<arg> ::= ("self" | <ident>) (":" ("*" | "&" | "let" | "const")? <type>)?
+<arg> ::= <ident>
 <inner_decl> ::= ( "const" | "let") <ident> "=" <or> ";" 
 <block> ::= "{" <inner_decl>* <return> "}"
 <return> ::= "return" <or> ";"
@@ -16,7 +23,10 @@
 <low_bin> ::= <high_bin> (("+" | "-") <high_bin>)*
 <high_bin> ::= <unary> (("*" | "/") <unary>)*
 <unary> ::= (("!" | "-") <unary>) | <terminal>
-<terminal> ::= "true" | "false" | "undefined" | "self" | "never" | <num> | <ident>
+<terminal> ::= "true" | "false" | "undefined" | "self" | "never" | <num> | <ident> | <chars>
 <ident> ::= ([a-z] | [A-Z] | "_") ([A-Z] | [a-z] | [0-9] | "_")*
 <num> ::= ([1-9] [0-9]* "."? ([0-9])+) | [0-9] "." [1-9]+ | [0-9]
-<type> ::= ("num" | "u64" | "any" | <ident>) ("+" "," <type>)*
+<chars> ::= "\"" [a-z]* "\""
+
+// illegal ebnf but actual implementation
+<chars> ::= #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]

@@ -29,9 +29,9 @@ impl IRSource {
             scope,
         }
     }
-    pub fn handle_assign(
+    pub fn handle_decl(
         &mut self,
-        op: &AsDef,
+        op: &InnerDecl,
         builder: &mut FunctionBuilder,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
@@ -114,12 +114,12 @@ impl IRSource {
             Expr::BinOp(op) => self.handle_bin(&op, builder),
             Expr::RetOp(op) => self.handle_ret(&op, builder),
             Expr::Number(op) => self.handle_num(&op, builder),
-            Expr::AsDef(op) => self.handle_assign(&op, builder),
+            Expr::InnerDecl(op) => self.handle_decl(&op, builder),
             Expr::Symbol(op) => self.handle_sym(&op),
             _ => panic!("developer error unexpected expression {:?}", expr),
         }
     }
-    pub fn begin(&mut self, func_def: FuncDef) -> Function {
+    pub fn begin(&mut self, func_def: FuncDecl) -> Function {
         let mut ctx = FunctionBuilderContext::new();
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(self.package, self.fname);
@@ -156,10 +156,9 @@ impl IRSource {
 mod tests {
     use super::*;
     use lexer::*;
-    use token::*;
     #[test]
     fn it_should_build_ret_5() {
-        let func_def = FuncDef::new(
+        let func_def = FuncDecl::new(
             None,
             Lexeme {
                 token: Token::Const,

@@ -12,6 +12,8 @@ pub enum Token {
     Any,
     #[token("macro")]
     Macro,
+    #[token("import")]
+    Import,
     #[token("test")]
     Test,
     #[token("bench")]
@@ -98,6 +100,10 @@ pub enum Token {
     Func,
     #[token("struct")]
     Struct,
+    #[token("union")]
+    Union,
+    #[token("tag")]
+    Tag,
 
     #[token("|>")]
     Split,
@@ -132,8 +138,6 @@ pub enum Token {
     Colon,
     #[token(";")]
     SColon,
-    #[token("`")]
-    Backtick,
     #[token("@")]
     At,
     #[token("<")]
@@ -216,10 +220,8 @@ pub enum Token {
     #[regex("[1-9][0-9]*.[0-9]+|0.[0-9]+")]
     Decimal,
 
-    #[token("\n")]
-    NewLine,
     #[regex(r"//.*", logos::skip)]
-    #[regex(r"[ \t\r\f]+", logos::skip)]
+    #[regex(r"[ \t\r\f\n]+", logos::skip)]
     Skip,
 }
 
