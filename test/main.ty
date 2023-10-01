@@ -1,0 +1,3 @@
+pub const main = fn() {
+  return 0 - 0;
+}

@@ -9,14 +9,14 @@ pub struct Lexeme {
     pub slice: String,
 }
 
-pub struct ProseLexer<'s> {
+pub struct TLexer<'s> {
     current: Option<Lexeme>,
     lexer: Lexer<'s, Token>,
 }
 
-impl<'s> ProseLexer<'s> {
+impl<'s> TLexer<'s> {
     pub fn new(buffer: &'s str) -> Self {
-        return ProseLexer {
+        return TLexer {
             current: None,
             lexer: Token::lexer(buffer),
         };

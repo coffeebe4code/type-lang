@@ -1,6 +1,6 @@
 use ast::*;
 use lexer::Lexeme;
-use lexer::ProseLexer;
+use lexer::TLexer;
 use perror::*;
 use token::Token;
 
@@ -9,11 +9,11 @@ pub type ResultExpr = Result<Box<Expr>>;
 pub type OptExpr = Option<Box<Expr>>;
 
 pub struct Parser<'s> {
-    lexer: ProseLexer<'s>,
+    lexer: TLexer<'s>,
 }
 
 impl<'s> Parser<'s> {
-    pub fn new(lexer: ProseLexer<'s>) -> Self {
+    pub fn new(lexer: TLexer<'s>) -> Self {
         Parser { lexer }
     }
     pub fn _return(&mut self) -> ResultExpr {
@@ -507,7 +507,7 @@ mod tests {
     use lexer::Lexeme;
     #[test]
     fn it_should_parse_unary() {
-        let lexer = ProseLexer::new("-5");
+        let lexer = TLexer::new("-5");
         let mut parser = Parser::new(lexer);
         let result = parser.unary();
         let first = UnOp::new(
@@ -529,7 +529,7 @@ mod tests {
     }
     #[test]
     fn it_should_parse_unary_num() {
-        let lexer = ProseLexer::new("5");
+        let lexer = TLexer::new("5");
         let mut parser = Parser::new(lexer);
         let result = parser.unary();
         let first = Number::new(Lexeme {
@@ -541,7 +541,7 @@ mod tests {
     }
     #[test]
     fn it_should_error_unary() {
-        let lexer = ProseLexer::new("-");
+        let lexer = TLexer::new("-");
         let mut parser = Parser::new(lexer);
         let result = parser.unary();
         let error = ParserError::new("number or identifier".to_string());
@@ -549,7 +549,7 @@ mod tests {
     }
     #[test]
     fn it_should_error_high_bin() {
-        let lexer = ProseLexer::new("5 *");
+        let lexer = TLexer::new("5 *");
         let mut parser = Parser::new(lexer);
         let result = parser.high_bin();
         let error = ParserError::new("number or identifier".to_string());
@@ -557,7 +557,7 @@ mod tests {
     }
     #[test]
     fn it_should_parse_high_bin() {
-        let lexer = ProseLexer::new("5 * 2");
+        let lexer = TLexer::new("5 * 2");
         let mut parser = Parser::new(lexer);
         let result = parser.high_bin();
         let expr = BinOp::new(
@@ -587,7 +587,7 @@ mod tests {
     }
     #[test]
     fn it_should_parse_low_bin_mul() {
-        let lexer = ProseLexer::new("5 + 3 * 2 + 1");
+        let lexer = TLexer::new("5 + 3 * 2 + 1");
         let mut parser = Parser::new(lexer);
         let result = parser.low_bin();
         let expr = expr!(
@@ -651,7 +651,7 @@ mod tests {
 
     #[test]
     fn it_should_parse_block() {
-        let lexer = ProseLexer::new("{ let x = 5; return x; }");
+        let lexer = TLexer::new("{ let x = 5; return x; }");
         let mut parser = Parser::new(lexer);
         let result = parser.block();
         let expr = expr!(
@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn it_should_parse_low_bin() {
-        let lexer = ProseLexer::new("5 + 3 + 2");
+        let lexer = TLexer::new("5 + 3 + 2");
         let mut parser = Parser::new(lexer);
         let result = parser.low_bin();
         let expr = expr!(
@@ -751,7 +751,7 @@ mod tests {
     }
     #[test]
     fn it_should_parse_fn() {
-        let lexer = ProseLexer::new("pub const add = fn(x) { return x; }");
+        let lexer = TLexer::new("pub const add = fn(x) { return x; }");
         let mut parser = Parser::new(lexer);
         let result = parser.top_decl();
         let expr = expr!(
