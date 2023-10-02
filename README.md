@@ -45,3 +45,8 @@ you can then execute your new binary.
 
 `./my-cli` or `my-cli.exe` on windows
 
+#### Windows
+
+windows additionally requires a linker, as it is not on every machine. After installing Visual Studio Build tools, you can select the latest c++ build tools.
+
+From there ensure that you open the developer console for windows where you want to build your application, this way every peice necessary will automatically be included in your path.
