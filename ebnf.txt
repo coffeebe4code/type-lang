@@ -3,7 +3,7 @@
 <top_decl> ::= "pub"? ("const" | "let") <ident> "=" (<macro> | <fn> | <struct> | <union> | <enum> | <tag> | <builtins> | <or>)
 <builtins> ::= "@" (<import>) ";"
 <import> ::= "import" "(" <chars> ")"
-<fn> ::= "macro" "(" <args>? ")" <block>
+<macro> ::= "macro" "(" <args>? ")" <block>
 <fn> ::= "fn" "(" <args>? ")" <block>
 <struct> ::= "struct" "{" <declarators>? "}"
 <tag> ::= "tag" "{" <declarators>? "}"
@@ -22,8 +22,10 @@
 <cmp> ::= <low_bin> ((">" | ">=" | "<" | "<=") <low_bin>)*
 <low_bin> ::= <high_bin> (("+" | "-") <high_bin>)*
 <high_bin> ::= <unary> (("*" | "/") <unary>)*
-<unary> ::= (("!" | "-") <unary>) | <terminal>
-<terminal> ::= "true" | "false" | "undefined" | "self" | "never" | <num> | <ident> | <chars>
+<unary> ::= (("!" | "-") <unary>) | <access>
+<access> ::= <terminal> ("?" <ident>? | "!" <ident>? | <invoke> | "[" <or> "]")*
+<invoke> ::= "." <ident> ("(" <args>? ")")?
+<terminal> ::= "true" | "false" | "undefined" | "self" | "never" | <num> | <ident> | <chars> | "(" <or> ")"
 <ident> ::= ([a-z] | [A-Z] | "_") ([A-Z] | [a-z] | [0-9] | "_")*
 <num> ::= ([1-9] [0-9]* "."? ([0-9])+) | [0-9] "." [1-9]+ | [0-9]
 <chars> ::= "\"" [a-z]* "\""

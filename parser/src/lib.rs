@@ -349,18 +349,72 @@ impl<'s> Parser<'s> {
             let expr = self.unary();
             return expr.result_or(|result| result_expr!(UnOp, x, result));
         }
-        self.terminal()
-            .convert_to_result("number or identifier".to_string())
+        self.access()
     }
-    pub fn terminal(&mut self) -> OptExpr {
-        self.num()
+    pub fn resolve_access(&mut self, prev: Box<Expr>) -> ResultExpr {
+        if let Some(x) =
+            self.lexer
+                .collect_of_if(&[Token::Question, Token::Dot, Token::Not, Token::OArray])
+        {
+            match x.token {
+                Token::Question => self.resolve_access(expr!(UndefBubble, prev)),
+                Token::Not => self.resolve_access(expr!(ErrBubble, prev)),
+                Token::Dot => {
+                    let ident = self
+                        .ident()
+                        .convert_to_result("expected identifier".to_string())?;
+
+                    let oparen = self.lexer.collect_if(Token::OParen);
+                    if oparen.is_some() {
+                        let args = self.args()?;
+                        let _cparen = self
+                            .lexer
+                            .collect_if(Token::CParen)
+                            .expect_token("expected ')'".to_string())?;
+                        return self.resolve_access(expr!(Invoke, Some(prev), ident, args));
+                    }
+
+                    self.resolve_access(expr!(PropAccess, prev, ident))
+                }
+                Token::OArray => panic!("array not implemented"),
+                Token::OParen => {
+                    let args = self.args()?;
+
+                    let _cparen = self
+                        .lexer
+                        .collect_if(Token::CParen)
+                        .expect_token("expected ')'".to_string())?;
+                    return self.resolve_access(expr!(Invoke, None, prev, args));
+                }
+                _ => panic!("developer error"),
+            }
+        } else {
+            Ok(prev)
+        }
+    }
+    pub fn access(&mut self) -> ResultExpr {
+        let term = self.terminal()?.expect_expr(
+            "number, string, self, true, false, undefined, never, or identifier expected"
+                .to_string(),
+        )?;
+
+        self.resolve_access(term)
+    }
+    pub fn terminal(&mut self) -> ResultOptExpr {
+        let easy = self
+            .num()
             .if_none(|| self.ident())
             .if_none(|| self.chars())
             .if_none(|| self._self())
             .if_none(|| self._true())
             .if_none(|| self._false())
             .if_none(|| self.undefined())
-            .if_none(|| self.never())
+            .if_none(|| self.never());
+        if easy.is_none() {
+            self.parens()
+        } else {
+            Ok(easy)
+        }
     }
     pub fn num(&mut self) -> OptExpr {
         let lexeme = self.lexer.collect_if(Token::Num)?;
@@ -389,6 +443,18 @@ impl<'s> Parser<'s> {
     pub fn never(&mut self) -> OptExpr {
         let lexeme = self.lexer.collect_if(Token::Undefined)?;
         opt_expr!(Never, lexeme)
+    }
+    pub fn parens(&mut self) -> ResultOptExpr {
+        let lexeme = self.lexer.collect_if(Token::OParen);
+        if lexeme.is_none() {
+            return Ok(None);
+        }
+        let expr = self.or()?;
+        let _ = self
+            .lexer
+            .collect_if(Token::CParen)
+            .expect_token("expected ')'".to_string())?;
+        Ok(Some(expr))
     }
 }
 
@@ -544,7 +610,10 @@ mod tests {
         let lexer = TLexer::new("-");
         let mut parser = Parser::new(lexer);
         let result = parser.unary();
-        let error = ParserError::new("number or identifier".to_string());
+        let error = ParserError::new(
+            "number, string, self, true, false, undefined, never, or identifier expected"
+                .to_string(),
+        );
         assert_eq!(result.expect_err("failed test"), error);
     }
     #[test]
@@ -552,7 +621,10 @@ mod tests {
         let lexer = TLexer::new("5 *");
         let mut parser = Parser::new(lexer);
         let result = parser.high_bin();
-        let error = ParserError::new("number or identifier".to_string());
+        let error = ParserError::new(
+            "number, string, self, true, false, undefined, never, or identifier expected"
+                .to_string(),
+        );
         assert_eq!(result.expect_err("failed test"), error);
     }
     #[test]
@@ -584,6 +656,36 @@ mod tests {
             ),
         );
         assert_eq!(result.unwrap(), Box::new(Expr::BinOp(expr)));
+    }
+    #[test]
+    fn it_should_parse_access_invoke() {
+        let lexer = TLexer::new("x?.hello()");
+        let mut parser = Parser::new(lexer);
+        let result = parser.access();
+        let expr = expr!(
+            Invoke,
+            Some(expr!(
+                UndefBubble,
+                expr!(
+                    Symbol,
+                    Lexeme {
+                        slice: String::from("x"),
+                        token: Token::Symbol,
+                        span: 0..1,
+                    },
+                )
+            )),
+            expr!(
+                Symbol,
+                Lexeme {
+                    slice: String::from("hello"),
+                    token: Token::Symbol,
+                    span: 3..8,
+                }
+            ),
+            None
+        );
+        assert_eq!(result.unwrap(), expr);
     }
     #[test]
     fn it_should_parse_low_bin_mul() {
