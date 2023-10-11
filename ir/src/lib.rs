@@ -1,9 +1,12 @@
+use core::slice::SlicePattern;
+
 use ast::*;
 use cranelift_codegen::entity::EntityRef;
+use cranelift_codegen::ir::entities::{FuncRef, Inst};
 use cranelift_codegen::ir::function::DisplayFunction;
 use cranelift_codegen::ir::types::*;
 use cranelift_codegen::ir::AbiParam;
-use cranelift_codegen::ir::{Function, InstBuilder, Signature, UserFuncName};
+use cranelift_codegen::ir::{Function, InstBuilder, Signature, UserFuncName, Value};
 use cranelift_codegen::isa::CallConv;
 use cranelift_codegen::settings;
 use cranelift_codegen::verifier::verify_function;
@@ -35,7 +38,6 @@ impl IRSource {
         builder: &mut FunctionBuilder,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
-        self.variables += 1;
         builder.declare_var(result, I64);
         let temp = self.recurse(&op.expr, builder).unwrap();
         let x = builder.use_var(temp);
@@ -46,6 +48,32 @@ impl IRSource {
         );
         builder.def_var(temp, x);
         Ok(temp)
+    }
+    pub fn handle_invoke(
+        &mut self,
+        op: &Invoke,
+        builder: &mut FunctionBuilder,
+    ) -> ResultFir<Variable> {
+        let mut args: Vec<Value> = vec![];
+        let mut call: Inst = Inst::from_u32(0);
+        if op.args.is_some() {
+            args = op
+                .args
+                .unwrap()
+                .into_iter()
+                .map(|x| {
+                    return builder.use_var(self.recurse(&x, builder).unwrap());
+                })
+                .collect();
+        }
+        if op.prev.is_some() { // recurse on prev
+        } else {
+            call = builder.ins().call(FuncRef::from_u32(0), args.as_slice());
+        }
+        let result = self.add_var();
+        builder.declare_var(result, I64);
+        builder.def_var(result, builder.inst_results(call)[0]);
+        Ok(result)
     }
     pub fn handle_block(
         &mut self,
@@ -78,7 +106,6 @@ impl IRSource {
         builder: &mut FunctionBuilder,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
-        self.variables += 1;
         builder.declare_var(result, I64);
         let temp = builder
             .ins()
@@ -92,7 +119,6 @@ impl IRSource {
         builder: &mut FunctionBuilder,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
-        self.variables += 1;
         builder.declare_var(result, I64);
         let left = self.recurse(&num.left, builder).unwrap();
         let right = self.recurse(&num.right, builder).unwrap();
@@ -111,6 +137,7 @@ impl IRSource {
     pub fn recurse(&mut self, expr: &Expr, builder: &mut FunctionBuilder) -> ResultFir<Variable> {
         match expr {
             Expr::Block(op) => self.handle_block(&op, builder),
+            Expr::Invoke(op) => self.handle_invoke(&op, builder),
             Expr::BinOp(op) => self.handle_bin(&op, builder),
             Expr::RetOp(op) => self.handle_ret(&op, builder),
             Expr::Number(op) => self.handle_num(&op, builder),
@@ -148,7 +175,9 @@ impl IRSource {
         }
     }
     pub fn add_var(&mut self) -> Variable {
-        Variable::new(usize::try_from(self.variables).unwrap())
+        let temp = Variable::new(usize::try_from(self.variables).unwrap());
+        self.variables += 1;
+        temp
     }
 }
 
