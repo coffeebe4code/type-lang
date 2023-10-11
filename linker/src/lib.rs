@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 pub fn link(obj_file: Vec<&PathBuf>, output: &PathBuf) -> () {
     use std::process::Command;
-    println!("output {}", output.to_str().unwrap());
 
     // link the .o file using host linker
     if cfg!(windows) {

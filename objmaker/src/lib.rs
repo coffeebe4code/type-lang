@@ -13,6 +13,31 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
+pub fn from_buffer(contents: &str, path: &Path) -> () {
+    let lex = TLexer::new(&contents);
+    let mut parse = Parser::new(lex);
+    let ast_parsed = parse.top_decl().unwrap();
+    let mut ir = IRSource::new(0, SLT::new());
+    match *ast_parsed {
+        Expr::FuncDecl(val) => {
+            let result = ir.begin(val);
+            if !Path::new(".ty-cache").is_dir() {
+                create_dir(".ty-cache").unwrap();
+            }
+            let wo_extension = path.with_extension("");
+            let filename = wo_extension.file_name().unwrap().to_str().unwrap();
+            let mut output = PathBuf::new();
+            output.push(".ty-cache");
+            output.push(filename);
+            output.set_extension("o");
+            let mut om = new_obj_handler(filename);
+            build_std_fn(&mut om, result, filename);
+            write(output, flush_obj(om)).unwrap();
+        }
+        _ => panic!("not a func def!"),
+    }
+}
+
 pub fn from_file(input_path: &PathBuf) -> () {
     let mut ty = File::open(input_path.clone()).unwrap();
     let mut contents = String::new();

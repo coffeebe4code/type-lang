@@ -14,3 +14,4 @@ token = { path = "../token" }
 parser = { path = "../parser" }
 ir = { path = "../ir" }
 object = { path = "../object" }
+objmaker = { path = "../objmaker" }
