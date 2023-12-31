@@ -1,6 +1,73 @@
 use lexer::Lexeme;
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct UndefBubble {
+    pub prev: Box<Expr>,
+}
+
+impl UndefBubble {
+    pub fn new(prev: Box<Expr>) -> Self {
+        UndefBubble { prev }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PropAccess {
+    pub prev: Box<Expr>,
+    pub identifier: Box<Expr>,
+}
+
+impl PropAccess {
+    pub fn new(prev: Box<Expr>, identifier: Box<Expr>) -> Self {
+        PropAccess { prev, identifier }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrBubble {
+    pub prev: Box<Expr>,
+}
+
+impl ErrBubble {
+    pub fn new(prev: Box<Expr>) -> Self {
+        ErrBubble { prev }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Invoke {
+    pub prev: Option<Box<Expr>>,
+    pub identifier: Box<Expr>,
+    pub args: Option<Vec<Box<Expr>>>,
+}
+
+impl Invoke {
+    pub fn new(
+        prev: Option<Box<Expr>>,
+        identifier: Box<Expr>,
+        args: Option<Vec<Box<Expr>>>,
+    ) -> Self {
+        Invoke {
+            prev,
+            identifier,
+            args,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArrayAccess {
+    pub identifier: Box<Expr>,
+    pub inner: Box<Expr>,
+}
+
+impl ArrayAccess {
+    pub fn new(inner: Box<Expr>, identifier: Box<Expr>) -> Self {
+        ArrayAccess { inner, identifier }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Import {
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
@@ -351,6 +418,11 @@ pub enum Expr {
     UndefinedValue(UndefinedValue),
     SelfValue(SelfValue),
     Never(Never),
+    ArrayAccess(ArrayAccess),
+    PropAccess(PropAccess),
+    Invoke(Invoke),
+    ErrBubble(ErrBubble),
+    UndefBubble(UndefBubble),
 }
 
 impl Expr {
