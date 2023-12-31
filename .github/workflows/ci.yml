@@ -19,6 +19,8 @@ jobs:
           cargo build --release
           cargo test
           ./target/release/e2e
+          ./target/release/ty obj test/main.ty
+          ./target/release/ty link test/main -o .ty-cache/main.o
 
   build-linux:
     runs-on: ubuntu-latest
@@ -31,6 +33,8 @@ jobs:
           cargo build --release
           cargo test
           ./target/release/e2e
+          ./target/release/ty obj test/main.ty
+          ./target/release/ty link test/main -o .ty-cache/main.o
 
   build-macos:
     runs-on: macOS-latest
@@ -43,3 +47,5 @@ jobs:
           cargo build --release
           cargo test
           ./target/release/e2e
+          ./target/release/ty obj test/main.ty
+          ./target/release/ty link test/main -o .ty-cache/main.o

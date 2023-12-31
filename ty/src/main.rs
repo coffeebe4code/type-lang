@@ -59,7 +59,7 @@ fn link_command(m: &ArgMatches) {
         eprintln!("expected at least one file.\nty link [name] -o [files].\ntry `ty link --help`");
         exit(1);
     }
-    let files: Vec<_> = pre.unwrap().collect();
+    let files: Vec<&PathBuf> = pre.unwrap().collect();
     let mut outname = PathBuf::new();
     outname.push("target");
     outname.push(output.unwrap());
