@@ -2,7 +2,9 @@ NOW
 <arg> ::= <ident>
 
 EXPECTED
-<arg> ::= ("self" | <ident>) (":" ("*" | "&" | "let" | "const")? <type>)?
+<arg> ::= ("self" | <ident>) (":" ("*" | "&" | "const")? <type>)?
+
+----
 
 NOW
 none
