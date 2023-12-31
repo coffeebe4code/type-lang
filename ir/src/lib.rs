@@ -1,5 +1,3 @@
-use core::slice::SlicePattern;
-
 use ast::*;
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::entities::{FuncRef, Inst};
@@ -59,12 +57,14 @@ impl IRSource {
         if op.args.is_some() {
             args = op
                 .args
+                .as_ref()
                 .unwrap()
-                .into_iter()
+                .iter()
                 .map(|x| {
-                    return builder.use_var(self.recurse(&x, builder).unwrap());
+                    let result = self.recurse(&x, builder).unwrap();
+                    return builder.use_var(result).clone();
                 })
-                .collect();
+                .collect::<Vec<Value>>();
         }
         if op.prev.is_some() { // recurse on prev
         } else {
