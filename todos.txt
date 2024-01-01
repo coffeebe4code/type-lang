@@ -1,0 +1,5 @@
+- readup on all conversations in zulip chat to refamiliarlize myself
+- look up linters and how to do so
+- mark down linter todos as far as what is not allowed: ie valid syntax, but incorrect context
+- type work in IR for signatures
+- formalize SLT and IRSource job and how that works.

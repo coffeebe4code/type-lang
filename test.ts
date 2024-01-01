@@ -8,10 +8,34 @@ const DIRECTION = enum {
 
 // classical union
 const x = union {
-  a: char[50],
+  a: [u8; 50],
   n: f64,
   z: i64,
 };
+
+// all enums have an underlying value.
+// make all enums a union and be tagged
+
+const DIRECTION = tag {
+  NORTH,
+  EAST,
+  SOUTH,
+  WEST,
+}
+// value is 0, 1, 2, 3
+// we can
+
+if (DIRECTION.NORTH) |cap| // captured value will be the raw value
+
+const DIRECTION = tag {
+  NORTH: [u8; 50],
+  EAST: f64,
+  SOUTH: i64,
+  WEST: [u8],
+}
+
+type x: [u8] = self[u8;20];
+
 
 // in classical unions, the union takes up as much space
 // as the largest member. so 'x' is as large as char[50] with some padding, 

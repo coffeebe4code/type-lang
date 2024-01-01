@@ -38,6 +38,7 @@ impl IRSource {
         let result = self.add_var();
         builder.declare_var(result, I64);
         let temp = self.recurse(&op.expr, builder).unwrap();
+        // TODO:: optimization: not all paths need declare var if value is only ever read. or something similar
         let x = builder.use_var(temp);
 
         self.scope.add(
@@ -66,8 +67,10 @@ impl IRSource {
                 })
                 .collect::<Vec<Value>>();
         }
-        if op.prev.is_some() { // recurse on prev
+        if op.prev.is_some() {
+            // TODO:: recurse on prev
         } else {
+            // TODO:: get this correct with funcref. on how to get this from slt?
             call = builder.ins().call(FuncRef::from_u32(0), args.as_slice());
         }
         let result = self.add_var();
@@ -150,6 +153,7 @@ impl IRSource {
         let mut ctx = FunctionBuilderContext::new();
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(self.package, self.fname);
+        // TODO:: types need to be worked out, params and returns defined
         if let Some(val) = func_def.args {
             val.iter()
                 .for_each(|_x| sig.params.push(AbiParam::new(I64)));
