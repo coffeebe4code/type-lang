@@ -14,6 +14,7 @@ members = [
   "ir",
   "e2e",
   "tyvm",
+  "linter",
 ]
 resolver = "2"
 
