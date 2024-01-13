@@ -1,31 +1,29 @@
 // use this to test, and this must pass at all times
 // https://bnfplayground.pauliankline.com/
-<top_decl> ::= "pub"? ("const" | "let") <ident> "=" (<macro> | <fn> | <struct> | <union> | <enum> | <tag> | <builtins> | <or>)
-<builtins> ::= "@" (<import>) ";"
-<import> ::= "import" "(" <chars> ")"
-<macro> ::= "macro" "(" <args>? ")" <block>
-<fn> ::= "fn" "(" <args>? ")" <block>
-<struct> ::= "struct" "{" <declarators>? "}"
-<tag> ::= "tag" "{" <declarators>? "}"
-<enum> ::= "enum" "{" <declarators>? "}"
-<union> ::= "union" "{" <declarators>? "}"
-<declarators> ::= (<declarator> ("," <declarator>)*)?
-<declarator> ::= "pub"? <ident>
+<top_decl> ::= "pub "? ("const " | "let " | "type " | "impl ") <ident> "= " (<macro> | <fn> | <struct> | <tag> | <import> | <error> | <or>)
+<import> ::= "import " <chars> 
+<macro> ::= "macro " "(" <args>? ")" <block>
+<fn> ::= "fn " "(" <args>? ") " <block>
+<struct> ::= "struct " "{ " <declarators>? "}"
+<error> ::= "error " "{" "}"
+<tag> ::= "tag " ("| " <ident> )+
+<declarators> ::= (<declarator>)*
+<declarator> ::= "pub "? <ident>
 <args> ::= (<arg> ("," <arg>)*)?
-<arg> ::= <ident>
-<inner_decl> ::= ( "const" | "let") <ident> "=" <or> ";" 
-<block> ::= "{" <inner_decl>* <return> "}"
-<return> ::= "return" <or> ";"
-<or> ::= <and> ("||" <and>)*
-<and> ::= <equality> ("&&" <equality>)*
-<equality> ::= <cmp> (("!=" | "==") <cmp>)*
+<arg> ::= "self " | <ident>
+<inner_decl> ::= ( "const " | "let ") <ident> "= " <or> 
+<block> ::= "{ " <inner_decl>* <return> "}"
+<return> ::= "return " <or> 
+<or> ::= <and> ("|| " <and>)*
+<and> ::= <equality> ("&& " <equality>)*
+<equality> ::= <cmp> (("!= " | "== ") <cmp>)*
 <cmp> ::= <low_bin> ((">" | ">=" | "<" | "<=") <low_bin>)*
 <low_bin> ::= <high_bin> (("+" | "-") <high_bin>)*
 <high_bin> ::= <unary> (("*" | "/") <unary>)*
 <unary> ::= (("!" | "-") <unary>) | <access>
-<access> ::= <terminal> ("?" <ident>? | "!" <ident>? | <invoke> | "[" <or> "]")*
+<access> ::= <terminal> ("?" <ident>? | "!" <ident>? | <invoke> | "[" (<or> ("," <or>)*)? "]")*
 <invoke> ::= "." <ident> ("(" <args>? ")")?
-<terminal> ::= "true" | "false" | "undefined" | "self" | "never" | <num> | <ident> | <chars> | "(" <or> ")"
+<terminal> ::= "true " | "false " | "undefined " | "self " | "never " | <num> | <ident> | <chars> | "(" <or> ")"
 <ident> ::= ([a-z] | [A-Z] | "_") ([A-Z] | [a-z] | [0-9] | "_")*
 <num> ::= ([1-9] [0-9]* "."? ([0-9])+) | [0-9] "." [1-9]+ | [0-9]
 <chars> ::= "\"" [a-z]* "\""

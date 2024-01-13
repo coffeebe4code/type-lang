@@ -46,8 +46,16 @@ pub enum Token {
     D64,
     #[token("f32")]
     F32,
+    #[token("d32")]
+    D32,
     #[token("d128")]
     D128,
+    #[token("f128")]
+    F128,
+    #[token("isize")]
+    ISize,
+    #[token("usize")]
+    USize,
     #[token("if")]
     If,
     #[token("else")]
@@ -60,9 +68,7 @@ pub enum Token {
     Undefined,
     #[token("char")]
     Char,
-    #[token("string")]
-    WString,
-    #[token("switch")]
+    #[token("match")]
     Switch,
     #[token("for")]
     For,
@@ -72,18 +78,28 @@ pub enum Token {
     In,
     #[token("break")]
     Break,
-    #[token("enum")]
-    Enum,
+    #[token("tag")]
+    Tag,
     #[token("pub")]
     Pub,
     #[token("return")]
     Return,
     #[token("await")]
     Await,
+    #[token("async")]
+    Async,
+    #[token("nosuspend")]
+    NoSuspend,
+    #[token("suspend")]
+    Suspend,
+    #[token("resume")]
+    Resume,
     #[token("frame")]
     Frame,
     #[token("trait")]
     Trait,
+    #[token("impl")]
+    Impl,
     #[token("true")]
     True,
     #[token("false")]
@@ -96,14 +112,16 @@ pub enum Token {
     Bool,
     #[token("contract")]
     Contract,
+    #[token("comptime")]
+    Comptime,
     #[token("fn")]
     Func,
     #[token("struct")]
     Struct,
-    #[token("union")]
-    Union,
-    #[token("tag")]
-    Tag,
+    #[token("extern")]
+    Extern,
+    #[token("export")]
+    Export,
 
     #[token("|>")]
     Split,
@@ -240,12 +258,19 @@ mod tests {
 
     #[test]
     fn it_tokenizes() {
-        let mut lexer = Token::lexer("let x = 5;");
+        let mut lexer = Token::lexer("let x = 5");
         assert_eq!(lexer.next(), Some(Ok(Token::Let)));
         assert_eq!(lexer.next(), Some(Ok(Token::Symbol)));
         assert_eq!(lexer.next(), Some(Ok(Token::As)));
         assert_eq!(lexer.next(), Some(Ok(Token::Num)));
-        assert_eq!(lexer.next(), Some(Ok(Token::SColon)));
+    }
+    #[test]
+    fn it_tokenizes_rest() {
+        let mut lexer = Token::lexer("let _ = x_b");
+        assert_eq!(lexer.next(), Some(Ok(Token::Let)));
+        assert_eq!(lexer.next(), Some(Ok(Token::Rest)));
+        assert_eq!(lexer.next(), Some(Ok(Token::As)));
+        assert_eq!(lexer.next(), Some(Ok(Token::Symbol)));
     }
     #[test]
     fn it_tokenizes_nums() {

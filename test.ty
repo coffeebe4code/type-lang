@@ -72,6 +72,8 @@ let y: [char; 11] = "Hello There" //! we can't give this array a compile time kn
 
 // here y is mutable, and its elements are mutable. can be lengthened, shortened, or elements mutated
 let y: [char] = "Hello There"
+// can also use single quotes
+let y: [char] = 'Hello There'
 
 // values can be copied, moved, borrowed mutably, or borrowed immutably
 // x is set to 5
@@ -108,8 +110,8 @@ const x: c_chars = "Hello" // can only be assigned to const vars, and members ar
 
 // some types have a special way to subtype values
 type months: u8 = 0..12
-const x: months = 7
-const y: months = 13 // ! can't do that. out of bounds
+const x: months = 7 as months
+const y: months = 13 as months // ! can't do that. out of bounds
 
 // prepare a type to be used as an implementation
 type to_draw: fn(self) void = trait
