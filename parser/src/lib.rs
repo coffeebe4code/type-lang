@@ -21,33 +21,12 @@ impl<'s> Parser<'s> {
             .lexer
             .collect_if(Token::Return)
             .expect_token("expected return keyword".to_string())?;
-        self.or().result_or(|expr| {
-            self.lexer
-                .collect_if(Token::SColon)
-                .expect_token("expected ';'".to_string())?;
-            result_expr!(RetOp, span, expr)
-        })
+        self.or().result_or(|expr| result_expr!(RetOp, span, expr))
     }
-    pub fn builtins(&mut self, mutability: Lexeme, identifier: Box<Expr>) -> ResultExpr {
-        let _ = self
-            .lexer
-            .collect_if(Token::Import)
-            .expect_token("expected import keyword".to_string())?;
-        let _ = self
-            .lexer
-            .collect_if(Token::OParen)
-            .expect_token("expected '('".to_string())?;
+    pub fn _import(&mut self, mutability: Lexeme, identifier: Box<Expr>) -> ResultExpr {
         let decls = self
             .chars()
             .convert_to_result("expected string of characters ' or \"".to_string())?;
-        let _ = self
-            .lexer
-            .collect_if(Token::CParen)
-            .expect_token("expected ')'".to_string())?;
-        let _ = self
-            .lexer
-            .collect_if(Token::SColon)
-            .expect_token("expected ';'".to_string())?;
         result_expr!(Import, mutability, identifier, decls)
     }
     pub fn tag(
@@ -66,40 +45,6 @@ impl<'s> Parser<'s> {
             .collect_if(Token::CBrace)
             .expect_token("expected '}'".to_string())?;
         result_expr!(TagDecl, visibility, mutability, identifier, decls)
-    }
-    pub fn _enum(
-        &mut self,
-        visibility: Option<Lexeme>,
-        mutability: Lexeme,
-        identifier: Box<Expr>,
-    ) -> ResultExpr {
-        let _ = self
-            .lexer
-            .collect_if(Token::OBrace)
-            .expect_token("expected '{'".to_string())?;
-        let decls = self.declarators()?;
-        let _ = self
-            .lexer
-            .collect_if(Token::CBrace)
-            .expect_token("expected '}'".to_string())?;
-        result_expr!(EnumDecl, visibility, mutability, identifier, decls)
-    }
-    pub fn union(
-        &mut self,
-        visibility: Option<Lexeme>,
-        mutability: Lexeme,
-        identifier: Box<Expr>,
-    ) -> ResultExpr {
-        let _ = self
-            .lexer
-            .collect_if(Token::OBrace)
-            .expect_token("expected '{'".to_string())?;
-        let decls = self.declarators()?;
-        let _ = self
-            .lexer
-            .collect_if(Token::CBrace)
-            .expect_token("expected '}'".to_string())?;
-        result_expr!(UnionDecl, visibility, mutability, identifier, decls)
     }
     pub fn _struct(
         &mut self,
@@ -134,9 +79,7 @@ impl<'s> Parser<'s> {
         if let Some(val) = self.lexer.collect_of_if(&[
             Token::Struct,
             Token::Func,
-            Token::At,
-            Token::Enum,
-            Token::Union,
+            Token::Import,
             Token::Macro,
             Token::Tag,
         ]) {
@@ -144,11 +87,9 @@ impl<'s> Parser<'s> {
                 Token::Struct => return self._struct(has_pub, mutability, identifier),
                 Token::Func => return self._fn(has_pub, mutability, identifier),
                 Token::Macro => return self._macro(has_pub, mutability, identifier),
-                Token::At => return self.builtins(mutability, identifier),
-                Token::Enum => return self._enum(has_pub, mutability, identifier),
-                Token::Union => return self.union(has_pub, mutability, identifier),
+                Token::Import => return self._import(mutability, identifier),
                 Token::Tag => return self.tag(has_pub, mutability, identifier),
-                _ => panic!("developer error"),
+                _ => panic!("type-lang error unreachable code hit"),
             }
         }
         self.or()
@@ -244,12 +185,10 @@ impl<'s> Parser<'s> {
                 .lexer
                 .collect_of_if(&[Token::As])
                 .expect_token("expected =".to_string())?;
-            return self.or().convert_to_result_opt().result_opt_or(|asgn| {
-                self.lexer
-                    .collect_if(Token::SColon)
-                    .expect_token("expected ';'".to_string())?;
-                bubble_expr!(InnerDecl, muta, identifier, asgn)
-            });
+            return self
+                .or()
+                .convert_to_result_opt()
+                .result_opt_or(|asgn| bubble_expr!(InnerDecl, muta, identifier, asgn));
         }
         Ok(None)
     }
@@ -437,11 +376,11 @@ impl<'s> Parser<'s> {
         opt_expr!(UndefinedValue, lexeme)
     }
     pub fn _self(&mut self) -> OptExpr {
-        let lexeme = self.lexer.collect_if(Token::Undefined)?;
+        let lexeme = self.lexer.collect_if(Token::WSelf)?;
         opt_expr!(SelfValue, lexeme)
     }
     pub fn never(&mut self) -> OptExpr {
-        let lexeme = self.lexer.collect_if(Token::Undefined)?;
+        let lexeme = self.lexer.collect_if(Token::Never)?;
         opt_expr!(Never, lexeme)
     }
     pub fn parens(&mut self) -> ResultOptExpr {
@@ -753,7 +692,7 @@ mod tests {
 
     #[test]
     fn it_should_parse_block() {
-        let lexer = TLexer::new("{ let x = 5; return x; }");
+        let lexer = TLexer::new("{ let x = 5 return x }");
         let mut parser = Parser::new(lexer);
         let result = parser.block();
         let expr = expr!(
@@ -788,14 +727,14 @@ mod tests {
                     Lexeme {
                         slice: String::from("return"),
                         token: Token::Return,
-                        span: 13..19,
+                        span: 12..18,
                     },
                     expr!(
                         Symbol,
                         Lexeme {
                             slice: String::from("x"),
                             token: Token::Symbol,
-                            span: 20..21
+                            span: 19..20
                         }
                     )
                 )
@@ -853,7 +792,7 @@ mod tests {
     }
     #[test]
     fn it_should_parse_fn() {
-        let lexer = TLexer::new("pub const add = fn(x) { return x; }");
+        let lexer = TLexer::new("pub const add = fn(x) { return x }");
         let mut parser = Parser::new(lexer);
         let result = parser.top_decl();
         let expr = expr!(

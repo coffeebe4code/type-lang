@@ -4,7 +4,11 @@ use std::process::Command;
 
 fn main() {
     objmaker::from_buffer(
-        "pub const main = fn() { let m = 7; let x = 5; return x + m; }",
+        "pub const main = fn() { 
+            let m = 7
+            let x = 5 
+            return x + m 
+        }",
         Path::new("main.ty"),
     );
     let input = Path::new(".ty-cache/main.o").to_path_buf();
