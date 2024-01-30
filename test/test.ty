@@ -131,55 +131,7 @@ let t = {
   break 5 * -2 + 1 
 }
 
-// most types can be implied, you can be explicit, function return types are the only required type
+// most types can be implicit, you can be explicit, function return types are the only required type
 const mul2: fn(usize) usize = fn(a: usize) usize { 
   return a * 2
 }
-
-// WIP
-//// you can define a type and use that as your reference point
-//type Multiply3: fn(usize) usize = self
-//const mul3: Multiply3 = self(a: usize) usize { // i was on crack when I thought this was clear
-//  return a * 3
-//}
-//
-//// reference self for 1 to 1 aliasing
-//type c_chars: const [const char] = self
-//const n: c_chars = "Hello" // can only be assigned to const vars, and members are immutable
-//
-//// some types have a special way to subtype values
-//type months: u8 = self[0..12]
-//const o: months = 7 as months
-//const p: months = 13 as months // ! can't do that. out of bounds
-//
-//// prepare a type to be used as an implementation
-//type to_draw: fn(self) void = trait
-//// provide a default implementation
-//type to_draw = trait(self) void {
-//  // draw some cool stuff
-//
-//}
-//
-//const rgba = struct {
-//  r: u8
-//  g: u8
-//  b: u8
-//  a: u8
-//}
-//
-//impl rgba: to_draw = fn(self) void {
-//  // do some cool drawing
-//}
-//
-//// subtyping revisited
-//type months: u8 = self[0..12]
-//// specifying any, allows any type to implement months: objects, functions, arrays, errors, and scalar primatives
-//type to_months: fn(self: any) !months = trait
-//// be more specific if that was not the intent
-//type to_months: fn(self: scalar) !months = trait
-//
-//impl u8: to_months = fn(self) !months {
-//  if (self > 12) { return InvalidCastException }
-//  return self as months
-//}
-//

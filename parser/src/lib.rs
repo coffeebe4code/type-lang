@@ -17,6 +17,7 @@ impl<'s> Parser<'s> {
     pub fn new(lexer: TLexer<'s>) -> Self {
         Parser { lexer }
     }
+
     pub fn all(&mut self) -> ResultExpr {
         let mut tops: Vec<Box<Expr>> = vec![];
         while self.lexer.peek().is_some() {
@@ -24,6 +25,7 @@ impl<'s> Parser<'s> {
         }
         return result_expr!(FileAll, tops);
     }
+
     pub fn _return(&mut self) -> ResultExpr {
         let span = self
             .lexer
@@ -32,16 +34,19 @@ impl<'s> Parser<'s> {
                 &self.lexer,
                 "expected 'break' or 'return' depending on block context".to_string(),
             )?;
-        let expr = self.expr()?;
-        result_expr!(RetOp, span, expr)
+        self.expr()
+            .xresult_or(|expr| result_expr!(RetOp, span, expr))
     }
+
     pub fn _import(&mut self, mutability: Lexeme, identifier: Box<Expr>) -> ResultExpr {
-        let decls = self.chars().xconvert_to_result(
-            &self.lexer,
-            "expected a string of characters with ' or \"".to_string(),
-        )?;
-        result_expr!(Import, mutability, identifier, decls)
+        self.chars()
+            .xconvert_to_result(
+                &self.lexer,
+                "expected a string of characters with ' or \"".to_string(),
+            )
+            .xresult_or(|expr| result_expr!(Import, mutability, identifier, expr))
     }
+
     pub fn tag(
         &mut self,
         visibility: Option<Lexeme>,
@@ -58,6 +63,7 @@ impl<'s> Parser<'s> {
         }
         result_expr!(TagDecl, visibility, mutability, identifier, variants, sig)
     }
+
     pub fn _error(
         &mut self,
         visibility: Option<Lexeme>,
@@ -75,6 +81,7 @@ impl<'s> Parser<'s> {
             .xexpect_token(&self.lexer, "expected '}'".to_string())?;
         result_expr!(ErrorDecl, visibility, mutability, identifier, sig)
     }
+
     pub fn _struct(
         &mut self,
         visibility: Option<Lexeme>,
@@ -93,6 +100,7 @@ impl<'s> Parser<'s> {
             .xexpect_token(&self.lexer, "expected '}'".to_string())?;
         result_expr!(StructDecl, visibility, mutability, identifier, decls, sig)
     }
+
     pub fn top_decl(&mut self) -> ResultExpr {
         let has_pub = self.lexer.collect_if(Token::Pub);
         let mutability = self
@@ -112,14 +120,12 @@ impl<'s> Parser<'s> {
             Token::Func,
             Token::Trait,
             Token::Import,
-            Token::Macro,
             Token::Tag,
             Token::Error,
         ]) {
             match val.token {
                 Token::Struct => return self._struct(has_pub, mutability, identifier, sig),
                 Token::Func => return self._fn(has_pub, mutability, identifier, sig),
-                Token::Macro => return self._macro(has_pub, mutability, identifier, sig),
                 Token::Import => return self._import(mutability, identifier),
                 Token::Tag => return self.tag(has_pub, mutability, identifier, sig),
                 Token::Trait => return self._trait(has_pub, mutability, identifier, sig),
@@ -128,25 +134,6 @@ impl<'s> Parser<'s> {
             }
         }
         self.expr()
-    }
-    pub fn _macro(
-        &mut self,
-        visibility: Option<Lexeme>,
-        mutability: Lexeme,
-        identifier: Box<Expr>,
-        sig: Option<Box<Expr>>,
-    ) -> ResultExpr {
-        let _ = self
-            .lexer
-            .collect_if(Token::OParen)
-            .xexpect_token(&self.lexer, "expected '('".to_string())?;
-        let args = self.args()?;
-        let _ = self
-            .lexer
-            .collect_if(Token::CParen)
-            .xexpect_token(&self.lexer, "expected ')'".to_string())?;
-        let block = self.block()?;
-        result_expr!(MacroDecl, visibility, mutability, identifier, args, block, sig)
     }
     pub fn _trait(
         &mut self,
@@ -172,7 +159,7 @@ impl<'s> Parser<'s> {
                 sig
             );
         }
-        return result_expr!(TraitDecl, visibility, mutability, identifier, None, None, sig);
+        result_expr!(TraitDecl, visibility, mutability, identifier, None, None, sig)
     }
     pub fn _fn_type(&mut self) -> ResultOptExpr {
         if let Some(_) = self.lexer.collect_if(Token::Func) {
@@ -349,7 +336,7 @@ impl<'s> Parser<'s> {
         if let Some(fn_typ) = self._fn_type()? {
             if muta.is_some() {
                 return Err(make_error(
-                    "no mutability tokens allowed on functions".to_string(),
+                    "found mutability marker on function type".to_string(),
                     &self.lexer,
                 ));
             }
@@ -552,12 +539,14 @@ impl<'s> Parser<'s> {
             .lexer
             .collect_if(Token::Arrow)
             .xexpect_token(&self.lexer, "expected '=>'".to_string())?;
-        // todo:: make it <arm> ::= <expr> "=> " (<fn> | <block>)
-        // currently just arm ::= ident
-        let blk = self
-            .ident()
-            .xconvert_to_result(&self.lexer, "expected <identifier>'".to_string())?;
-        result_expr!(Arm, or, blk).xconvert_to_result_opt()
+        if let Some(blk) = self.ident() {
+            return result_expr!(Arm, or, blk).xconvert_to_result_opt();
+        }
+        let anon = self.anon_fn()?.xconvert_to_result(
+            &self.lexer,
+            "expected identifier or anonymous function'".to_string(),
+        )?;
+        result_expr!(Arm, or, anon).xconvert_to_result_opt()
     }
 
     pub fn or(&mut self) -> ResultExpr {
@@ -892,6 +881,10 @@ trait ExpectExpr {
     fn xexpect_expr(self, lexer: &TLexer, title: String) -> ResultExpr;
 }
 
+trait OptOr {
+    fn xopt_or(self, func: impl FnOnce(Box<Expr>) -> ResultOptExpr) -> ResultOptExpr;
+}
+
 trait ResultOr {
     fn xresult_or(self, func: impl FnOnce(Box<Expr>) -> ResultExpr) -> ResultExpr;
 }
@@ -935,6 +928,15 @@ impl ResultOptOr for ResultOptExpr {
             Err(err) => Err(err),
             Ok(Some(inner)) => func(inner),
             Ok(None) => Ok(None),
+        }
+    }
+}
+
+impl OptOr for OptExpr {
+    fn xopt_or(self, func: impl FnOnce(Box<Expr>) -> ResultOptExpr) -> ResultOptExpr {
+        match self {
+            None => return Ok(None),
+            Some(val) => return func(val),
         }
     }
 }
@@ -1116,37 +1118,6 @@ mod tests {
         );
         assert_eq!(result.unwrap(), Box::new(Expr::BinOp(expr)));
     }
-    // todo:: add this back
-    //#[test]
-    //fn it_should_parse_access_invoke() {
-    //    let lexer = TLexer::new("x?.hello()");
-    //    let mut parser = Parser::new(lexer);
-    //    let result = parser.access();
-    //    let expr = expr!(
-    //        Invoke,
-    //        Some(expr!(
-    //            UndefBubble,
-    //            expr!(
-    //                Symbol,
-    //                Lexeme {
-    //                    slice: String::from("x"),
-    //                    token: Token::Symbol,
-    //                    span: 0..1,
-    //                },
-    //            )
-    //        )),
-    //        expr!(
-    //            Symbol,
-    //            Lexeme {
-    //                slice: String::from("hello"),
-    //                token: Token::Symbol,
-    //                span: 3..8,
-    //            }
-    //        ),
-    //        None
-    //    );
-    //    assert_eq!(result.unwrap(), expr);
-    //}
     #[test]
     fn it_should_parse_low_bin_mul() {
         let lexer = TLexer::new("5 + 3 * 2 + 1");
