@@ -4,7 +4,6 @@
 <top_decl> ::= "pub "? ("const " | "let " | "type " | "impl ") <ident> (":" <signature>)? "= " (<trait> | <fn> | <struct> | <tag> | <import> | <error> | <reassign> | <expr>)
 <import> ::= "import " <chars>
 <trait> ::= "trait"
-<macro> ::= "macro" ("(" <args>? ) <block>
 <signature> ::= <val_type> | ("const" | "let")? ("&" | "*")? ("[" <signature> "]" | <ident> ("." <ident>)* | <fn_type>)
 <fn_type> ::= "fn" "(" <type_args> ")" ("void" | <signature>)
 <type_args> ::= (<type_arg> ("," <type_arg>)*)?
