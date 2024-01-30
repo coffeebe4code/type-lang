@@ -67,12 +67,8 @@ impl IRSource {
                 })
                 .collect::<Vec<Value>>();
         }
-        if op.prev.is_some() {
-            // TODO:: recurse on prev
-        } else {
-            // TODO:: get this correct with funcref. on how to get this from slt?
-            call = builder.ins().call(FuncRef::from_u32(0), args.as_slice());
-        }
+        // TODO:: get this correct with funcref. on how to get this from slt?
+        call = builder.ins().call(FuncRef::from_u32(0), args.as_slice());
         let result = self.add_var();
         builder.declare_var(result, I64);
         builder.def_var(result, builder.inst_results(call)[0]);
@@ -208,6 +204,20 @@ mod tests {
             ),
             None,
             expr!(
+                Sig,
+                Some(expr!(
+                    ValueType,
+                    Lexeme {
+                        token: Token::USize,
+                        span: 6..7,
+                        slice: "usize".to_string(),
+                    }
+                )),
+                None,
+                None,
+                None
+            ),
+            expr!(
                 Block,
                 vec![expr!(
                     RetOp,
@@ -226,6 +236,7 @@ mod tests {
                     )
                 )]
             ),
+            None,
         );
         let mut fir = IRSource::new(0, SLT::new());
         let result = fir.begin(func_def);
