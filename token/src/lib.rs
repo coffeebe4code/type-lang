@@ -22,6 +22,14 @@ pub enum Token {
     Let,
     #[token("const")]
     Const,
+    #[token("copy")]
+    WCopy,
+    #[token("clone")]
+    WClone,
+    #[token("scalar")]
+    Scalar,
+    #[token("sized")]
+    WSized,
     #[token("i32")]
     I32,
     #[token("u32")]
@@ -38,7 +46,7 @@ pub enum Token {
     U8,
     #[token("i8")]
     I8,
-    #[token("u1")]
+    #[token("bit")]
     Bit,
     #[token("f64")]
     F64,
@@ -68,8 +76,18 @@ pub enum Token {
     Undefined,
     #[token("char")]
     Char,
+    #[token("utf8")]
+    Utf8,
+    #[token("utf16")]
+    Utf16,
+    #[token("utf32")]
+    Utf32,
+    #[token("utf64")]
+    Utf64,
     #[token("match")]
-    Switch,
+    Match,
+    #[token("while")]
+    While,
     #[token("for")]
     For,
     #[token("of")]
@@ -88,6 +106,8 @@ pub enum Token {
     Await,
     #[token("async")]
     Async,
+    #[token("as")]
+    CastAs,
     #[token("nosuspend")]
     NoSuspend,
     #[token("suspend")]
@@ -122,6 +142,12 @@ pub enum Token {
     Extern,
     #[token("export")]
     Export,
+    #[token("keyof")]
+    KeyOf,
+    #[token("typeof")]
+    TypeOf,
+    #[token("rangeof")]
+    RangeOf,
 
     #[token("|>")]
     Split,
@@ -142,6 +168,8 @@ pub enum Token {
     #[token("]")]
     CArray,
 
+    #[token("..")]
+    Range,
     #[token(".")]
     Dot,
     #[token(",")]
@@ -170,6 +198,8 @@ pub enum Token {
     Div,
     #[token("\\")]
     BSlash,
+    #[token("++")]
+    Concat,
     #[token("+")]
     Plus,
     #[token("_")]
@@ -233,9 +263,9 @@ pub enum Token {
 
     #[regex("[1-9][0-9]*\\.[0-9]+|0\\.[0-9]+|0|[1-9][0-9]*")]
     Num,
-    #[regex("[a-zA-Z]+([a-zA-z-_])*")]
+    #[regex("[a-zA-Z]+[_0-9a-zA-Z]*")]
     Symbol,
-    #[regex("[1-9][0-9]*.[0-9]+|0.[0-9]+")]
+    #[regex("[1-9][0-9]*\\.[0-9]+|0\\.[0-9]+")]
     Decimal,
 
     #[regex(r"//.*", logos::skip)]
@@ -271,6 +301,16 @@ mod tests {
         assert_eq!(lexer.next(), Some(Ok(Token::Rest)));
         assert_eq!(lexer.next(), Some(Ok(Token::As)));
         assert_eq!(lexer.next(), Some(Ok(Token::Symbol)));
+    }
+    #[test]
+    fn it_tokenizes_declarators() {
+        let mut lexer = Token::lexer("wheels: [const char] ");
+        assert_eq!(lexer.next(), Some(Ok(Token::Symbol)));
+        assert_eq!(lexer.next(), Some(Ok(Token::Colon)));
+        assert_eq!(lexer.next(), Some(Ok(Token::OArray)));
+        assert_eq!(lexer.next(), Some(Ok(Token::Const)));
+        assert_eq!(lexer.next(), Some(Ok(Token::Char)));
+        assert_eq!(lexer.next(), Some(Ok(Token::CArray)));
     }
     #[test]
     fn it_tokenizes_nums() {

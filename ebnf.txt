@@ -1,32 +1,50 @@
 // use this to test, and this must pass at all times
 // https://bnfplayground.pauliankline.com/
-<top_decl> ::= "pub "? ("const " | "let " | "type " | "impl ") <ident> "= " (<macro> | <fn> | <struct> | <tag> | <import> | <error> | <or>)
-<import> ::= "import " <chars> 
-<macro> ::= "macro " "(" <args>? ")" <block>
+<all> ::= (<top_decls>)*
+<top_decl> ::= "pub "? ("const " | "let " | "type " | "impl ") <ident> (":" <signature>)? "= " (<trait> | <fn> | <struct> | <tag> | <import> | <error> | <reassign> | <expr>)
+<import> ::= "import " <chars>
+<trait> ::= "trait"
+<macro> ::= "macro" ("(" <args>? ) <block>
+<signature> ::= <val_type> | ("const" | "let")? ("&" | "*")? ("[" <signature> "]" | <ident> ("." <ident>)* | <fn_type>)
+<fn_type> ::= "fn" "(" <type_args> ")" ("void" | <signature>)
+<type_args> ::= (<type_arg> ("," <type_arg>)*)?
+<type_arg> ::= ("self " (":" <signature>)?) | <signature>
 <fn> ::= "fn " "(" <args>? ") " <block>
 <struct> ::= "struct " "{ " <declarators>? "}"
 <error> ::= "error " "{" "}"
-<tag> ::= "tag " ("| " <ident> )+
+<if> ::= "if " "(" <expr> ")" (<fn> | <block>) ("else " <expr>)?
+<for> ::= "for " "(" <expr> ")" (<fn> | <block>)
+<match> ::= "match " "(" <expr> ")" "{ " <arm>+ "}" 
+<arm> ::= <expr> "=> " (<fn> | <block>)
+<tag> ::= "tag " ("| " <ident> (":" <signature>)? ("=" <expr>)?)+
 <declarators> ::= (<declarator>)*
-<declarator> ::= "pub "? <ident>
+<declarator> ::= "pub "? <ident> (":" <signature>)?
 <args> ::= (<arg> ("," <arg>)*)?
-<arg> ::= "self " | <ident>
-<inner_decl> ::= ( "const " | "let ") <ident> "= " <or> 
-<block> ::= "{ " <inner_decl>* <return> "}"
-<return> ::= "return " <or> 
+<arg> ::= ("self " (": " <signature>)?) | <ident> (":" <signature>)?
+<inner_decl> ::= ( "const " | "let ") <ident> (":" <signature>)? "= " <expr> 
+<reassign> ::= <access> ("= " <expr>)?
+<block> ::= "{ " (<inner_decl> | <for> | <if> | <reassign>)* (<return> | <break>)? "}"
+<return> ::= "return " <expr>? 
+<break> ::= "break " <expr>? 
+<expr> ::= <block> | <match> | <or>
 <or> ::= <and> ("|| " <and>)*
 <and> ::= <equality> ("&& " <equality>)*
 <equality> ::= <cmp> (("!= " | "== ") <cmp>)*
 <cmp> ::= <low_bin> ((">" | ">=" | "<" | "<=") <low_bin>)*
 <low_bin> ::= <high_bin> (("+" | "-") <high_bin>)*
-<high_bin> ::= <unary> (("*" | "/") <unary>)*
-<unary> ::= (("!" | "-") <unary>) | <access>
-<access> ::= <terminal> ("?" <ident>? | "!" <ident>? | <invoke> | "[" (<or> ("," <or>)*)? "]")*
-<invoke> ::= "." <ident> ("(" <args>? ")")?
-<terminal> ::= "true " | "false " | "undefined " | "self " | "never " | <num> | <ident> | <chars> | "(" <or> ")"
-<ident> ::= ([a-z] | [A-Z] | "_") ([A-Z] | [a-z] | [0-9] | "_")*
+<high_bin> ::= <unary> (("*" | "/" | ".." | "%") <unary>)*
+<unary> ::= (("!" | "-" | "&" | "*") <unary>) | <access>
+<array_decl> ::= "[" (<or> ("," <or>)*)? "]"
+<access> ::= <terminal> ("?" | "!" | <struct_body> | <invoke> | <array_access> | <call> )*
+<array_access> ::= "[" <expr> "]"
+<invoke> ::= "." <ident>
+<call> ::= "(" (<or> ("," <or>)*)? ")"
+<struct_body> ::= "{" (<ident> ":" <ident>)* "}"
+<terminal> ::= "_" | "true " | "false " | "undefined " | "self " | "never " | <num> | <ident> | <chars> | <array_decl> | <anon_fn> | "(" <expr> ")"
+<anon_fn> ::= "fn " "(" <args>? ") " <block> 
+<ident> ::= ([a-z] | [A-Z]) ([A-Z] | [a-z] | [0-9] | "_")*
 <num> ::= ([1-9] [0-9]* "."? ([0-9])+) | [0-9] "." [1-9]+ | [0-9]
 <chars> ::= "\"" [a-z]* "\""
-
+<val_type> ::= "i32" | "u32" | "i64" | "u64" | "i16" | "u16" | "u8" | "i8" | "bit" | "f64" | "d64" | "f32" | "d32" | "d128" | "f128" | "isize" | "usize" | "char" | "bool" | "any" | "scalar" | "utf8" | "utf16" | "utf32" | "utf64" | "sized"
 // illegal ebnf but actual implementation
-<chars> ::= #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
+<chars> ::= #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)n

@@ -28,21 +28,32 @@ impl FirError {
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParserError {
     title: String,
+    found: String,
+    code: String,
+    line: usize,
+    col: usize,
 }
 
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut x = (0..self.col - 1).map(|_| return " ").collect::<String>();
+        x.push('^');
         write!(
             f,
-            "title: {}\n
-            {}\n",
-            self.title, "ParseError"
+            "title: {}, but found '{}'\ncode:\n  {}\n  {}\nline: {}\ncol: {}\n",
+            self.title, self.found, self.code, x, self.line, self.col
         )
     }
 }
 
 impl ParserError {
-    pub fn new(title: String) -> ParserError {
-        ParserError { title }
+    pub fn new(title: String, code: String, line: usize, col: usize, found: String) -> ParserError {
+        ParserError {
+            title,
+            code,
+            line,
+            col,
+            found,
+        }
     }
 }
