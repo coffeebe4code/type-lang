@@ -26,6 +26,20 @@ impl FirError {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct LinterError {
+    title: String,
+    points: Vec<LinterErrorPoint>,
+    suggesions: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct LinterErrorPoint {
+    code: String,
+    line: usize,
+    col: usize,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct ParserError {
     title: String,
     found: String,
