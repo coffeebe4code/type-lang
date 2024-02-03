@@ -15,3 +15,4 @@ parser = { path = "../parser" }
 ir = { path = "../ir" }
 object = { path = "../object" }
 objmaker = { path = "../objmaker" }
+linter = { path = "../linter" }

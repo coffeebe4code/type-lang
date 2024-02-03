@@ -11,7 +11,7 @@ pub struct CodeLocation {
 }
 
 impl<'s> CodeLocation {
-    pub fn new_lexer(lexer: &Lexer<Token>) -> Self {
+    pub fn new_lexer_stop_point(lexer: &Lexer<Token>) -> Self {
         let chars = lexer
             .source()
             .get(0..lexer.span().end)

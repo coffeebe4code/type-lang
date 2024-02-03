@@ -206,6 +206,33 @@ impl Reassignment {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct TopDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub typ: Option<Box<Expr>>,
+    pub expr: Box<Expr>,
+}
+
+impl TopDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        typ: Option<Box<Expr>>,
+        expr: Box<Expr>,
+    ) -> Self {
+        TopDecl {
+            visibility,
+            mutability,
+            identifier,
+            typ,
+            expr,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct InnerDecl {
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
@@ -691,6 +718,7 @@ pub enum Expr {
     ErrorDecl(ErrorDecl),
     TagDecl(TagDecl),
     InnerDecl(InnerDecl),
+    TopDecl(TopDecl),
     Reassignment(Reassignment),
     Import(Import),
     UndefinedValue(UndefinedValue),
@@ -705,6 +733,12 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn into_file_all(&self) -> FileAll {
+        match self {
+            Expr::FileAll(x) => x.to_owned(),
+            _ => panic!("issue no symbol found"),
+        }
+    }
     pub fn into_symbol(&self) -> Symbol {
         match self {
             Expr::Symbol(x) => x.to_owned(),
