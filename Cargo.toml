@@ -16,6 +16,6 @@ members = [
   "tyvm",
   "linter", 
   "codelocation"
-]
+, "types"]
 resolver = "2"
 
