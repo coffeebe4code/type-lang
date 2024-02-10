@@ -149,7 +149,7 @@ impl IRSource {
         let mut ctx = FunctionBuilderContext::new();
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(self.package, self.fname);
-        // TODO:: types need to be worked out, params and returns defined
+        // todo:: types need to be worked out, params and returns defined
         if let Some(val) = func_def.args {
             val.iter()
                 .for_each(|_x| sig.params.push(AbiParam::new(I64)));
