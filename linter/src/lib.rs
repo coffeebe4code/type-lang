@@ -3,32 +3,34 @@ use codelocation::*;
 use lexer::*;
 use perror::LinterError;
 use perror::LinterErrorPoint;
+use symtable::*;
 use token::Token;
 use types::*;
 
 type ResultIndex = Result<Type, usize>;
-type ResultError = Result<Type, LinterError>;
+type ResultError = Result<(), LinterError>;
 
-pub struct LintSource<'s> {
+pub struct LintSource<'s, 't> {
     buffer: &'s str,
+    slt: &'t mut SymTable,
     pub issues: Vec<LinterError>,
 }
 
-impl<'s> LintSource<'s> {
-    pub fn new(buffer: &'s str) -> Self {
+impl<'s, 't> LintSource<'s, 't> {
+    pub fn new(buffer: &'s str, slt: &'t mut SymTable) -> Self {
         LintSource {
             buffer,
+            slt,
             issues: vec![],
         }
     }
     pub fn type_check(&mut self, to_cmp: &mut Expr) -> ResultIndex {
         match to_cmp {
-            Expr::TopDecl(x) => {
-                let result = self.type_check(&mut x.expr)?;
-                if let Some(typ) = &x.typ {
-                    //if typ != result.unwrap() {}
-                }
-                return Ok(result);
+            Expr::BinOp(bin) => {
+                let left = self.type_check(&mut bin.left);
+                let right = self.type_check(&mut bin.right);
+
+                return Err(0);
             }
 
             Expr::Number(x) => match x.val.token {
@@ -39,6 +41,16 @@ impl<'s> LintSource<'s> {
             _ => panic!("type-lang linter issue"),
         }
     }
+    //pub fn lint_top_decl(&self, left: &mut Expr, right: &Expr) -> ResultError {
+    //    match right {
+    //        Expr::StructDecl(x) => {
+    //            return Ok(());
+    //        }
+    //        Expr::FuncDecl(x) => {}
+    //        Expr::TraitDecl(x) => {}
+    //        _ => Ok(()),
+    //    }
+    //}
     pub fn update_error(&self, mut err: LinterError, suggestion: String, lexeme: Lexeme) -> () {
         let xcl = CodeLocation::new(self.buffer, lexeme);
         let lep = LinterErrorPoint::new(xcl.code, xcl.line, xcl.col);
@@ -48,20 +60,26 @@ impl<'s> LintSource<'s> {
         LinterError::new(title)
     }
 }
-trait PushErr {
-    fn push_if_err(self, linter: &mut LintSource) -> ResultIndex;
-}
-impl PushErr for ResultError {
-    fn push_if_err(self, linter: &mut LintSource) -> ResultIndex {
-        match self {
-            Ok(typ) => return Ok(typ),
-            Err(err) => {
-                linter.issues.push(err);
-                return Err(linter.issues.len() - 1);
-            }
-        }
-    }
-}
+
+//trait ModExpr {
+//    fn sig_mod(&mut self, typ: Option<Expr>
+//
+//}
+
+//trait PushErr {
+//    fn push_if_err(self, linter: &mut LintSource) -> ResultIndex;
+//}
+//impl PushErr for ResultError {
+//    fn push_if_err(self, linter: &mut LintSource) -> ResultIndex {
+//        match self {
+//            Ok(typ) => return Ok(typ),
+//            Err(err) => {
+//                linter.issues.push(err);
+//                return Err(linter.issues.len() - 1);
+//            }
+//        }
+//    }
+//}
 
 //pub trait SlideIntoFrom {
 //    fn slide_into(&self, other: &Type) -> ResultCheck;

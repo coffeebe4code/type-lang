@@ -11,18 +11,18 @@ use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::*;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use perror::*;
-use slt::*;
+use symtable::*;
 use token::*;
 
 pub struct IRSource {
     package: u32,
     fname: u32,
     variables: u32,
-    scope: SLT,
+    scope: SymTable,
 }
 
 impl IRSource {
-    pub fn new(package: u32, scope: SLT) -> Self {
+    pub fn new(package: u32, scope: SymTable) -> Self {
         IRSource {
             package,
             fname: 0,
@@ -41,9 +41,9 @@ impl IRSource {
         // todo:: optimization: not all paths need declare var if value is only ever read. or something similar
         let x = builder.use_var(temp);
 
-        self.scope.add(
+        self.scope.table.insert(
             op.identifier.into_symbol().val.slice.to_string(),
-            temp.as_u32(),
+            temp.as_u32() as u64,
         );
         builder.def_var(temp, x);
         Ok(temp)
@@ -96,7 +96,7 @@ impl IRSource {
     }
     pub fn handle_sym(&self, op: &Symbol) -> ResultFir<Variable> {
         Ok(Variable::from_u32(
-            self.scope.lookup(&op.val.slice).unwrap(),
+            *self.scope.table.get(&op.val.slice).unwrap() as u32,
         ))
     }
     pub fn handle_num(
@@ -238,7 +238,7 @@ mod tests {
             ),
             None,
         );
-        let mut fir = IRSource::new(0, SLT::new());
+        let mut fir = IRSource::new(0, SymTable::new("test".to_string()));
         let result = fir.begin(func_def);
         /*
          * function u0:0() -> i64 system_v

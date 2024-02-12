@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 ast = { path = "../ast" }
 types = { path = "../types" }
+symtable = { path = "../symtable" }
 token = { path = "../token" }
 lexer = { path = "../lexer" }
 perror = { path = "../perror" }

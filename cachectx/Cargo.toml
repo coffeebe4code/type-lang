@@ -1,5 +1,5 @@
 [package]
-name = "slt"
+name = "cachectx"
 version = "0.1.0"
 edition = "2021"
 

@@ -4,7 +4,7 @@ members = [
   "perror",
   "lexer",
   "parser",
-  "slt",
+  "symtable",
   "object",
   "objmaker",
   "linker",
@@ -15,7 +15,8 @@ members = [
   "e2e",
   "tyvm",
   "linter", 
-  "codelocation"
-, "types"]
+  "codelocation",
+  "types", 
+  "cachectx"]
 resolver = "2"
 
