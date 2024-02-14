@@ -43,7 +43,7 @@ impl IRSource {
 
         self.scope.table.insert(
             op.identifier.into_symbol().val.slice.to_string(),
-            temp.as_u32() as u64,
+            temp.as_u32() as usize,
         );
         builder.def_var(temp, x);
         Ok(temp)

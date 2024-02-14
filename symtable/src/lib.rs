@@ -1,14 +1,15 @@
 use std::collections::BTreeMap;
+use types::*;
 
 pub struct SymTable {
-    pub scope: String,
-    pub table: BTreeMap<String, u64>,
+    pub parent: Box<SymTable>,
+    pub table: BTreeMap<String, Box<TypeTree>>,
 }
 
 impl SymTable {
-    pub fn new(scope: String) -> Self {
+    pub fn new(parent: Box<SymTable>) -> Self {
         SymTable {
-            scope,
+            parent,
             table: BTreeMap::new(),
         }
     }

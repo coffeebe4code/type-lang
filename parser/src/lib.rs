@@ -623,9 +623,13 @@ impl<'s> Parser<'s> {
         })
     }
     pub fn unary(&mut self) -> ResultExpr {
-        let lexeme = self
-            .lexer
-            .collect_of_if(&[Token::And, Token::Mul, Token::NotLog, Token::Sub]);
+        let lexeme = self.lexer.collect_of_if(&[
+            Token::And,
+            Token::Mul,
+            Token::NotLog,
+            Token::Sub,
+            Token::WCopy,
+        ]);
         if let Some(x) = lexeme {
             let expr = self.unary();
             return expr.xresult_or(|result| result_expr!(UnOp, x, result));
