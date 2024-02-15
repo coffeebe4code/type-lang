@@ -257,30 +257,6 @@ impl InnerDecl {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct UnionDecl {
-    pub visibility: Option<Lexeme>,
-    pub mutability: Lexeme,
-    pub identifier: Box<Expr>,
-    pub declarators: Option<Vec<Box<Expr>>>,
-}
-
-impl UnionDecl {
-    pub fn new(
-        visibility: Option<Lexeme>,
-        mutability: Lexeme,
-        identifier: Box<Expr>,
-        declarators: Option<Vec<Box<Expr>>>,
-    ) -> Self {
-        UnionDecl {
-            visibility,
-            mutability,
-            identifier,
-            declarators,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct TagDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
@@ -353,36 +329,6 @@ impl StructDecl {
             mutability,
             identifier,
             declarators,
-            sig,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct MacroDecl {
-    pub visibility: Option<Lexeme>,
-    pub mutability: Lexeme,
-    pub identifier: Box<Expr>,
-    pub args: Option<Vec<Box<Expr>>>,
-    pub block: Box<Expr>,
-    pub sig: Option<Box<Expr>>,
-}
-
-impl MacroDecl {
-    pub fn new(
-        visibility: Option<Lexeme>,
-        mutability: Lexeme,
-        identifier: Box<Expr>,
-        args: Option<Vec<Box<Expr>>>,
-        block: Box<Expr>,
-        sig: Option<Box<Expr>>,
-    ) -> Self {
-        MacroDecl {
-            visibility,
-            mutability,
-            identifier,
-            args,
-            block,
             sig,
         }
     }
@@ -712,8 +658,6 @@ pub enum Expr {
     FuncDecl(FuncDecl),
     FuncType(FuncType),
     TraitDecl(TraitDecl),
-    MacroDecl(MacroDecl),
-    UnionDecl(UnionDecl),
     StructDecl(StructDecl),
     ErrorDecl(ErrorDecl),
     TagDecl(TagDecl),
@@ -725,7 +669,6 @@ pub enum Expr {
     SelfValue(SelfValue),
     Never(Never),
     ArrayAccess(ArrayAccess),
-    StructureAccess(StructureAccess),
     PropAccess(PropAccess),
     Invoke(Invoke),
     ErrBubble(ErrBubble),
