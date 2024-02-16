@@ -11,18 +11,18 @@ use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::*;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use perror::*;
-use slt::*;
+use symtable::*;
 use token::*;
 
 pub struct IRSource {
     package: u32,
     fname: u32,
     variables: u32,
-    scope: SLT,
+    scope: SymTable,
 }
 
 impl IRSource {
-    pub fn new(package: u32, scope: SLT) -> Self {
+    pub fn new(package: u32, scope: SymTable) -> Self {
         IRSource {
             package,
             fname: 0,
@@ -38,10 +38,10 @@ impl IRSource {
         let result = self.add_var();
         builder.declare_var(result, I64);
         let temp = self.recurse(&op.expr, builder).unwrap();
-        // TODO:: optimization: not all paths need declare var if value is only ever read. or something similar
+        // todo:: optimization: not all paths need declare var if value is only ever read. or something similar, this statement is in the same ballpark, but might not be totally correct
         let x = builder.use_var(temp);
 
-        self.scope.add(
+        self.scope.table.insert(
             op.identifier.into_symbol().val.slice.to_string(),
             temp.as_u32(),
         );
@@ -67,7 +67,7 @@ impl IRSource {
                 })
                 .collect::<Vec<Value>>();
         }
-        // TODO:: get this correct with funcref. on how to get this from slt?
+        // todo:: get this correct with funcref. on how to get this from slt?
         call = builder.ins().call(FuncRef::from_u32(0), args.as_slice());
         let result = self.add_var();
         builder.declare_var(result, I64);
@@ -96,7 +96,7 @@ impl IRSource {
     }
     pub fn handle_sym(&self, op: &Symbol) -> ResultFir<Variable> {
         Ok(Variable::from_u32(
-            self.scope.lookup(&op.val.slice).unwrap(),
+            *self.scope.table.get(&op.val.slice).unwrap(),
         ))
     }
     pub fn handle_num(
@@ -149,7 +149,7 @@ impl IRSource {
         let mut ctx = FunctionBuilderContext::new();
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(self.package, self.fname);
-        // TODO:: types need to be worked out, params and returns defined
+        // todo:: types need to be worked out, params and returns defined
         if let Some(val) = func_def.args {
             val.iter()
                 .for_each(|_x| sig.params.push(AbiParam::new(I64)));
@@ -238,7 +238,7 @@ mod tests {
             ),
             None,
         );
-        let mut fir = IRSource::new(0, SLT::new());
+        let mut fir = IRSource::new(0, SymTable::new());
         let result = fir.begin(func_def);
         /*
          * function u0:0() -> i64 system_v

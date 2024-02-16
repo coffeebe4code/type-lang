@@ -5,19 +5,19 @@ use object::build_std_fn;
 use object::flush_obj;
 use object::new_obj_handler;
 use parser::Parser;
-use slt::SLT;
 use std::fs::create_dir;
 use std::fs::write;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+use symtable::SymTable;
 
 pub fn from_buffer(contents: &str, path: &Path) -> () {
     let lex = TLexer::new(&contents);
     let mut parse = Parser::new(lex);
     let ast_parsed = parse.top_decl().unwrap();
-    let mut ir = IRSource::new(0, SLT::new());
+    let mut ir = IRSource::new(0, SymTable::new());
     match *ast_parsed {
         Expr::FuncDecl(val) => {
             let result = ir.begin(val);
@@ -45,7 +45,7 @@ pub fn from_file(input_path: &PathBuf) -> () {
     let lex = TLexer::new(&contents);
     let mut parse = Parser::new(lex);
     let ast_parsed = parse.top_decl().unwrap();
-    let mut ir = IRSource::new(0, SLT::new());
+    let mut ir = IRSource::new(0, SymTable::new());
     match *ast_parsed {
         Expr::FuncDecl(val) => {
             let result = ir.begin(val);

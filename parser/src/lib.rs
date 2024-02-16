@@ -1,5 +1,5 @@
 use ast::*;
-use lexer::CodeLocation;
+use codelocation::*;
 use lexer::Lexeme;
 use lexer::TLexer;
 use perror::*;
@@ -14,6 +14,8 @@ pub struct Parser<'s> {
 }
 
 impl<'s> Parser<'s> {
+    // todo:: optimization: use an allocator for all expressions into a single vec, use either
+    // references or id's
     pub fn new(lexer: TLexer<'s>) -> Self {
         Parser { lexer }
     }
@@ -31,7 +33,7 @@ impl<'s> Parser<'s> {
             .lexer
             .collect_of_if(&[Token::Return, Token::Break])
             .xexpect_token(
-                &self.lexer,
+                self,
                 "expected 'break' or 'return' depending on block context".to_string(),
             )?;
         self.expr()
@@ -41,7 +43,7 @@ impl<'s> Parser<'s> {
     pub fn _import(&mut self, mutability: Lexeme, identifier: Box<Expr>) -> ResultExpr {
         self.chars()
             .xconvert_to_result(
-                &self.lexer,
+                self,
                 "expected a string of characters with ' or \"".to_string(),
             )
             .xresult_or(|expr| result_expr!(Import, mutability, identifier, expr))
@@ -58,7 +60,7 @@ impl<'s> Parser<'s> {
         while let Some(_) = self.lexer.collect_if(Token::Or) {
             let x = self
                 .ident()
-                .xconvert_to_result(&self.lexer, "expected identifier'".to_string())?;
+                .xconvert_to_result(self, "expected identifier'".to_string())?;
             variants.push(x);
         }
         result_expr!(TagDecl, visibility, mutability, identifier, variants, sig)
@@ -74,11 +76,11 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::OBrace)
-            .xexpect_token(&self.lexer, "expected '{'".to_string())?;
+            .xexpect_token(&self, "expected '{'".to_string())?;
         let _ = self
             .lexer
             .collect_if(Token::CBrace)
-            .xexpect_token(&self.lexer, "expected '}'".to_string())?;
+            .xexpect_token(&self, "expected '}'".to_string())?;
         result_expr!(ErrorDecl, visibility, mutability, identifier, sig)
     }
 
@@ -92,12 +94,12 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::OBrace)
-            .xexpect_token(&self.lexer, "expected '{'".to_string())?;
+            .xexpect_token(&self, "expected '{'".to_string())?;
         let decls = self.declarators()?;
         let _ = self
             .lexer
             .collect_if(Token::CBrace)
-            .xexpect_token(&self.lexer, "expected '}'".to_string())?;
+            .xexpect_token(&self, "expected '}'".to_string())?;
         result_expr!(StructDecl, visibility, mutability, identifier, decls, sig)
     }
 
@@ -106,15 +108,15 @@ impl<'s> Parser<'s> {
         let mutability = self
             .lexer
             .collect_of_if(&[Token::Let, Token::Const, Token::Type, Token::Impl])
-            .xexpect_token(&self.lexer, "expected mutability".to_string())?;
+            .xexpect_token(&self, "expected mutability".to_string())?;
         let identifier = self
             .ident()
-            .xexpect_expr(&self.lexer, "expected identifier".to_string())?;
+            .xexpect_expr(&self, "expected identifier".to_string())?;
         let sig = self.opt_signature()?;
         let _ = self
             .lexer
             .collect_if(Token::As)
-            .xexpect_token(&self.lexer, "expected =".to_string())?;
+            .xexpect_token(&self, "expected =".to_string())?;
         if let Some(val) = self.lexer.collect_of_if(&[
             Token::Struct,
             Token::Func,
@@ -133,7 +135,8 @@ impl<'s> Parser<'s> {
                 _ => panic!("type-lang error unreachable code hit"),
             }
         }
-        self.expr()
+        let asgn = self.expr()?;
+        result_expr!(TopDecl, has_pub, mutability, identifier, sig, asgn)
     }
     pub fn _trait(
         &mut self,
@@ -147,7 +150,7 @@ impl<'s> Parser<'s> {
             let _ = self
                 .lexer
                 .collect_if(Token::CParen)
-                .xexpect_token(&self.lexer, "expected ')'".to_string())?;
+                .xexpect_token(&self, "expected ')'".to_string())?;
             let block = self.block()?;
             return result_expr!(
                 TraitDecl,
@@ -166,7 +169,7 @@ impl<'s> Parser<'s> {
             let _ = self
                 .lexer
                 .collect_if(Token::OParen)
-                .xexpect_token(&self.lexer, "expected '('".to_string())?;
+                .xexpect_token(&self, "expected '('".to_string())?;
             let args = self.sig_union()?;
             let mut args_list: Vec<Box<Expr>> = vec![];
             if args.is_some() {
@@ -175,16 +178,16 @@ impl<'s> Parser<'s> {
             while let Some(_comma) = self.lexer.collect_if(Token::Comma) {
                 args_list.push(
                     self.sig_union()
-                        .xexpect_expr(&self.lexer, "expected a type signature".to_string())?,
+                        .xexpect_expr(&self, "expected a type signature".to_string())?,
                 );
             }
             let _ = self
                 .lexer
                 .collect_if(Token::CParen)
-                .xexpect_token(&self.lexer, "expected one of ')' or ','".to_string())?;
+                .xexpect_token(&self, "expected one of ')' or ','".to_string())?;
             let ret_type = self
                 .sig_union()
-                .xexpect_expr(&self.lexer, "expected function return type".to_string())?;
+                .xexpect_expr(&self, "expected function return type".to_string())?;
             return result_expr!(FuncType, Some(args_list), ret_type).xconvert_to_result_opt();
         }
         Ok(None)
@@ -199,15 +202,15 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::OParen)
-            .xexpect_token(&self.lexer, "expected '('".to_string())?;
+            .xexpect_token(&self, "expected '('".to_string())?;
         let args = self.args()?;
         let _ = self.lexer.collect_if(Token::CParen).xexpect_token(
-            &self.lexer,
+            &self,
             "expected one of ')' or ',' <more arguments>".to_string(),
         )?;
         let ret_type = self
             .sig_union()
-            .xexpect_expr(&self.lexer, "expected function return type".to_string())?;
+            .xexpect_expr(&self, "expected function return type".to_string())?;
         let block = self.block()?;
         result_expr!(FuncDecl, visibility, mutability, identifier, args, ret_type, block, sig)
     }
@@ -246,7 +249,7 @@ impl<'s> Parser<'s> {
             while let Some(_comma) = self.lexer.collect_if(Token::Comma) {
                 arg_list.push(
                     self.arg()?
-                        .xexpect_expr(&self.lexer, "expected argument".to_string())?,
+                        .xexpect_expr(&self, "expected argument".to_string())?,
                 );
             }
             return Ok(Some(arg_list));
@@ -267,7 +270,7 @@ impl<'s> Parser<'s> {
             let _ = self
                 .lexer
                 .collect_if(Token::CArray)
-                .xexpect_token(&self.lexer, "expected ']'".to_string())?;
+                .xexpect_token(&self, "expected ']'".to_string())?;
             return result_expr!(ArrayDecl, Some(args)).xconvert_to_result_opt();
         }
         Ok(None)
@@ -302,10 +305,9 @@ impl<'s> Parser<'s> {
             None => match fin? {
                 None => {
                     if err.is_none() {
-                        return Err(make_error(
+                        return Err(self.make_error(
                             "expected at least one of error type, bubbled error '!', or type"
                                 .to_string(),
-                            &self.lexer,
                         ))?;
                     }
                     return result_expr!(Sig, None, err, undef, None).xconvert_to_result_opt();
@@ -335,10 +337,9 @@ impl<'s> Parser<'s> {
         }
         if let Some(fn_typ) = self._fn_type()? {
             if muta.is_some() {
-                return Err(make_error(
-                    "found mutability marker on function type".to_string(),
-                    &self.lexer,
-                ));
+                return Err(
+                    self.make_error("no mutability tokens allowed on functions".to_string())
+                );
             }
             return Ok(Some(fn_typ));
         }
@@ -348,7 +349,7 @@ impl<'s> Parser<'s> {
         if let Some(_) = self.lexer.collect_if(Token::Colon) {
             return self
                 .sig_union()
-                .xexpect_expr(&self.lexer, "expected a type signature".to_string())
+                .xexpect_expr(&self, "expected a type signature".to_string())
                 .xconvert_to_result_opt();
         }
         Ok(None)
@@ -381,12 +382,12 @@ impl<'s> Parser<'s> {
         if let Some(muta) = mutability {
             let identifier = self
                 .ident()
-                .xexpect_expr(&self.lexer, "expected an identifier".to_string())?;
+                .xexpect_expr(&self, "expected an identifier".to_string())?;
             let sig = self.opt_signature()?;
             let _ = self
                 .lexer
                 .collect_of_if(&[Token::As])
-                .xexpect_token(&self.lexer, "expected '='".to_string())?;
+                .xexpect_token(&self, "expected '='".to_string())?;
             return self
                 .expr()
                 .xconvert_to_result_opt()
@@ -402,12 +403,12 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::OParen)
-            .xexpect_token(&self.lexer, "expected '('".to_string())?;
+            .xexpect_token(&self, "expected '('".to_string())?;
         let x = self.or()?;
         let _ = self
             .lexer
             .collect_if(Token::CParen)
-            .xexpect_token(&self.lexer, "expected ')'".to_string())?;
+            .xexpect_token(&self, "expected ')'".to_string())?;
         let blk = self.block()?;
         return bubble_expr!(For, x, blk);
     }
@@ -419,12 +420,12 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::OParen)
-            .xexpect_token(&self.lexer, "expected '('".to_string())?;
+            .xexpect_token(&self, "expected '('".to_string())?;
         let x = self.or()?;
         let _ = self
             .lexer
             .collect_if(Token::CParen)
-            .xexpect_token(&self.lexer, "expected ')'".to_string())?;
+            .xexpect_token(&self, "expected ')'".to_string())?;
         if let Some(_fn) = self.anon_fn()? {
             return bubble_expr!(For, x, _fn);
         }
@@ -434,7 +435,7 @@ impl<'s> Parser<'s> {
     pub fn block(&mut self) -> ResultExpr {
         self.lexer
             .collect_if(Token::OBrace)
-            .xexpect_token(&self.lexer, "expected '{'".to_string())?;
+            .xexpect_token(&self, "expected '{'".to_string())?;
         let mut exprs: Vec<Box<Expr>> = vec![];
         loop {
             match self.inner_decl()? {
@@ -457,7 +458,7 @@ impl<'s> Parser<'s> {
         }
         self.lexer
             .collect_if(Token::CBrace)
-            .xexpect_token(&self.lexer, "expected '}'".to_string())?;
+            .xexpect_token(&self, "expected '}'".to_string())?;
         result_expr!(Block, exprs)
     }
     pub fn expr(&mut self) -> ResultExpr {
@@ -478,7 +479,7 @@ impl<'s> Parser<'s> {
             });
         }
         return mresult.xconvert_to_result(
-            &self.lexer,
+            &self,
             "expected one of: 'match', '{' with block of <exprs>, or a single <expr>".to_string(),
         );
     }
@@ -487,27 +488,27 @@ impl<'s> Parser<'s> {
             let _ = self
                 .lexer
                 .collect_if(Token::OParen)
-                .xexpect_token(&self.lexer, "expected '('".to_string())?;
+                .xexpect_token(&self, "expected '('".to_string())?;
             let expr = self.expr()?;
 
             let _ = self
                 .lexer
                 .collect_if(Token::CParen)
-                .xexpect_token(&self.lexer, "expected ')'".to_string())?;
+                .xexpect_token(&self, "expected ')'".to_string())?;
 
             let _ = self
                 .lexer
                 .collect_if(Token::OBrace)
-                .xexpect_token(&self.lexer, "expected '{'".to_string())?;
+                .xexpect_token(&self, "expected '{'".to_string())?;
 
             let mut arms: Vec<Box<Expr>> = vec![];
             let first_arm = self.arm()?.xexpect_expr(
-                &self.lexer,
+                &self,
                 "expected match arm '<expr> => (<fn> | <block>)'".to_string(),
             )?;
             arms.push(first_arm);
             let second_arm = self.arm()?.xexpect_expr(
-                &self.lexer,
+                &self,
                 "expected at least 2 match arms '<expr> => (<fn> | <block>)'".to_string(),
             )?;
             arms.push(second_arm);
@@ -521,7 +522,7 @@ impl<'s> Parser<'s> {
             let _ = self
                 .lexer
                 .collect_if(Token::CBrace)
-                .xexpect_token(&self.lexer, "expected '}'".to_string())?;
+                .xexpect_token(&self, "expected '}'".to_string())?;
 
             return bubble_expr!(Match, expr, arms);
         }
@@ -538,12 +539,12 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::Arrow)
-            .xexpect_token(&self.lexer, "expected '=>'".to_string())?;
+            .xexpect_token(self, "expected '=>'".to_string())?;
         if let Some(blk) = self.ident() {
             return result_expr!(Arm, or, blk).xconvert_to_result_opt();
         }
         let anon = self.anon_fn()?.xconvert_to_result(
-            &self.lexer,
+            self,
             "expected identifier or anonymous function'".to_string(),
         )?;
         result_expr!(Arm, or, anon).xconvert_to_result_opt()
@@ -622,15 +623,19 @@ impl<'s> Parser<'s> {
         })
     }
     pub fn unary(&mut self) -> ResultExpr {
-        let lexeme = self
-            .lexer
-            .collect_of_if(&[Token::And, Token::Mul, Token::NotLog, Token::Sub]);
+        let lexeme = self.lexer.collect_of_if(&[
+            Token::And,
+            Token::Mul,
+            Token::NotLog,
+            Token::Sub,
+            Token::WCopy,
+        ]);
         if let Some(x) = lexeme {
             let expr = self.unary();
             return expr.xresult_or(|result| result_expr!(UnOp, x, result));
         }
         self.access().xexpect_expr(
-                &self.lexer,
+                &self,
                 "rest, number, string, self, true, false, undefined, never, array, an expression, or identifier expected"
                     .to_string())
     }
@@ -649,7 +654,7 @@ impl<'s> Parser<'s> {
                 Token::Dot => {
                     let ident = self
                         .ident()
-                        .xconvert_to_result(&self.lexer, "expected identifier".to_string())?;
+                        .xconvert_to_result(&self, "expected identifier".to_string())?;
 
                     self.resolve_access(expr!(PropAccess, prev, ident))
                 }
@@ -669,7 +674,7 @@ impl<'s> Parser<'s> {
                         let _cparen = self
                             .lexer
                             .collect_if(Token::CParen)
-                            .xexpect_token(&self.lexer, "expected ')'".to_string())?;
+                            .xexpect_token(&self, "expected ')'".to_string())?;
                         return self.resolve_access(expr!(Invoke, prev, Some(arg_list)));
                     }
                     return self.resolve_access(expr!(Invoke, prev, None));
@@ -678,22 +683,22 @@ impl<'s> Parser<'s> {
                     if let None = self.lexer.collect_if(Token::CBrace) {
                         let ident = self
                             .ident()
-                            .xexpect_expr(&self.lexer, "expected identifier".to_string())?;
+                            .xexpect_expr(&self, "expected identifier".to_string())?;
                         let mut props: Vec<Box<Expr>> = vec![];
                         let _ = self
                             .lexer
                             .collect_if(Token::Colon)
-                            .xexpect_token(&self.lexer, "expected ':'".to_string())?;
+                            .xexpect_token(&self, "expected ':'".to_string())?;
                         let expr = self.or()?;
                         props.push(expr!(PropAssignment, ident, expr));
                         while let Some(_comma) = self.lexer.collect_if(Token::Comma) {
                             let id = self
                                 .ident()
-                                .xexpect_expr(&self.lexer, "expected identifier".to_string())?;
+                                .xexpect_expr(&self, "expected identifier".to_string())?;
                             let _ = self
                                 .lexer
                                 .collect_if(Token::Colon)
-                                .xexpect_token(&self.lexer, "expected ':'".to_string())?;
+                                .xexpect_token(&self, "expected ':'".to_string())?;
                             let ex = self.or()?;
                             props.push(expr!(PropAssignment, id, ex));
                         }
@@ -701,7 +706,7 @@ impl<'s> Parser<'s> {
                         let _ = self
                             .lexer
                             .collect_if(Token::CBrace)
-                            .xexpect_token(&self.lexer, "expected '}'".to_string())?;
+                            .xexpect_token(&self, "expected '}'".to_string())?;
                         return self.resolve_access(expr!(PropAssignments, prev, Some(props)));
                     }
                     return self.resolve_access(expr!(PropAssignments, prev, None));
@@ -747,7 +752,7 @@ impl<'s> Parser<'s> {
         opt_expr!(Rest, lexeme)
     }
     pub fn num(&mut self) -> OptExpr {
-        let lexeme = self.lexer.collect_if(Token::Num)?;
+        let lexeme = self.lexer.collect_of_if(&[Token::Num, Token::Decimal])?;
         opt_expr!(Number, lexeme)
     }
     pub fn ident(&mut self) -> OptExpr {
@@ -779,7 +784,7 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::CArray)
-            .xexpect_token(&self.lexer, "expected ']'".to_string())?;
+            .xexpect_token(&self, "expected ']'".to_string())?;
 
         Ok(expr)
     }
@@ -788,15 +793,15 @@ impl<'s> Parser<'s> {
             let _ = self
                 .lexer
                 .collect_if(Token::OParen)
-                .xexpect_token(&self.lexer, "expected one of '('".to_string())?;
+                .xexpect_token(&self, "expected one of '('".to_string())?;
             let args = self.args()?;
             let _ = self
                 .lexer
                 .collect_if(Token::CParen)
-                .xexpect_token(&self.lexer, "expected one of ')'".to_string())?;
+                .xexpect_token(&self, "expected one of ')'".to_string())?;
             let ret_type = self
                 .sig_union()
-                .xexpect_expr(&self.lexer, "expected function return type".to_string())?;
+                .xexpect_expr(&self, "expected function return type".to_string())?;
             let block = self.block()?;
             return result_expr!(AnonFuncDecl, args, ret_type, block).xconvert_to_result_opt();
         }
@@ -811,7 +816,7 @@ impl<'s> Parser<'s> {
         let _ = self
             .lexer
             .collect_if(Token::CParen)
-            .xexpect_token(&self.lexer, "expected ')'".to_string())?;
+            .xexpect_token(&self, "expected ')'".to_string())?;
         Ok(Some(expr))
     }
     pub fn arr_type(&mut self) -> ResultOptExpr {
@@ -823,20 +828,20 @@ impl<'s> Parser<'s> {
             if let Some(_) = self.lexer.collect_if(Token::SColon) {
                 let size = self
                     .num()
-                    .xconvert_to_result(&self.lexer, "expected comptime size".to_string())?;
+                    .xconvert_to_result(&self, "expected comptime size".to_string())?;
                 let _ = self
                     .lexer
                     .collect_if(Token::CArray)
-                    .xexpect_token(&self.lexer, "expected ']'".to_string());
+                    .xexpect_token(&self, "expected ']'".to_string());
                 return bubble_expr!(ArrayType, local, Some(size));
             }
             let _ = self
                 .lexer
                 .collect_if(Token::CArray)
-                .xexpect_token(&self.lexer, "expected ']'".to_string());
+                .xexpect_token(&self, "expected ']'".to_string());
             return bubble_expr!(ArrayType, local, None);
         }
-        Err(make_error("expected array type".to_string(), &self.lexer))
+        Err(self.make_error("expected array type".to_string()))
     }
     pub fn val_type(&mut self) -> OptExpr {
         let lexeme = self.lexer.collect_of_if(&[
@@ -871,14 +876,18 @@ impl<'s> Parser<'s> {
         ]);
         return lexeme.xconvert_expr(|span| expr!(ValueType, span));
     }
+    fn make_error(&self, title: String) -> ParserError {
+        let x = CodeLocation::new_lexer_stop_point(&self.lexer.lexer);
+        return ParserError::new(title, x.code, x.line, x.col, x.val);
+    }
 }
 
 trait ExpectToken {
-    fn xexpect_token(self, lexer: &TLexer, title: String) -> Result<Lexeme>;
+    fn xexpect_token(self, parser: &Parser, title: String) -> Result<Lexeme>;
 }
 
 trait ExpectExpr {
-    fn xexpect_expr(self, lexer: &TLexer, title: String) -> ResultExpr;
+    fn xexpect_expr(self, parser: &Parser, title: String) -> ResultExpr;
 }
 
 trait OptOr {
@@ -898,7 +907,7 @@ trait IfNoneDo {
 }
 
 trait ConvertToResult {
-    fn xconvert_to_result(self, lexer: &TLexer, title: String) -> ResultExpr;
+    fn xconvert_to_result(self, parser: &Parser, title: String) -> ResultExpr;
 }
 
 trait ConvertToResultOpt {
@@ -960,48 +969,48 @@ impl ConvertOptExpr for Option<Lexeme> {
 }
 
 impl ExpectToken for Option<Lexeme> {
-    fn xexpect_token(self, lexer: &TLexer, title: String) -> Result<Lexeme> {
+    fn xexpect_token(self, parser: &Parser, title: String) -> Result<Lexeme> {
         match self {
-            None => Err(make_error(title, lexer)),
+            None => Err(parser.make_error(title)),
             Some(val) => Ok(val),
         }
     }
 }
 
 impl ExpectExpr for ResultOptExpr {
-    fn xexpect_expr(self, lexer: &TLexer, title: String) -> ResultExpr {
+    fn xexpect_expr(self, parser: &Parser, title: String) -> ResultExpr {
         match self {
             Err(err) => Err(err),
             Ok(Some(inner)) => Ok(inner),
-            Ok(None) => Err(make_error(title, lexer)),
+            Ok(None) => Err(parser.make_error(title)),
         }
     }
 }
 
 impl ExpectExpr for OptExpr {
-    fn xexpect_expr(self, lexer: &TLexer, title: String) -> ResultExpr {
+    fn xexpect_expr(self, parser: &Parser, title: String) -> ResultExpr {
         match self {
-            None => Err(make_error(title, lexer)),
+            None => Err(parser.make_error(title)),
             Some(val) => Ok(val),
         }
     }
 }
 
 impl ConvertToResult for OptExpr {
-    fn xconvert_to_result(self, lexer: &TLexer, title: String) -> ResultExpr {
+    fn xconvert_to_result(self, parser: &Parser, title: String) -> ResultExpr {
         match self {
-            None => Err(make_error(title, lexer)),
+            None => Err(parser.make_error(title)),
             Some(val) => Ok(val),
         }
     }
 }
 
 impl ConvertToResult for ResultOptExpr {
-    fn xconvert_to_result(self, lexer: &TLexer, title: String) -> ResultExpr {
+    fn xconvert_to_result(self, parser: &Parser, title: String) -> ResultExpr {
         match self {
             Err(err) => Err(err),
             Ok(Some(val)) => Ok(val),
-            Ok(None) => Err(make_error(title, lexer)),
+            Ok(None) => Err(parser.make_error(title)),
         }
     }
 }
@@ -1013,11 +1022,6 @@ impl ConvertToResultOpt for ResultExpr {
             Ok(val) => Ok(Some(val)),
         }
     }
-}
-
-fn make_error(title: String, lexer: &TLexer) -> ParserError {
-    let x = CodeLocation::new(&lexer.lexer);
-    return ParserError::new(title, x.code, x.line, x.col, x.val);
 }
 
 #[cfg(test)]

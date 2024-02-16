@@ -1,8 +1,10 @@
 use lexer::TLexer;
 use linker::link;
+use linter::LintSource;
 use parser::Parser;
 use std::fs::File;
 use std::io::Read;
+
 use std::path::Path;
 use std::process::Command;
 
@@ -45,4 +47,13 @@ fn main() {
             std::process::exit(1);
         }
     }
+    //println!("[run] full linting");
+    //let mut linter = LintSource::new(&contents);
+    //let borrow = res.unwrap();
+    //let result = linter.type_check(&mut borrow.to_owned());
+
+    //match result {
+    //    Ok(_) => println!("  [ok] full lint success!"),
+    //    Err(x) => println!("{}", x),
+    //}
 }

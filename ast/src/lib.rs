@@ -206,6 +206,33 @@ impl Reassignment {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct TopDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub typ: Option<Box<Expr>>,
+    pub expr: Box<Expr>,
+}
+
+impl TopDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        typ: Option<Box<Expr>>,
+        expr: Box<Expr>,
+    ) -> Self {
+        TopDecl {
+            visibility,
+            mutability,
+            identifier,
+            typ,
+            expr,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct InnerDecl {
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
@@ -225,30 +252,6 @@ impl InnerDecl {
             identifier,
             typ,
             expr,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct UnionDecl {
-    pub visibility: Option<Lexeme>,
-    pub mutability: Lexeme,
-    pub identifier: Box<Expr>,
-    pub declarators: Option<Vec<Box<Expr>>>,
-}
-
-impl UnionDecl {
-    pub fn new(
-        visibility: Option<Lexeme>,
-        mutability: Lexeme,
-        identifier: Box<Expr>,
-        declarators: Option<Vec<Box<Expr>>>,
-    ) -> Self {
-        UnionDecl {
-            visibility,
-            mutability,
-            identifier,
-            declarators,
         }
     }
 }
@@ -326,36 +329,6 @@ impl StructDecl {
             mutability,
             identifier,
             declarators,
-            sig,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct MacroDecl {
-    pub visibility: Option<Lexeme>,
-    pub mutability: Lexeme,
-    pub identifier: Box<Expr>,
-    pub args: Option<Vec<Box<Expr>>>,
-    pub block: Box<Expr>,
-    pub sig: Option<Box<Expr>>,
-}
-
-impl MacroDecl {
-    pub fn new(
-        visibility: Option<Lexeme>,
-        mutability: Lexeme,
-        identifier: Box<Expr>,
-        args: Option<Vec<Box<Expr>>>,
-        block: Box<Expr>,
-        sig: Option<Box<Expr>>,
-    ) -> Self {
-        MacroDecl {
-            visibility,
-            mutability,
-            identifier,
-            args,
-            block,
             sig,
         }
     }
@@ -451,28 +424,6 @@ impl FuncDecl {
             block,
             sig,
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ArgsDecl {
-    pub args: Vec<Box<Expr>>,
-}
-
-impl ArgsDecl {
-    pub fn new(args: Vec<Box<Expr>>) -> Self {
-        ArgsDecl { args }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct TypeSimple {
-    pub span: Lexeme,
-}
-
-impl TypeSimple {
-    pub fn new(span: Lexeme) -> Self {
-        TypeSimple { span }
     }
 }
 
@@ -599,6 +550,7 @@ impl ValueType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sig {
+    // look at parser to see how this is implemented
     pub left_most_ident: Option<Box<Expr>>,
     pub err: Option<Lexeme>,
     pub undef: Option<Lexeme>,
@@ -679,25 +631,21 @@ pub enum Expr {
     ArgDef(ArgDef),
     BoolValue(BoolValue),
     Symbol(Symbol),
-    TypeSimple(TypeSimple),
-    ArgsDecl(ArgsDecl),
     AnonFuncDecl(AnonFuncDecl),
     FuncDecl(FuncDecl),
     FuncType(FuncType),
     TraitDecl(TraitDecl),
-    MacroDecl(MacroDecl),
-    UnionDecl(UnionDecl),
     StructDecl(StructDecl),
     ErrorDecl(ErrorDecl),
     TagDecl(TagDecl),
     InnerDecl(InnerDecl),
+    TopDecl(TopDecl),
     Reassignment(Reassignment),
     Import(Import),
     UndefinedValue(UndefinedValue),
     SelfValue(SelfValue),
     Never(Never),
     ArrayAccess(ArrayAccess),
-    StructureAccess(StructureAccess),
     PropAccess(PropAccess),
     Invoke(Invoke),
     ErrBubble(ErrBubble),
@@ -705,6 +653,12 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn into_file_all(&self) -> FileAll {
+        match self {
+            Expr::FileAll(x) => x.to_owned(),
+            _ => panic!("issue no symbol found"),
+        }
+    }
     pub fn into_symbol(&self) -> Symbol {
         match self {
             Expr::Symbol(x) => x.to_owned(),
