@@ -428,28 +428,6 @@ impl FuncDecl {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ArgsDecl {
-    pub args: Vec<Box<Expr>>,
-}
-
-impl ArgsDecl {
-    pub fn new(args: Vec<Box<Expr>>) -> Self {
-        ArgsDecl { args }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct TypeSimple {
-    pub span: Lexeme,
-}
-
-impl TypeSimple {
-    pub fn new(span: Lexeme) -> Self {
-        TypeSimple { span }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct Block {
     pub exprs: Vec<Box<Expr>>,
 }
@@ -572,6 +550,7 @@ impl ValueType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sig {
+    // look at parser to see how this is implemented
     pub left_most_ident: Option<Box<Expr>>,
     pub err: Option<Lexeme>,
     pub undef: Option<Lexeme>,
@@ -652,8 +631,6 @@ pub enum Expr {
     ArgDef(ArgDef),
     BoolValue(BoolValue),
     Symbol(Symbol),
-    TypeSimple(TypeSimple),
-    ArgsDecl(ArgsDecl),
     AnonFuncDecl(AnonFuncDecl),
     FuncDecl(FuncDecl),
     FuncType(FuncType),

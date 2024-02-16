@@ -1,15 +1,19 @@
 use std::collections::BTreeMap;
-use types::*;
+//use types::*;
+
+//todo:: this is for when we are using the TypeTree
+//pub struct SymTable {
+//    pub parent: Box<SymTable>,
+//    pub table: BTreeMap<String, Box<TypeTree>>,
+//}
 
 pub struct SymTable {
-    pub parent: Box<SymTable>,
-    pub table: BTreeMap<String, Box<TypeTree>>,
+    pub table: BTreeMap<String, u32>,
 }
 
 impl SymTable {
-    pub fn new(parent: Box<SymTable>) -> Self {
+    pub fn new() -> Self {
         SymTable {
-            parent,
             table: BTreeMap::new(),
         }
     }

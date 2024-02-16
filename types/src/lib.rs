@@ -6,7 +6,8 @@ pub struct FileContainer {
 
 #[derive(Debug)]
 pub struct ErrorInfo {
-    pub name: String,
+    pub message: String,
+    pub code: usize,
 }
 
 #[derive(Debug)]
@@ -59,8 +60,14 @@ pub struct UnaryOp {
 }
 
 #[derive(Debug)]
+pub struct NoOp {
+    pub curried: Box<Type>,
+}
+
+#[derive(Debug)]
 pub struct Invoke {
     pub args: Vec<Box<TypeTree>>,
+    pub args_curried: Vec<Box<Type>>,
     pub ident: String,
     pub curried: Box<Type>,
 }
@@ -93,6 +100,7 @@ pub struct ArrayAccess {
 
 #[derive(Debug)]
 pub struct StructInitialize {
+    pub name: String,
     pub idents: Vec<String>,
     pub vals: Vec<Box<TypeTree>>,
     pub curried: Box<Type>,
@@ -100,13 +108,27 @@ pub struct StructInitialize {
 
 #[derive(Debug)]
 pub struct ArrayInitialize {
+    pub name: String,
     pub vals: Vec<Box<TypeTree>>,
     pub curried: Box<Type>,
 }
 
 // todo:: import typetree
 // todo:: traitinfo typetree
-// todo:: start back up on AnonFuncDecl
+
+#[derive(Debug)]
+pub struct FunctionInitialize {
+    pub name: String,
+    pub args: Vec<Box<TypeTree>>,
+    pub args_curried: Vec<Box<Type>>,
+    pub block: Box<TypeTree>,
+}
+
+#[derive(Debug)]
+pub struct Block {
+    pub exprs: Vec<Box<TypeTree>>,
+    pub exprs_curried: Vec<Box<Type>>,
+}
 
 #[derive(Debug)]
 pub enum TypeTree {
@@ -117,6 +139,10 @@ pub enum TypeTree {
     // flow
     For(ForOp),
     Match(MatchOp),
+    Return(UnaryOp),
+    ReturnVoid(NoOp),
+    Never(NoOp),
+    Break(UnaryOp),
     // binops
     Plus(BinaryOp),
     Minus(BinaryOp),
@@ -131,14 +157,20 @@ pub enum TypeTree {
     Copy(UnaryOp),
     BubbleUndef(UnaryOp),
     BubbleError(UnaryOp),
-    // access
-    PropAcces(PropAccess),
+    SelfRef(NoOp),
+    // values
+    PropAccess(PropAccess),
+    RestAccess(NoOp),
+    UndefinedValue(NoOp),
+    BoolValue(NoOp),
     // data types
     StructInit(StructInitialize),
     ArrayInit(ArrayInitialize),
-    ArrayInit(ArrayInitialize),
+    FuncInit(FunctionInitialize),
+    AnonFuncInit(FunctionInitialize),
     ConstInit(Initialization),
     MutInit(Initialization),
+    StringInit(ArrayInitialize),
     // reassignments
     As(Reassignment),
     PlusAs(Reassignment),
@@ -168,11 +200,17 @@ pub enum Type {
     F64,
     Unknown,
     Undefined,
+    Void,
+    Never,
+    Bool,
+    Char,
+    String,
     Frame(Vec<Box<Type>>),
     Error(Box<Type>),
     Struct(Vec<Box<Type>>),
     Tag(Vec<Box<Type>>),
     Function(Vec<Box<Type>>, Box<Type>),
     Custom(String),
+    Array(Box<Type>),
     Multi(Vec<Box<Type>>),
 }

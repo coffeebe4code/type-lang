@@ -38,12 +38,12 @@ impl IRSource {
         let result = self.add_var();
         builder.declare_var(result, I64);
         let temp = self.recurse(&op.expr, builder).unwrap();
-        // todo:: optimization: not all paths need declare var if value is only ever read. or something similar
+        // todo:: optimization: not all paths need declare var if value is only ever read. or something similar, this statement is in the same ballpark, but might not be totally correct
         let x = builder.use_var(temp);
 
         self.scope.table.insert(
             op.identifier.into_symbol().val.slice.to_string(),
-            temp.as_u32() as usize,
+            temp.as_u32(),
         );
         builder.def_var(temp, x);
         Ok(temp)
@@ -96,7 +96,7 @@ impl IRSource {
     }
     pub fn handle_sym(&self, op: &Symbol) -> ResultFir<Variable> {
         Ok(Variable::from_u32(
-            *self.scope.table.get(&op.val.slice).unwrap() as u32,
+            *self.scope.table.get(&op.val.slice).unwrap(),
         ))
     }
     pub fn handle_num(
@@ -238,7 +238,7 @@ mod tests {
             ),
             None,
         );
-        let mut fir = IRSource::new(0, SymTable::new("test".to_string()));
+        let mut fir = IRSource::new(0, SymTable::new());
         let result = fir.begin(func_def);
         /*
          * function u0:0() -> i64 system_v

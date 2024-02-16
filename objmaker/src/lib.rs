@@ -17,7 +17,7 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     let lex = TLexer::new(&contents);
     let mut parse = Parser::new(lex);
     let ast_parsed = parse.top_decl().unwrap();
-    let mut ir = IRSource::new(0, SymTable::new("one".to_string()));
+    let mut ir = IRSource::new(0, SymTable::new());
     match *ast_parsed {
         Expr::FuncDecl(val) => {
             let result = ir.begin(val);
@@ -45,7 +45,7 @@ pub fn from_file(input_path: &PathBuf) -> () {
     let lex = TLexer::new(&contents);
     let mut parse = Parser::new(lex);
     let ast_parsed = parse.top_decl().unwrap();
-    let mut ir = IRSource::new(0, SymTable::new("file".to_string()));
+    let mut ir = IRSource::new(0, SymTable::new());
     match *ast_parsed {
         Expr::FuncDecl(val) => {
             let result = ir.begin(val);
