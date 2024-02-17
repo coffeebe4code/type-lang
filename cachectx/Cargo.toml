@@ -9,3 +9,7 @@ edition = "2021"
 lexer = { path = "../lexer" }
 parser = { path = "../parser" }
 ast = { path = "../ast" }
+symtable = { path = "../symtable" }
+types = { path = "../types" }
+linter = { path = "../linter" }
+ir = { path = "../ir" }
