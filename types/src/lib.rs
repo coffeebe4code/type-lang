@@ -1,7 +1,7 @@
 #[derive(Debug)]
 pub struct FileContainer {
     pub top_items: Vec<Box<TypeTree>>,
-    pub curried: Vec<Box<Type>>,
+    pub curried: Vec<Type>,
 }
 
 #[derive(Debug)]
@@ -13,36 +13,36 @@ pub struct ErrorInfo {
 #[derive(Debug)]
 pub struct TagInfo {
     pub props: Vec<String>,
-    pub types: Vec<Box<Type>>,
-    pub curried: Box<Type>,
+    pub types: Vec<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct StructInfo {
     pub props: Vec<String>,
-    pub types: Vec<Box<Type>>,
-    pub curried: Box<Type>,
+    pub types: Vec<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct ArgInfo {
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct MatchOp {
     pub expr: Box<TypeTree>,
-    pub curried: Box<Type>,
+    pub curried: Type,
     pub arms_left: Vec<Box<TypeTree>>,
-    pub curried_left: Vec<Box<Type>>,
+    pub curried_left: Vec<Type>,
     pub arms_right: Vec<Box<TypeTree>>,
-    pub curried_right: Vec<Box<Type>>,
+    pub curried_right: Vec<Type>,
 }
 
 #[derive(Debug)]
 pub struct ForOp {
     pub in_expr: Box<TypeTree>,
-    pub in_curried: Box<Type>,
+    pub in_curried: Type,
     pub body: Box<TypeTree>,
 }
 
@@ -50,26 +50,26 @@ pub struct ForOp {
 pub struct BinaryOp {
     pub left: Box<TypeTree>,
     pub right: Box<TypeTree>,
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct UnaryOp {
     pub val: Box<TypeTree>,
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct NoOp {
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct Invoke {
     pub args: Vec<Box<TypeTree>>,
-    pub args_curried: Vec<Box<Type>>,
+    pub args_curried: Vec<Type>,
     pub ident: String,
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
@@ -88,14 +88,14 @@ pub struct Reassignment {
 pub struct PropAccess {
     pub prev: Box<TypeTree>,
     pub ident: String,
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct ArrayAccess {
     pub prev: Box<TypeTree>,
     pub inner: Box<TypeTree>,
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
@@ -103,14 +103,14 @@ pub struct StructInitialize {
     pub name: String,
     pub idents: Vec<String>,
     pub vals: Vec<Box<TypeTree>>,
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct ArrayInitialize {
     pub name: String,
     pub vals: Vec<Box<TypeTree>>,
-    pub curried: Box<Type>,
+    pub curried: Type,
 }
 
 // todo:: import typetree
@@ -120,14 +120,14 @@ pub struct ArrayInitialize {
 pub struct FunctionInitialize {
     pub name: String,
     pub args: Vec<Box<TypeTree>>,
-    pub args_curried: Vec<Box<Type>>,
+    pub args_curried: Vec<Type>,
     pub block: Box<TypeTree>,
 }
 
 #[derive(Debug)]
 pub struct Block {
     pub exprs: Vec<Box<TypeTree>>,
-    pub exprs_curried: Vec<Box<Type>>,
+    pub exprs_curried: Vec<Type>,
 }
 
 #[derive(Debug)]
@@ -157,6 +157,7 @@ pub enum TypeTree {
     Copy(UnaryOp),
     BubbleUndef(UnaryOp),
     BubbleError(UnaryOp),
+    Negate(UnaryOp),
     SelfRef(NoOp),
     // values
     PropAccess(PropAccess),
@@ -191,7 +192,7 @@ pub enum TypeTree {
     F64(f64),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     I64,
     I32,
@@ -205,12 +206,12 @@ pub enum Type {
     Bool,
     Char,
     String,
-    Frame(Vec<Box<Type>>),
+    Frame(Vec<Type>),
     Error(Box<Type>),
-    Struct(Vec<Box<Type>>),
-    Tag(Vec<Box<Type>>),
-    Function(Vec<Box<Type>>, Box<Type>),
+    Struct(Vec<Type>),
+    Tag(Vec<Type>),
+    Function(Vec<Type>, Box<Type>),
     Custom(String),
     Array(Box<Type>),
-    Multi(Vec<Box<Type>>),
+    Multi(Vec<Type>),
 }
