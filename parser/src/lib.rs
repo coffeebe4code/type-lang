@@ -629,6 +629,7 @@ impl<'s> Parser<'s> {
             Token::NotLog,
             Token::Sub,
             Token::WCopy,
+            Token::WClone,
         ]);
         if let Some(x) = lexeme {
             let expr = self.unary();

@@ -92,6 +92,12 @@ pub struct PropAccess {
 }
 
 #[derive(Debug)]
+pub struct SymbolAccess {
+    pub ident: String,
+    pub curried: Type,
+}
+
+#[derive(Debug)]
 pub struct ArrayAccess {
     pub prev: Box<TypeTree>,
     pub inner: Box<TypeTree>,
@@ -143,6 +149,7 @@ pub enum TypeTree {
     ReturnVoid(NoOp),
     Never(NoOp),
     Break(UnaryOp),
+    BreakVoid(NoOp),
     // binops
     Plus(BinaryOp),
     Minus(BinaryOp),
@@ -151,19 +158,20 @@ pub enum TypeTree {
     Modulo(BinaryOp),
     Range(BinaryOp),
     CastAs(BinaryOp),
+    BubbleUndef(BinaryOp),
+    BubbleError(BinaryOp),
     // unops
-    MutRef(UnaryOp),
-    ConstRef(UnaryOp),
+    ReadBorrow(UnaryOp),
+    MutBorrow(UnaryOp),
     Copy(UnaryOp),
-    BubbleUndef(UnaryOp),
-    BubbleError(UnaryOp),
+    Clone(UnaryOp),
     Negate(UnaryOp),
-    SelfRef(NoOp),
+    Not(UnaryOp),
     // values
     PropAccess(PropAccess),
+    SymbolAccess(PropAccess),
     RestAccess(NoOp),
-    UndefinedValue(NoOp),
-    BoolValue(NoOp),
+    SelfRef(NoOp),
     // data types
     StructInit(StructInitialize),
     ArrayInit(ArrayInitialize),
@@ -185,11 +193,74 @@ pub enum TypeTree {
     LShiftAs(Reassignment),
     RShiftAs(Reassignment),
     // value types
+    UndefinedValue(),
+    BoolValue(bool),
     I64(i64),
     I32(i32),
     U64(u64),
     U32(u32),
     F64(f64),
+}
+
+impl TypeTree {
+    pub fn whatami(&self) -> &'static str {
+        match self {
+            TypeTree::StructInfo(_) => "struct declaration",
+            TypeTree::TagInfo(_) => "tag declaration",
+            TypeTree::ErrorInfo(_) => "error declaration",
+            TypeTree::For(_) => "for loop",
+            TypeTree::Match(_) => "match",
+            TypeTree::Return(_) => "return expression",
+            TypeTree::ReturnVoid(_) => "return",
+            TypeTree::Never(_) => "never",
+            TypeTree::Break(_) => "break expression",
+            TypeTree::BreakVoid(_) => "break",
+            TypeTree::Plus(_) => "addition",
+            TypeTree::Minus(_) => "subtraction",
+            TypeTree::Divide(_) => "division",
+            TypeTree::Multiply(_) => "multiplication",
+            TypeTree::Modulo(_) => "modulus",
+            TypeTree::Range(_) => "range",
+            TypeTree::CastAs(_) => "cast",
+            TypeTree::BubbleUndef(_) => "undefinded bubble",
+            TypeTree::BubbleError(_) => "error bubble",
+            TypeTree::ReadBorrow(_) => "read borrow",
+            TypeTree::MutBorrow(_) => "mutable borrow",
+            TypeTree::Copy(_) => "unsized copy",
+            TypeTree::Clone(_) => "sized clone",
+            TypeTree::Negate(_) => "negation",
+            TypeTree::Not(_) => "boolean negatation",
+            TypeTree::PropAccess(_) => "property access",
+            TypeTree::SymbolAccess(_) => "symbol reference",
+            TypeTree::RestAccess(_) => "rest access",
+            TypeTree::SelfRef(_) => "self reference",
+            TypeTree::StructInit(_) => "struct initialization",
+            TypeTree::ArrayInit(_) => "array initialization",
+            TypeTree::FuncInit(_) => "function initialization",
+            TypeTree::AnonFuncInit(_) => "anonymous function initialization",
+            TypeTree::ConstInit(_) => "constant initialization",
+            TypeTree::MutInit(_) => "mutable initialization",
+            TypeTree::StringInit(_) => "string initialization",
+            TypeTree::As(_) => "reassignment",
+            TypeTree::PlusAs(_) => "addition reassignment",
+            TypeTree::MinusAs(_) => "subtraction reassignment",
+            TypeTree::MultiplyAs(_) => "multiplication reassignment",
+            TypeTree::DivideAs(_) => "division reassignment",
+            TypeTree::ModAs(_) => "modulus reassignemnt",
+            TypeTree::OrAs(_) => "or reassignment",
+            TypeTree::NotAs(_) => "logical not reassignment",
+            TypeTree::XorAs(_) => "xor reassignment",
+            TypeTree::LShiftAs(_) => "left shift reassignment",
+            TypeTree::RShiftAs(_) => "right shift reassignment",
+            TypeTree::UndefinedValue() => "undefined",
+            TypeTree::BoolValue(_) => "boolean value",
+            TypeTree::I64(_) => "integer 64 bit",
+            TypeTree::I32(_) => "integer 32 bit",
+            TypeTree::U64(_) => "unsigned integer 64 bit",
+            TypeTree::U32(_) => "unsigned integer 32 bit",
+            TypeTree::F64(_) => "floating point double precision 64 bit",
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -206,6 +277,8 @@ pub enum Type {
     Bool,
     Char,
     String,
+    MutBorrow(Box<Type>),
+    ReadBorrow(Box<Type>),
     Frame(Vec<Type>),
     Error(Box<Type>),
     Struct(Vec<Type>),
@@ -214,4 +287,11 @@ pub enum Type {
     Custom(String),
     Array(Box<Type>),
     Multi(Vec<Type>),
+}
+
+#[macro_export]
+macro_rules! ok_tree {
+    ($val:ident, $op:ident, $curried:ident) => {
+        Ok((Box::new(TypeTree::$val($op)), $curried))
+    };
 }
