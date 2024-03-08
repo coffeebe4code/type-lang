@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 use types::*;
 
-pub struct SymTable<'i> {
-    pub parent: Option<Box<SymTable<'i>>>,
-    pub table: BTreeMap<String, &'i TypeTree>,
+pub struct SymTable<'tt> {
+    pub parent: Option<Box<SymTable<'tt>>>,
+    pub table: BTreeMap<String, &'tt TypeTree<'tt>>,
 }
 
-impl<'i> SymTable<'i> {
-    pub fn new(parent: Option<Box<SymTable<'i>>>) -> Self {
+impl<'tt> SymTable<'tt> {
+    pub fn new(parent: Option<Box<SymTable<'tt>>>) -> Self {
         SymTable {
             parent,
             table: BTreeMap::new(),

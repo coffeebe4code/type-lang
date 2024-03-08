@@ -1,6 +1,6 @@
 #[derive(Debug)]
-pub struct FileContainer {
-    pub top_items: Vec<Box<TypeTree>>,
+pub struct FileContainer<'t> {
+    pub top_items: &'t [TypeTree<'t>],
     pub curried: Vec<Type>,
 }
 
@@ -30,32 +30,32 @@ pub struct ArgInfo {
 }
 
 #[derive(Debug)]
-pub struct MatchOp {
-    pub expr: Box<TypeTree>,
+pub struct MatchOp<'t> {
+    pub expr: &'t TypeTree<'t>,
     pub curried: Type,
-    pub arms_left: Vec<Box<TypeTree>>,
+    pub arms_left: &'t [TypeTree<'t>],
     pub curried_left: Vec<Type>,
-    pub arms_right: Vec<Box<TypeTree>>,
+    pub arms_right: &'t [TypeTree<'t>],
     pub curried_right: Vec<Type>,
 }
 
 #[derive(Debug)]
-pub struct ForOp {
-    pub in_expr: Box<TypeTree>,
+pub struct ForOp<'t> {
+    pub in_expr: &'t TypeTree<'t>,
     pub in_curried: Type,
-    pub body: Box<TypeTree>,
+    pub body: &'t TypeTree<'t>,
 }
 
 #[derive(Debug)]
-pub struct BinaryOp {
-    pub left: Box<TypeTree>,
-    pub right: Box<TypeTree>,
+pub struct BinaryOp<'t> {
+    pub left: &'t TypeTree<'t>,
+    pub right: &'t TypeTree<'t>,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct UnaryOp {
-    pub val: Box<TypeTree>,
+pub struct UnaryOp<'t> {
+    pub val: &'t TypeTree<'t>,
     pub curried: Type,
 }
 
@@ -65,29 +65,29 @@ pub struct NoOp {
 }
 
 #[derive(Debug)]
-pub struct Invoke {
-    pub args: Vec<Box<TypeTree>>,
+pub struct Invoke<'t> {
+    pub args: &'t [TypeTree<'t>],
     pub args_curried: Vec<Type>,
     pub ident: String,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct Initialization {
+pub struct Initialization<'t> {
     pub left: String,
-    pub right: Box<TypeTree>,
+    pub right: &'t TypeTree<'t>,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct Reassignment {
-    pub left: Box<TypeTree>,
-    pub right: Box<TypeTree>,
+pub struct Reassignment<'t> {
+    pub left: &'t TypeTree<'t>,
+    pub right: &'t TypeTree<'t>,
 }
 
 #[derive(Debug)]
-pub struct PropAccess {
-    pub prev: Box<TypeTree>,
+pub struct PropAccess<'t> {
+    pub prev: &'t TypeTree<'t>,
     pub ident: String,
     pub curried: Type,
 }
@@ -99,24 +99,24 @@ pub struct SymbolAccess {
 }
 
 #[derive(Debug)]
-pub struct ArrayAccess {
-    pub prev: Box<TypeTree>,
-    pub inner: Box<TypeTree>,
+pub struct ArrayAccess<'t> {
+    pub prev: &'t TypeTree<'t>,
+    pub inner: &'t TypeTree<'t>,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct StructInitialize {
+pub struct StructInitialize<'t> {
     pub name: String,
     pub idents: Vec<String>,
-    pub vals: Vec<Box<TypeTree>>,
+    pub vals: &'t [TypeTree<'t>],
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct ArrayInitialize {
+pub struct ArrayInitialize<'t> {
     pub name: String,
-    pub vals: Vec<Box<TypeTree>>,
+    pub vals: &'t [TypeTree<'t>],
     pub curried: Type,
 }
 
@@ -124,75 +124,75 @@ pub struct ArrayInitialize {
 // todo:: traitinfo typetree
 
 #[derive(Debug)]
-pub struct FunctionInitialize {
+pub struct FunctionInitialize<'t> {
     pub name: String,
-    pub args: Vec<Box<TypeTree>>,
+    pub args: &'t [TypeTree<'t>],
     pub args_curried: Vec<Type>,
-    pub block: Box<TypeTree>,
+    pub block: &'t TypeTree<'t>,
 }
 
 #[derive(Debug)]
-pub struct Block {
-    pub exprs: Vec<Box<TypeTree>>,
+pub struct Block<'t> {
+    pub exprs: &'t [TypeTree<'t>],
     pub exprs_curried: Vec<Type>,
 }
 
 #[derive(Debug)]
-pub enum TypeTree {
+pub enum TypeTree<'t> {
     // info
     StructInfo(StructInfo),
     TagInfo(TagInfo),
     ErrorInfo(ErrorInfo),
     // flow
-    For(ForOp),
-    Match(MatchOp),
-    Return(UnaryOp),
+    For(ForOp<'t>),
+    Match(MatchOp<'t>),
+    Return(UnaryOp<'t>),
     ReturnVoid(NoOp),
     Never(NoOp),
-    Break(UnaryOp),
+    Break(UnaryOp<'t>),
     BreakVoid(NoOp),
     // binops
-    Plus(BinaryOp),
-    Minus(BinaryOp),
-    Divide(BinaryOp),
-    Multiply(BinaryOp),
-    Modulo(BinaryOp),
-    Range(BinaryOp),
-    CastAs(BinaryOp),
-    BubbleUndef(BinaryOp),
-    BubbleError(BinaryOp),
+    Plus(BinaryOp<'t>),
+    Minus(BinaryOp<'t>),
+    Divide(BinaryOp<'t>),
+    Multiply(BinaryOp<'t>),
+    Modulo(BinaryOp<'t>),
+    Range(BinaryOp<'t>),
+    CastAs(BinaryOp<'t>),
+    BubbleUndef(BinaryOp<'t>),
+    BubbleError(BinaryOp<'t>),
     // unops
-    ReadBorrow(UnaryOp),
-    MutBorrow(UnaryOp),
-    Copy(UnaryOp),
-    Clone(UnaryOp),
-    Negate(UnaryOp),
-    Not(UnaryOp),
+    ReadBorrow(UnaryOp<'t>),
+    MutBorrow(UnaryOp<'t>),
+    Copy(UnaryOp<'t>),
+    Clone(UnaryOp<'t>),
+    Negate(UnaryOp<'t>),
+    Not(UnaryOp<'t>),
     // values
-    PropAccess(PropAccess),
-    SymbolAccess(PropAccess),
+    PropAccess(PropAccess<'t>),
+    SymbolAccess(PropAccess<'t>),
     RestAccess(NoOp),
     SelfRef(NoOp),
     // data types
-    StructInit(StructInitialize),
-    ArrayInit(ArrayInitialize),
-    FuncInit(FunctionInitialize),
-    AnonFuncInit(FunctionInitialize),
-    ConstInit(Initialization),
-    MutInit(Initialization),
-    StringInit(ArrayInitialize),
+    StructInit(StructInitialize<'t>),
+    ArrayInit(ArrayInitialize<'t>),
+    FuncInit(FunctionInitialize<'t>),
+    AnonFuncInit(FunctionInitialize<'t>),
+    ConstInit(Initialization<'t>),
+    MutInit(Initialization<'t>),
+    StringInit(ArrayInitialize<'t>),
     // reassignments
-    As(Reassignment),
-    PlusAs(Reassignment),
-    MinusAs(Reassignment),
-    MultiplyAs(Reassignment),
-    DivideAs(Reassignment),
-    ModAs(Reassignment),
-    OrAs(Reassignment),
-    NotAs(Reassignment),
-    XorAs(Reassignment),
-    LShiftAs(Reassignment),
-    RShiftAs(Reassignment),
+    As(Reassignment<'t>),
+    PlusAs(Reassignment<'t>),
+    MinusAs(Reassignment<'t>),
+    MultiplyAs(Reassignment<'t>),
+    DivideAs(Reassignment<'t>),
+    ModAs(Reassignment<'t>),
+    OrAs(Reassignment<'t>),
+    NotAs(Reassignment<'t>),
+    XorAs(Reassignment<'t>),
+    LShiftAs(Reassignment<'t>),
+    RShiftAs(Reassignment<'t>),
     // value types
     UndefinedValue(),
     BoolValue(bool),
@@ -203,7 +203,7 @@ pub enum TypeTree {
     F64(f64),
 }
 
-impl TypeTree {
+impl<'t> TypeTree<'t> {
     pub fn into_initialization(&self) -> &Initialization {
         match self {
             TypeTree::ConstInit(x) => x,
@@ -295,6 +295,13 @@ pub enum Type {
     Custom(String),
     Array(Box<Type>),
     Multi(Vec<Type>),
+}
+
+#[macro_export]
+macro_rules! tree {
+    ($val:ident, $op:ident) => {
+        TypeTree::$val($op)
+    };
 }
 
 #[macro_export]

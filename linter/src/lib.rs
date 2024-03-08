@@ -7,21 +7,25 @@ use symtable::*;
 use token::Token;
 use types::*;
 
-type ResultTreeType = Result<(Box<TypeTree>, Type), usize>;
-type ResultTree = Result<TypeTree, usize>;
-type ResultEmpty = Result<(), usize>;
+type ResultTreeType = Result<(usize, Type), usize>;
 
-pub struct LintSource<'i, 's, 't> {
-    buffer: &'s str,
-    slt: &'t mut SymTable<'i>,
+pub struct LintSource<'tt, 'buf, 'sym> {
+    buffer: &'buf str,
+    slt: &'sym mut SymTable<'tt>,
+    trees: &'sym mut Vec<TypeTree<'tt>>,
     pub issues: Vec<LinterError>,
 }
 
-impl<'i, 's, 't> LintSource<'i, 's, 't> {
-    pub fn new(buffer: &'s str, slt: &'t mut SymTable<'i>) -> Self {
+impl<'tt, 'buf, 'sym> LintSource<'tt, 'buf, 'sym> {
+    pub fn new(
+        buffer: &'buf str,
+        slt: &'sym mut SymTable<'tt>,
+        trees: &'sym mut Vec<TypeTree<'tt>>,
+    ) -> Self {
         LintSource {
             buffer,
             slt,
+            trees,
             issues: vec![],
         }
     }
@@ -53,23 +57,23 @@ impl<'i, 's, 't> LintSource<'i, 's, 't> {
 
         let init = Initialization {
             left: slice,
-            right: result.0,
+            right: &self.trees.get(result.0).unwrap(),
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full = Box::new(TypeTree::ConstInit(init));
+        self.trees.push(tree!(ConstInit, init));
 
-        self.slt.table.insert(copy, full.as_ref());
-        return Ok((full, curried));
+        self.slt.table.insert(copy, &self.trees.last().unwrap());
+        return Ok((self.trees.len() - 1, curried));
     }
 
     pub fn check_negate(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
         let mut unop = UnaryOp {
-            val: result.0,
+            val: &self.trees.get(result.0).unwrap(),
             curried: result.1,
         };
-        match unop.val.as_ref() {
+        match unop.val {
             TypeTree::F64(_) => unop.curried = Type::F64,
             TypeTree::U64(_) => unop.curried = Type::I64,
             TypeTree::U32(_) => unop.curried = Type::I32,
@@ -85,104 +89,112 @@ impl<'i, 's, 't> LintSource<'i, 's, 't> {
                 self.issues.push(err);
             }
         }
-        let curried = unop.curried.clone();
-        return Ok((Box::new(TypeTree::Negate(unop)), curried));
+        let typ = unop.curried.clone();
+        self.trees.push(tree!(Negate, unop));
+        return Ok((&self.trees.len() - 1, typ));
     }
 
     pub fn check_copy(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
         let mut unop = UnaryOp {
-            val: result.0,
+            val: &self.trees.get(result.0).unwrap(),
             curried: result.1,
         };
-        match unop.val.as_ref() {
+        match unop.val {
             TypeTree::BoolValue(_) => unop.curried = Type::Bool,
             _ => panic!("negate_check failed"),
         }
-        let curried = unop.curried.clone();
-        return Ok((Box::new(TypeTree::Copy(unop)), curried));
+        let typ = unop.curried.clone();
+        self.trees.push(tree!(Copy, unop));
+        return Ok((&self.trees.len() - 1, typ));
     }
 
     pub fn check_clone(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
         let mut unop = UnaryOp {
-            val: result.0,
+            val: &self.trees.get(result.0).unwrap(),
             curried: result.1,
         };
-        match unop.val.as_ref() {
+        match unop.val {
             TypeTree::BoolValue(_) => unop.curried = Type::Bool,
             _ => panic!("negate_check failed"),
         }
-        let curried = unop.curried.clone();
-        return Ok((Box::new(TypeTree::Not(unop)), curried));
+        let typ = unop.curried.clone();
+        self.trees.push(tree!(Clone, unop));
+        return Ok((&self.trees.len() - 1, typ));
     }
 
     pub fn check_not(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
         let mut unop = UnaryOp {
-            val: result.0,
+            val: &self.trees.get(result.0).unwrap(),
             curried: result.1,
         };
-        match unop.val.as_ref() {
+        match unop.val {
             TypeTree::BoolValue(_) => unop.curried = Type::Bool,
             _ => panic!("negate_check failed"),
         }
-        let curried = unop.curried.clone();
-        return Ok((Box::new(TypeTree::Not(unop)), curried));
+        let typ = unop.curried.clone();
+        self.trees.push(tree!(Not, unop));
+        return Ok((&self.trees.len() - 1, typ));
     }
     pub fn check_borrow_mut(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
         let mut unop = UnaryOp {
-            val: result.0,
+            val: &self.trees.get(result.0).unwrap(),
             curried: result.1,
         };
-        match unop.val.as_ref() {
+        match unop.val {
             TypeTree::SymbolAccess(sym) => {
                 unop.curried = Type::MutBorrow(Box::new(sym.curried.clone()))
             }
             TypeTree::SelfRef(sym) => unop.curried = Type::MutBorrow(Box::new(sym.curried.clone())),
             _ => panic!("borrow_check failed"),
         }
-        let curried = unop.curried.clone();
-        return ok_tree!(MutBorrow, unop, curried);
+        let typ = unop.curried.clone();
+        self.trees.push(tree!(MutBorrow, unop));
+        return Ok((&self.trees.len() - 1, typ));
     }
 
     pub fn check_borrow_ro(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
         let mut unop = UnaryOp {
-            val: result.0,
+            val: &self.trees.get(result.0).unwrap(),
             curried: result.1,
         };
-        match unop.val.as_ref() {
+        match unop.val {
             TypeTree::SymbolAccess(sym) => {
                 unop.curried = Type::ReadBorrow(Box::new(sym.curried.clone()))
             }
             _ => panic!("borrow_check failed"),
         }
-        let curried = unop.curried.clone();
-        return ok_tree!(ReadBorrow, unop, curried);
+        let typ = unop.curried.clone();
+        self.trees.push(tree!(ReadBorrow, unop));
+        return Ok((&self.trees.len() - 1, typ));
     }
 
     pub fn check_f64(&mut self, num: &Number) -> ResultTreeType {
         let val = num.val.slice.parse::<f64>().unwrap();
         let typ = Type::F64;
-        return ok_tree!(F64, val, typ);
+        self.trees.push(tree!(F64, val));
+        return Ok((&self.trees.len() - 1, typ));
     }
 
     pub fn check_u64(&mut self, num: &Number) -> ResultTreeType {
         let val = num.val.slice.parse::<u64>().unwrap();
         let typ = Type::U64;
-        return ok_tree!(U64, val, typ);
+        self.trees.push(tree!(U64, val));
+        return Ok((&self.trees.len() - 1, typ));
     }
 
     pub fn type_check(&mut self, start: &Expr) -> () {
-        let mut vals: Vec<TypeTree> = vec![];
+        let mut vals: Vec<usize> = vec![];
         match start {
             Expr::FileAll(all) => {
                 for x in &all.top_decls {
                     let res = self.lint_recurse(&x);
                     if res.is_ok() {
-                        vals.push(*res.unwrap().0);
+                        vals.push(res.unwrap().0);
                     }
                 }
             }
