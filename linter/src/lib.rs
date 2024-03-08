@@ -9,16 +9,16 @@ use types::*;
 
 type ResultTreeType = Result<(Box<TypeTree>, Type), usize>;
 type ResultTree = Result<TypeTree, usize>;
-type ResultError = Result<(), LinterError>;
+type ResultEmpty = Result<(), usize>;
 
-pub struct LintSource<'s, 't> {
+pub struct LintSource<'i, 's, 't> {
     buffer: &'s str,
-    slt: &'t mut SymTable,
+    slt: &'t mut SymTable<'i>,
     pub issues: Vec<LinterError>,
 }
 
-impl<'s, 't> LintSource<'s, 't> {
-    pub fn new(buffer: &'s str, slt: &'t mut SymTable) -> Self {
+impl<'i, 's, 't> LintSource<'i, 's, 't> {
+    pub fn new(buffer: &'s str, slt: &'t mut SymTable<'i>) -> Self {
         LintSource {
             buffer,
             slt,
@@ -42,38 +42,25 @@ impl<'s, 't> LintSource<'s, 't> {
                 Token::Num => self.check_u64(num),
                 _ => panic!("type-lang linter issue, number not implemented"),
             },
-            Expr::TopDecl(top) => {
-                let result = self.check_top_decl(&top);
-            }
+            Expr::TopDecl(top) => self.check_top_decl(&top),
             _ => panic!("type-lang linter issue, expr not implemented"),
         }
     }
     pub fn check_top_decl(&mut self, td: &TopDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.expr)?;
+        let slice = td.identifier.into_symbol().val.slice;
+        let copy = slice.clone();
 
-        let mut init = Initialization {
-            left: td.identifier.into_symbol(),
+        let init = Initialization {
+            left: slice,
             right: result.0,
             curried: result.1,
         };
-        match unop.val.as_ref() {
-            TypeTree::F64(_) => unop.curried = Type::F64,
-            TypeTree::U64(_) => unop.curried = Type::I64,
-            TypeTree::U32(_) => unop.curried = Type::I32,
-            TypeTree::I64(_) => unop.curried = Type::I64,
-            TypeTree::I32(_) => unop.curried = Type::I32,
-            _ => {
-                let mut err = make_error("invalid negation".to_string());
-                self.update_error(
-                    &mut err,
-                    format!("found {}", unop.val.whatami()),
-                    un.op.clone(),
-                );
-                self.issues.push(err);
-            }
-        }
-        let curried = unop.curried.clone();
-        return Ok((Box::new(TypeTree::Negate(unop)), curried));
+        let curried = init.curried.clone();
+        let full = Box::new(TypeTree::ConstInit(init));
+
+        self.slt.table.insert(copy, full.as_ref());
+        return Ok((full, curried));
     }
 
     pub fn check_negate(&mut self, un: &UnOp) -> ResultTreeType {

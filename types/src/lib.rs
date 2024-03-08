@@ -76,6 +76,7 @@ pub struct Invoke {
 pub struct Initialization {
     pub left: String,
     pub right: Box<TypeTree>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
@@ -203,6 +204,13 @@ pub enum TypeTree {
 }
 
 impl TypeTree {
+    pub fn into_initialization(&self) -> &Initialization {
+        match self {
+            TypeTree::ConstInit(x) => x,
+            TypeTree::MutInit(x) => x,
+            _ => panic!("issue no symbol found"),
+        }
+    }
     pub fn whatami(&self) -> &'static str {
         match self {
             TypeTree::StructInfo(_) => "struct declaration",
