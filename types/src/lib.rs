@@ -1,6 +1,6 @@
 #[derive(Debug)]
-pub struct FileContainer<'t> {
-    pub top_items: &'t [TypeTree<'t>],
+pub struct FileContainer<'tt> {
+    pub top_items: &'tt [TypeTree<'tt>],
     pub curried: Vec<Type>,
 }
 
@@ -30,32 +30,32 @@ pub struct ArgInfo {
 }
 
 #[derive(Debug)]
-pub struct MatchOp<'t> {
-    pub expr: &'t TypeTree<'t>,
+pub struct MatchOp<'tt> {
+    pub expr: &'tt TypeTree<'tt>,
     pub curried: Type,
-    pub arms_left: &'t [TypeTree<'t>],
+    pub arms_left: &'tt [TypeTree<'tt>],
     pub curried_left: Vec<Type>,
-    pub arms_right: &'t [TypeTree<'t>],
+    pub arms_right: &'tt [TypeTree<'tt>],
     pub curried_right: Vec<Type>,
 }
 
 #[derive(Debug)]
-pub struct ForOp<'t> {
-    pub in_expr: &'t TypeTree<'t>,
+pub struct ForOp<'tt> {
+    pub in_expr: &'tt TypeTree<'tt>,
     pub in_curried: Type,
-    pub body: &'t TypeTree<'t>,
+    pub body: &'tt TypeTree<'tt>,
 }
 
 #[derive(Debug)]
-pub struct BinaryOp<'t> {
-    pub left: &'t TypeTree<'t>,
-    pub right: &'t TypeTree<'t>,
+pub struct BinaryOp<'tt> {
+    pub left: &'tt TypeTree<'tt>,
+    pub right: &'tt TypeTree<'tt>,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct UnaryOp<'t> {
-    pub val: &'t TypeTree<'t>,
+pub struct UnaryOp<'tt> {
+    pub val: &'tt TypeTree<'tt>,
     pub curried: Type,
 }
 
@@ -65,29 +65,29 @@ pub struct NoOp {
 }
 
 #[derive(Debug)]
-pub struct Invoke<'t> {
-    pub args: &'t [TypeTree<'t>],
+pub struct Invoke<'tt> {
+    pub args: &'tt [TypeTree<'tt>],
     pub args_curried: Vec<Type>,
     pub ident: String,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct Initialization<'t> {
+pub struct Initialization<'tt> {
     pub left: String,
-    pub right: &'t TypeTree<'t>,
+    pub right: &'tt TypeTree<'tt>,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct Reassignment<'t> {
-    pub left: &'t TypeTree<'t>,
-    pub right: &'t TypeTree<'t>,
+pub struct Reassignment<'tt> {
+    pub left: &'tt TypeTree<'tt>,
+    pub right: &'tt TypeTree<'tt>,
 }
 
 #[derive(Debug)]
-pub struct PropAccess<'t> {
-    pub prev: &'t TypeTree<'t>,
+pub struct PropAccess<'tt> {
+    pub prev: &'tt TypeTree<'tt>,
     pub ident: String,
     pub curried: Type,
 }
@@ -99,24 +99,24 @@ pub struct SymbolAccess {
 }
 
 #[derive(Debug)]
-pub struct ArrayAccess<'t> {
-    pub prev: &'t TypeTree<'t>,
-    pub inner: &'t TypeTree<'t>,
+pub struct ArrayAccess<'tt> {
+    pub prev: &'tt TypeTree<'tt>,
+    pub inner: &'tt TypeTree<'tt>,
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct StructInitialize<'t> {
+pub struct StructInitialize<'tt> {
     pub name: String,
     pub idents: Vec<String>,
-    pub vals: &'t [TypeTree<'t>],
+    pub vals: &'tt [TypeTree<'tt>],
     pub curried: Type,
 }
 
 #[derive(Debug)]
-pub struct ArrayInitialize<'t> {
+pub struct ArrayInitialize<'tt> {
     pub name: String,
-    pub vals: &'t [TypeTree<'t>],
+    pub vals: &'tt [TypeTree<'tt>],
     pub curried: Type,
 }
 
@@ -124,75 +124,75 @@ pub struct ArrayInitialize<'t> {
 // todo:: traitinfo typetree
 
 #[derive(Debug)]
-pub struct FunctionInitialize<'t> {
+pub struct FunctionInitialize<'tt> {
     pub name: String,
-    pub args: &'t [TypeTree<'t>],
+    pub args: &'tt [TypeTree<'tt>],
     pub args_curried: Vec<Type>,
-    pub block: &'t TypeTree<'t>,
+    pub block: &'tt TypeTree<'tt>,
 }
 
 #[derive(Debug)]
-pub struct Block<'t> {
-    pub exprs: &'t [TypeTree<'t>],
+pub struct Block<'tt> {
+    pub exprs: &'tt [TypeTree<'tt>],
     pub exprs_curried: Vec<Type>,
 }
 
 #[derive(Debug)]
-pub enum TypeTree<'t> {
+pub enum TypeTree<'tt> {
     // info
     StructInfo(StructInfo),
     TagInfo(TagInfo),
     ErrorInfo(ErrorInfo),
     // flow
-    For(ForOp<'t>),
-    Match(MatchOp<'t>),
-    Return(UnaryOp<'t>),
+    For(ForOp<'tt>),
+    Match(MatchOp<'tt>),
+    Return(UnaryOp<'tt>),
     ReturnVoid(NoOp),
     Never(NoOp),
-    Break(UnaryOp<'t>),
+    Break(UnaryOp<'tt>),
     BreakVoid(NoOp),
     // binops
-    Plus(BinaryOp<'t>),
-    Minus(BinaryOp<'t>),
-    Divide(BinaryOp<'t>),
-    Multiply(BinaryOp<'t>),
-    Modulo(BinaryOp<'t>),
-    Range(BinaryOp<'t>),
-    CastAs(BinaryOp<'t>),
-    BubbleUndef(BinaryOp<'t>),
-    BubbleError(BinaryOp<'t>),
+    Plus(BinaryOp<'tt>),
+    Minus(BinaryOp<'tt>),
+    Divide(BinaryOp<'tt>),
+    Multiply(BinaryOp<'tt>),
+    Modulo(BinaryOp<'tt>),
+    Range(BinaryOp<'tt>),
+    CastAs(BinaryOp<'tt>),
+    BubbleUndef(BinaryOp<'tt>),
+    BubbleError(BinaryOp<'tt>),
     // unops
-    ReadBorrow(UnaryOp<'t>),
-    MutBorrow(UnaryOp<'t>),
-    Copy(UnaryOp<'t>),
-    Clone(UnaryOp<'t>),
-    Negate(UnaryOp<'t>),
-    Not(UnaryOp<'t>),
+    ReadBorrow(UnaryOp<'tt>),
+    MutBorrow(UnaryOp<'tt>),
+    Copy(UnaryOp<'tt>),
+    Clone(UnaryOp<'tt>),
+    Negate(UnaryOp<'tt>),
+    Not(UnaryOp<'tt>),
     // values
-    PropAccess(PropAccess<'t>),
-    SymbolAccess(PropAccess<'t>),
+    PropAccess(PropAccess<'tt>),
+    SymbolAccess(PropAccess<'tt>),
     RestAccess(NoOp),
     SelfRef(NoOp),
     // data types
-    StructInit(StructInitialize<'t>),
-    ArrayInit(ArrayInitialize<'t>),
-    FuncInit(FunctionInitialize<'t>),
-    AnonFuncInit(FunctionInitialize<'t>),
-    ConstInit(Initialization<'t>),
-    MutInit(Initialization<'t>),
-    StringInit(ArrayInitialize<'t>),
+    StructInit(StructInitialize<'tt>),
+    ArrayInit(ArrayInitialize<'tt>),
+    FuncInit(FunctionInitialize<'tt>),
+    AnonFuncInit(FunctionInitialize<'tt>),
+    ConstInit(Initialization<'tt>),
+    MutInit(Initialization<'tt>),
+    StringInit(ArrayInitialize<'tt>),
     // reassignments
-    As(Reassignment<'t>),
-    PlusAs(Reassignment<'t>),
-    MinusAs(Reassignment<'t>),
-    MultiplyAs(Reassignment<'t>),
-    DivideAs(Reassignment<'t>),
-    ModAs(Reassignment<'t>),
-    OrAs(Reassignment<'t>),
-    NotAs(Reassignment<'t>),
-    XorAs(Reassignment<'t>),
-    LShiftAs(Reassignment<'t>),
-    RShiftAs(Reassignment<'t>),
+    As(Reassignment<'tt>),
+    PlusAs(Reassignment<'tt>),
+    MinusAs(Reassignment<'tt>),
+    MultiplyAs(Reassignment<'tt>),
+    DivideAs(Reassignment<'tt>),
+    ModAs(Reassignment<'tt>),
+    OrAs(Reassignment<'tt>),
+    NotAs(Reassignment<'tt>),
+    XorAs(Reassignment<'tt>),
+    LShiftAs(Reassignment<'tt>),
+    RShiftAs(Reassignment<'tt>),
     // value types
     UndefinedValue(),
     BoolValue(bool),
@@ -203,7 +203,7 @@ pub enum TypeTree<'t> {
     F64(f64),
 }
 
-impl<'t> TypeTree<'t> {
+impl<'tt> TypeTree<'tt> {
     pub fn into_initialization(&self) -> &Initialization {
         match self {
             TypeTree::ConstInit(x) => x,
