@@ -41,10 +41,10 @@ impl IRSource {
         // todo:: optimization: not all paths need declare var if value is only ever read. or something similar, this statement is in the same ballpark, but might not be totally correct
         let x = builder.use_var(temp);
 
-        self.scope.table.insert(
-            op.identifier.into_symbol().val.slice.to_string(),
-            temp.as_u32(),
-        );
+        //self.scope.table.insert(
+        //    op.identifier.into_symbol().val.slice.to_string(),
+        //    temp.as_u32(),
+        //);
         builder.def_var(temp, x);
         Ok(temp)
     }
