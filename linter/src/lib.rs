@@ -43,9 +43,53 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                 _ => panic!("type-lang linter issue, number not implemented"),
             },
             Expr::TopDecl(top) => self.check_top_decl(&top),
-            _ => panic!("type-lang linter issue, expr not implemented"),
+            Expr::Block(blk) => self.check_block(&blk),
+            Expr::FuncDecl(fun) => self.check_func_decl(&fun),
+            _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
+
+    pub fn check_func_decl(&mut self, td: &FuncDecl) -> ResultTreeType {
+        let result = self.lint_recurse(&td.block)?;
+        let slice = td.identifier.into_symbol().val.slice;
+        let copy = slice.clone();
+
+        let init = FunctionInitialize {
+            name: slice,
+            args: vec![],
+            args_curried: vec![],
+            block: result.0,
+            block_curried: result.1,
+        };
+        let curried = init.block_curried.clone();
+        let full = Rc::new(Box::new(TypeTree::FuncInit(init)));
+
+        self.slt.table.insert(copy, (Rc::clone(&full), 0));
+        return Ok((full, curried));
+    }
+
+    pub fn check_block(&mut self, td: &ast::Block) -> ResultTreeType {
+        let result: Vec<ResultTreeType> = td.exprs.iter().map(|e| self.lint_recurse(&e)).collect();
+        let mut blk = types::Block {
+            exprs: vec![],
+            curried: Type::Void,
+        };
+        let mut typ = Type::Void;
+        result.into_iter().for_each(|res| {
+            if let Ok(exp) = res {
+                blk.exprs.push(exp.0);
+                typ = exp.1;
+            } else {
+                typ = Type::Void;
+            }
+        });
+
+        let curried = blk.curried.clone();
+        let full = Rc::new(Box::new(TypeTree::Block(blk)));
+
+        return Ok((full, curried));
+    }
+
     pub fn check_top_decl(&mut self, td: &TopDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.expr)?;
         let slice = td.identifier.into_symbol().val.slice;
@@ -59,7 +103,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = init.curried.clone();
         let full = Rc::new(Box::new(TypeTree::ConstInit(init)));
 
-        self.slt.table.insert(copy, Rc::clone(&full));
+        self.slt.table.insert(copy, (Rc::clone(&full), 0));
         return Ok((full, curried));
     }
 

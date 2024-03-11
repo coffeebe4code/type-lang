@@ -40,11 +40,12 @@ impl IRSource {
         let temp = self.recurse(&op.expr, builder).unwrap();
         // todo:: optimization: not all paths need declare var if value is only ever read. or something similar, this statement is in the same ballpark, but might not be totally correct
         let x = builder.use_var(temp);
+        self.scope
+            .table
+            .get_mut(&op.identifier.into_symbol().val.slice)
+            .unwrap()
+            .1 = temp.as_u32();
 
-        //self.scope.table.insert(
-        //    op.identifier.into_symbol().val.slice.to_string(),
-        //    temp.as_u32(),
-        //);
         builder.def_var(temp, x);
         Ok(temp)
     }
@@ -96,7 +97,7 @@ impl IRSource {
     }
     pub fn handle_sym(&self, op: &Symbol) -> ResultFir<Variable> {
         Ok(Variable::from_u32(
-            *self.scope.table.get(&op.val.slice).unwrap(),
+            self.scope.table.get(&op.val.slice).unwrap().1,
         ))
     }
     pub fn handle_num(

@@ -1,6 +1,7 @@
 use ast::Expr;
 use ir::IRSource;
 use lexer::TLexer;
+use linter::*;
 use object::build_std_fn;
 use object::flush_obj;
 use object::new_obj_handler;
@@ -16,8 +17,11 @@ use symtable::SymTable;
 pub fn from_buffer(contents: &str, path: &Path) -> () {
     let lex = TLexer::new(&contents);
     let mut parse = Parser::new(lex);
-    let ast_parsed = parse.top_decl().unwrap();
-    let mut ir = IRSource::new(0, SymTable::new());
+    let ast_parsed = parse.all().unwrap();
+    let mut table = SymTable::new();
+    let mut linter = LintSource::new(contents, &mut table);
+    linter.type_check(&ast_parsed);
+    let mut ir = IRSource::new(0, table);
     match *ast_parsed {
         Expr::FuncDecl(val) => {
             let result = ir.begin(val);

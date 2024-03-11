@@ -131,12 +131,13 @@ pub struct FunctionInitialize {
     pub args: Vec<Rc<Box<TypeTree>>>,
     pub args_curried: Vec<Type>,
     pub block: Rc<Box<TypeTree>>,
+    pub block_curried: Type,
 }
 
 #[derive(Debug)]
 pub struct Block {
     pub exprs: Vec<Rc<Box<TypeTree>>>,
-    pub exprs_curried: Vec<Type>,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
@@ -148,6 +149,7 @@ pub enum TypeTree {
     // flow
     For(ForOp),
     Match(MatchOp),
+    Block(Block),
     Return(UnaryOp),
     ReturnVoid(NoOp),
     Never(NoOp),
@@ -220,6 +222,7 @@ impl TypeTree {
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
             TypeTree::Match(_) => "match",
+            TypeTree::Block(_) => "block of statements",
             TypeTree::Return(_) => "return expression",
             TypeTree::ReturnVoid(_) => "return",
             TypeTree::Never(_) => "never",
