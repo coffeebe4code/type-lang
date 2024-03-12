@@ -174,7 +174,7 @@ pub enum TypeTree {
     Not(UnaryOp),
     // values
     PropAccess(PropAccess),
-    SymbolAccess(PropAccess),
+    SymbolAccess(SymbolAccess),
     RestAccess(NoOp),
     SelfRef(NoOp),
     // data types

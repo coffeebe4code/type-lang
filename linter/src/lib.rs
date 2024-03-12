@@ -28,6 +28,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
     pub fn lint_recurse(&mut self, to_cmp: &Expr) -> ResultTreeType {
         match to_cmp {
+            Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::UnOp(un) => match un.op.token {
                 Token::Sub => self.check_negate(un),
                 Token::NotLog => self.check_not(un),
@@ -37,14 +38,20 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                 Token::WClone => self.check_clone(un),
                 _ => panic!("type-lang linter issue, unary op not implemented"),
             },
+            Expr::BinOp(bin) => match bin.op.token {
+                Token::Plus => self.check_plus(bin),
+                _ => panic!("type-lang linter issue, binary op not implemented"),
+            },
             Expr::Number(num) => match num.val.token {
                 Token::Decimal => self.check_f64(num),
                 Token::Num => self.check_u64(num),
                 _ => panic!("type-lang linter issue, number not implemented"),
             },
             Expr::TopDecl(top) => self.check_top_decl(&top),
+            Expr::Symbol(symbol) => self.check_symbol_ref(&symbol),
             Expr::Block(blk) => self.check_block(&blk),
             Expr::FuncDecl(fun) => self.check_func_decl(&fun),
+            Expr::RetOp(ret) => self.check_ret_op(&ret),
             _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
@@ -87,6 +94,32 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = blk.curried.clone();
         let full = Rc::new(Box::new(TypeTree::Block(blk)));
 
+        return Ok((full, curried));
+    }
+
+    pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
+        let sym = SymbolAccess {
+            ident: symbol.val.slice.clone(),
+            curried: Type::Void,
+        };
+        let typ = Type::Void;
+        return ok_tree!(SymbolAccess, sym, typ);
+    }
+
+    pub fn check_inner_decl(&mut self, inner: &InnerDecl) -> ResultTreeType {
+        let result = self.lint_recurse(&inner.expr)?;
+        let slice = inner.identifier.into_symbol().val.slice;
+        let copy = slice.clone();
+
+        let init = Initialization {
+            left: slice,
+            right: result.0,
+            curried: result.1,
+        };
+        let curried = init.curried.clone();
+        let full = Rc::new(Box::new(TypeTree::ConstInit(init)));
+
+        self.slt.table.insert(copy, (Rc::clone(&full), 0));
         return Ok((full, curried));
     }
 
@@ -142,7 +175,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         };
         match unop.val.as_ref().as_ref() {
             TypeTree::BoolValue(_) => unop.curried = Type::Bool,
-            _ => panic!("negate_check failed"),
+            _ => panic!("copy checked failed"),
         }
         let curried = unop.curried.clone();
         return ok_tree!(Copy, unop, curried);
@@ -156,10 +189,21 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         };
         match unop.val.as_ref().as_ref() {
             TypeTree::BoolValue(_) => unop.curried = Type::Bool,
-            _ => panic!("negate_check failed"),
+            _ => panic!("clone check failed"),
         }
         let curried = unop.curried.clone();
         return ok_tree!(Clone, unop, curried);
+    }
+
+    pub fn check_ret_op(&mut self, ret: &RetOp) -> ResultTreeType {
+        let result = self.lint_recurse(&ret.expr)?;
+        let unop = UnaryOp {
+            val: result.0,
+            curried: result.1,
+        };
+
+        let curried = unop.curried.clone();
+        return ok_tree!(Return, unop, curried);
     }
 
     pub fn check_not(&mut self, un: &UnOp) -> ResultTreeType {
@@ -170,10 +214,23 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         };
         match unop.val.as_ref().as_ref() {
             TypeTree::BoolValue(_) => unop.curried = Type::Bool,
-            _ => panic!("negate_check failed"),
+            _ => panic!("not check failed"),
         }
         let curried = unop.curried.clone();
         return ok_tree!(Not, unop, curried);
+    }
+
+    pub fn check_plus(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: left.1,
+        };
+        let curried = binop.curried.clone();
+
+        return ok_tree!(Plus, binop, curried);
     }
     pub fn check_borrow_mut(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;

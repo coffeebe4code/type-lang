@@ -51,7 +51,7 @@ pub fn from_file(input_path: &PathBuf) -> () {
     let ast_parsed = parse.top_decl().unwrap();
     let mut ir = IRSource::new(0, SymTable::new());
     match *ast_parsed {
-        Expr::FuncDecl(val) => {
+        Expr::FileAll(val) => {
             let result = ir.begin(val);
             if !Path::new(".ty-cache").is_dir() {
                 create_dir(".ty-cache").unwrap();

@@ -2,7 +2,7 @@
 // multi-line comments will be for doc comments and will be written like jsdoc, but testable like rust
 
 // variables can be declared constant, making them unmodifiable
-const a = -5
+const a = 5
 // or mutatable with let
 let b = 2
 
@@ -94,7 +94,7 @@ const count_spaces = fn(to_check: &[&char]) f64 {
       count += 1
     }
   }
-  return count
+  return
 }
 // note: do not think of these as pointers, as &[&char] in tradional pointer terminolgy would mean this is a reference to an array of char references. this is clearly an array of chars, they are just read-only
 

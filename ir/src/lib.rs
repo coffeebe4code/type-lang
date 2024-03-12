@@ -146,12 +146,12 @@ impl IRSource {
             _ => panic!("developer error unexpected expression {:?}", expr),
         }
     }
-    pub fn begin(&mut self, func_def: FuncDecl) -> Function {
+    pub fn begin(&mut self, file: FileAll) -> Function {
         let mut ctx = FunctionBuilderContext::new();
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(self.package, self.fname);
         // todo:: types need to be worked out, params and returns defined
-        if let Some(val) = func_def.args {
+        if let Some(val) = file.top_decls.args {
             val.iter()
                 .for_each(|_x| sig.params.push(AbiParam::new(I64)));
         }
