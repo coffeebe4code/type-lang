@@ -29,8 +29,8 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn lint_recurse(&mut self, to_cmp: &Expr) -> ResultTreeType {
         match to_cmp {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
+            Expr::TagDecl(decl) => self.check_tag_decl(&decl),
             Expr::UndefinedValue(_) => self.check_undefined(),
-            //Expr::TagDecl(decl) => self.check_tag_decl(&decl),
             Expr::UnOp(un) => match un.op.token {
                 Token::Sub => self.check_negate(un),
                 Token::NotLog => self.check_not(un),
@@ -71,7 +71,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             block_curried: result.1,
         };
         let curried = init.block_curried.clone();
-        let full = Rc::new(Box::new(TypeTree::FuncInit(init)));
+        let full = tree!(FuncInit, init);
 
         self.slt.table.insert(copy, (Rc::clone(&full), 0));
         return Ok((full, curried));
@@ -94,9 +94,8 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         });
 
         let curried = blk.curried.clone();
-        let full = Rc::new(Box::new(TypeTree::Block(blk)));
 
-        return Ok((full, curried));
+        return ok_tree!(Block, blk, curried);
     }
 
     pub fn check_undefined(&mut self) -> ResultTreeType {
@@ -113,22 +112,36 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(SymbolAccess, sym, typ);
     }
 
-    //pub fn check_tag_decl(&mut self, inner: &TagDecl) -> ResultTreeType {
-    //    let slice = inner.identifier.into_symbol().val.slice;
-    //    let copy = slice.clone();
+    pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
+        let result: Vec<ResultTreeType> = tag
+            .declarators
+            .iter()
+            .map(|e| self.lint_recurse(&e))
+            .collect();
+        let slice = tag.identifier.into_symbol().val.slice;
+        let copy = slice.clone();
+        let mut tag_info = TagInfo {
+            name: slice,
+            props: vec![],
+            types: vec![],
+            curried: Type::Custom(copy.clone()),
+        };
+        result.into_iter().for_each(|res| {
+            if let Ok(exp) = res {
+                tag_info.props.push(exp.0);
+                tag_info.types.push(exp.1);
+                return;
+            }
+            tag_info.props.push(simple_tree!(UnknownValue));
+            tag_info.types.push(Type::Unknown);
+        });
 
-    //    let tag = TagInfo {
-    //        name: slice,
-    //        props: inner.declarators,
-    //        right: result.0,
-    //        curried: result.1,
-    //    };
-    //    let curried = init.curried.clone();
-    //    let full = tree!(ConstInit, tag);
+        let curried = tag_info.curried.clone();
+        let full = tree!(TagInfo, tag_info);
 
-    //    self.slt.table.insert(copy, (Rc::clone(&full), 0));
-    //    return Ok((full, curried));
-    //}
+        self.slt.table.insert(copy, (Rc::clone(&full), 0));
+        return Ok((full, curried));
+    }
 
     pub fn check_inner_decl(&mut self, inner: &InnerDecl) -> ResultTreeType {
         let result = self.lint_recurse(&inner.expr)?;
@@ -141,7 +154,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full = Rc::new(Box::new(TypeTree::ConstInit(init)));
+        let full = tree!(ConstInit, init);
 
         self.slt.table.insert(copy, (Rc::clone(&full), 0));
         return Ok((full, curried));
@@ -158,7 +171,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full = Rc::new(Box::new(TypeTree::ConstInit(init)));
+        let full = tree!(ConstInit, init);
 
         self.slt.table.insert(copy, (Rc::clone(&full), 0));
         return Ok((full, curried));

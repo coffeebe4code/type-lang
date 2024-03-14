@@ -15,7 +15,7 @@ pub struct ErrorInfo {
 #[derive(Debug)]
 pub struct TagInfo {
     pub name: String,
-    pub props: Vec<String>,
+    pub props: Vec<Rc<Box<TypeTree>>>,
     pub types: Vec<Type>,
     pub curried: Type,
 }
@@ -198,6 +198,7 @@ pub enum TypeTree {
     RShiftAs(Reassignment),
     // value types
     UndefinedValue,
+    UnknownValue,
     BoolValue(bool),
     I64(i64),
     I32(i32),
@@ -271,6 +272,7 @@ impl TypeTree {
             TypeTree::U64(_) => "unsigned integer 64 bit",
             TypeTree::U32(_) => "unsigned integer 32 bit",
             TypeTree::F64(_) => "floating point double precision 64 bit",
+            TypeTree::UnknownValue => "unknown value",
         }
     }
 }
@@ -299,6 +301,13 @@ pub enum Type {
     Custom(String),
     Array(Box<Type>),
     Multi(Vec<Type>),
+}
+
+#[macro_export]
+macro_rules! simple_tree {
+    ($val:ident) => {
+        Rc::new(Box::new(TypeTree::$val))
+    };
 }
 
 #[macro_export]
