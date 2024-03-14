@@ -23,8 +23,8 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     linter.type_check(&ast_parsed);
     let mut ir = IRSource::new(0, table);
     match *ast_parsed {
-        Expr::FuncDecl(val) => {
-            let result = ir.begin(val);
+        Expr::FileAll(val) => {
+            let result = ir.begin(val.top_decls.first().unwrap().to_owned().into_func_decl());
             if !Path::new(".ty-cache").is_dir() {
                 create_dir(".ty-cache").unwrap();
             }
@@ -52,7 +52,7 @@ pub fn from_file(input_path: &PathBuf) -> () {
     let mut ir = IRSource::new(0, SymTable::new());
     match *ast_parsed {
         Expr::FileAll(val) => {
-            let result = ir.begin(val);
+            let result = ir.begin(val.top_decls.first().unwrap().to_owned().into_func_decl());
             if !Path::new(".ty-cache").is_dir() {
                 create_dir(".ty-cache").unwrap();
             }

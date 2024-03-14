@@ -64,18 +64,14 @@ impl fmt::Display for LinterError {
         let x = self
             .points
             .iter()
-            .map(|x| return format!("\t{}\n", x))
+            .map(|x| return format!("{}\n", x))
             .collect::<String>();
         let sug = self
             .suggestions
             .iter()
-            .map(|x| return format!("\t{}\n", x))
+            .map(|x| return format!("{}\n", x))
             .collect::<String>();
-        write!(
-            f,
-            "title: {}\nerrors:\n{}suggestions: {}",
-            self.title, x, sug
-        )
+        write!(f, "title: {}\ncode:\n{}suggestions: {}", self.title, x, sug)
     }
 }
 
@@ -85,7 +81,7 @@ impl fmt::Display for LinterErrorPoint {
         x.push('^');
         write!(
             f,
-            "code:\n  {}\n  {}\nline: {}\ncol: {}\n",
+            "  {}\n  {}\nline: {}\ncol: {}\n",
             self.code, x, self.line, self.col
         )
     }

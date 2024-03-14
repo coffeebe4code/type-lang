@@ -653,10 +653,16 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn into_func_decl(&self) -> FuncDecl {
+        match self {
+            Expr::FuncDecl(x) => x.to_owned(),
+            _ => panic!("issue no function declaration found"),
+        }
+    }
     pub fn into_file_all(&self) -> FileAll {
         match self {
             Expr::FileAll(x) => x.to_owned(),
-            _ => panic!("issue no symbol found"),
+            _ => panic!("issue no top level statements found"),
         }
     }
     pub fn into_symbol(&self) -> Symbol {
@@ -668,7 +674,7 @@ impl Expr {
     pub fn into_val_type(&self) -> ValueType {
         match self {
             Expr::ValueType(x) => x.to_owned(),
-            _ => panic!("issue no symbol found"),
+            _ => panic!("issue value type found"),
         }
     }
 }

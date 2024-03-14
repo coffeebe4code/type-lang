@@ -14,6 +14,7 @@ pub struct ErrorInfo {
 
 #[derive(Debug)]
 pub struct TagInfo {
+    pub name: String,
     pub props: Vec<String>,
     pub types: Vec<Type>,
     pub curried: Type,
@@ -85,6 +86,7 @@ pub struct Initialization {
 pub struct Reassignment {
     pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
+    pub left_curried: Type,
 }
 
 #[derive(Debug)]
@@ -121,9 +123,6 @@ pub struct ArrayInitialize {
     pub vals: Vec<Rc<Box<TypeTree>>>,
     pub curried: Type,
 }
-
-// todo:: import typetree
-// todo:: traitinfo typetree
 
 #[derive(Debug)]
 pub struct FunctionInitialize {
@@ -198,7 +197,7 @@ pub enum TypeTree {
     LShiftAs(Reassignment),
     RShiftAs(Reassignment),
     // value types
-    UndefinedValue(),
+    UndefinedValue,
     BoolValue(bool),
     I64(i64),
     I32(i32),
@@ -265,7 +264,7 @@ impl TypeTree {
             TypeTree::XorAs(_) => "xor reassignment",
             TypeTree::LShiftAs(_) => "left shift reassignment",
             TypeTree::RShiftAs(_) => "right shift reassignment",
-            TypeTree::UndefinedValue() => "undefined",
+            TypeTree::UndefinedValue => "undefined",
             TypeTree::BoolValue(_) => "boolean value",
             TypeTree::I64(_) => "integer 64 bit",
             TypeTree::I32(_) => "integer 32 bit",
@@ -303,8 +302,22 @@ pub enum Type {
 }
 
 #[macro_export]
+macro_rules! ok_simple_tree {
+    ($val:ident, $curried:ident) => {
+        Ok((Rc::new(Box::new(TypeTree::$val)), $curried))
+    };
+}
+
+#[macro_export]
 macro_rules! ok_tree {
     ($val:ident, $op:ident, $curried:ident) => {
         Ok((Rc::new(Box::new(TypeTree::$val($op))), $curried))
+    };
+}
+
+#[macro_export]
+macro_rules! tree {
+    ($val:ident, $op:ident) => {
+        Rc::new(Box::new(TypeTree::$val($op)))
     };
 }

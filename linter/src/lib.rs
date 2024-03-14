@@ -29,6 +29,8 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn lint_recurse(&mut self, to_cmp: &Expr) -> ResultTreeType {
         match to_cmp {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
+            Expr::UndefinedValue(_) => self.check_undefined(),
+            //Expr::TagDecl(decl) => self.check_tag_decl(&decl),
             Expr::UnOp(un) => match un.op.token {
                 Token::Sub => self.check_negate(un),
                 Token::NotLog => self.check_not(un),
@@ -97,6 +99,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return Ok((full, curried));
     }
 
+    pub fn check_undefined(&mut self) -> ResultTreeType {
+        let typ = Type::Undefined;
+        return ok_simple_tree!(UndefinedValue, typ);
+    }
+
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
@@ -105,6 +112,23 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let typ = Type::Void;
         return ok_tree!(SymbolAccess, sym, typ);
     }
+
+    //pub fn check_tag_decl(&mut self, inner: &TagDecl) -> ResultTreeType {
+    //    let slice = inner.identifier.into_symbol().val.slice;
+    //    let copy = slice.clone();
+
+    //    let tag = TagInfo {
+    //        name: slice,
+    //        props: inner.declarators,
+    //        right: result.0,
+    //        curried: result.1,
+    //    };
+    //    let curried = init.curried.clone();
+    //    let full = tree!(ConstInit, tag);
+
+    //    self.slt.table.insert(copy, (Rc::clone(&full), 0));
+    //    return Ok((full, curried));
+    //}
 
     pub fn check_inner_decl(&mut self, inner: &InnerDecl) -> ResultTreeType {
         let result = self.lint_recurse(&inner.expr)?;
@@ -156,7 +180,10 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                 let mut err = make_error("invalid negation".to_string());
                 self.update_error(
                     &mut err,
-                    format!("found {}", unop.val.whatami()),
+                    format!(
+                        "found type {}, expected negatable value",
+                        unop.val.whatami()
+                    ),
                     un.op.clone(),
                 );
                 println!("{}", err);

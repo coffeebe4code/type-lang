@@ -1,13 +1,12 @@
 // comments are written with two '/' characters
-// multi-line comments will be for doc comments and will be written like jsdoc, but testable like rust
 
 // variables can be declared constant, making them unmodifiable
-const a = 5
+const a = -undefined
 // or mutatable with let
 let b = 2
 
-// enumerable types are declared as follows, similar to unions in other languages, they are called tags because they are both a union and enumerable and can contain values
-const Day = tag
+// enumerable types are declared as follows, similar to unions in other languages, they are called tags because they are a union, an enum, and can contain values
+type Day = tag
   | monday
   | tuesday
   | wednesday
@@ -16,16 +15,15 @@ const Day = tag
   | saturday
   | sunday
 
-
 const next_weekday = fn(d: Day) Day {
  // tags can be matched on
- // return must be specified
+ // return must be specified for all functions
  return match (d) {
   monday => tuesday
   tuesday => wednesday
   wednesday => thursday
   thursday => friday
-  // rest operator specifies any remaining match arms
+  // the rest operator '_' specifies any remaining match arms
   _ => monday
  }
 }
@@ -46,7 +44,7 @@ const assert_weekday = fn(d: Day) InvalidWeekday!Day {
 // InvalidWeekday!Day can be thought of as a tag of `InvalidWeekday | Day` the syntax gives errors more visiblity
 
 // struct syntax
-const Car = struct {
+type Car = struct {
   wheels: f64,
   make: [char],
   model: [char],
@@ -94,9 +92,9 @@ const count_spaces = fn(to_check: &[&char]) f64 {
       count += 1
     }
   }
-  return
+  return count
 }
-// note: do not think of these as pointers, as &[&char] in tradional pointer terminolgy would mean this is a reference to an array of char references. this is clearly an array of chars, they are just read-only
+// note: do not think of these as pointers, as &[&char] in tradional pointer terminolgy would mean this is a reference to an array of char references. this is clearly an array of chars, they are just read-only borrows
 
 // you can pass a value with ownership passed as well, (moved)
 const count_spaces = fn(to_check: [char]) f64 { }
@@ -106,13 +104,14 @@ const spaces = count_spaces(m)
 
 // future versions of type-lang will have formal methods to check bounded ranges during compile time when casting, it is best to handle all outcomes for now as seen above.
 
+// imports must be scoped to the current file.
 pub const q = import "std.io"
 
 // given the struct definition from earlier...
 // const Car = struct {
-//   wheels: f64
-//   make: [char]
-//   model: [char]
+//   wheels: f64,
+//   make: [char],
+//   model: [char],
 //   direction: u8
 // }
 
@@ -126,12 +125,13 @@ let r = Car {
 // values can be borrowed with & or *. this allows r to be usable again
 const s = &r
 
-// you can make a block and return a value. these types of blocks return a value with the break keyword
+// you can make a block and return a value. these types of blocks return a value with the break keyword. return will return the value to the parent function. break, stops a block
+
 let t = { 
   break 5 * -2 + 1 
 }
 
-// most types can be implicit, you can be explicit, function return types are the only required type
+// most types can be implicit, you can be explicit, function return types are the only required type to be listed
 const mul2: fn(usize) usize = fn(a: usize) usize { 
   return a * 2
 }
