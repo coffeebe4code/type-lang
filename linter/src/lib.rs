@@ -1,10 +1,9 @@
-use std::rc::Rc;
-
 use ast::*;
 use codelocation::*;
 use lexer::*;
 use perror::LinterError;
 use perror::LinterErrorPoint;
+use std::rc::Rc;
 use symtable::*;
 use token::Token;
 use types::*;
@@ -30,6 +29,8 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         match to_cmp {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
+            Expr::Match(_match) => self.check_match(&_match),
+            Expr::Arm(arm) => self.check_arm(&arm),
             Expr::UndefinedValue(_) => self.check_undefined(),
             Expr::UnOp(un) => match un.op.token {
                 Token::Sub => self.check_negate(un),
@@ -101,6 +102,28 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn check_undefined(&mut self) -> ResultTreeType {
         let typ = Type::Undefined;
         return ok_simple_tree!(UndefinedValue, typ);
+    }
+
+    pub fn check_match(&mut self, _match: &Match) -> ResultTreeType {
+        let res = self.lint_recurse(&_match.expr)?;
+        let mut mat = MatchOp {
+            expr: res.0,
+            curried: res.1,
+            arms: vec![],
+            curried_arms: vec![],
+        };
+        _match.arms.iter().for_each(|m| {
+            let mres = self.lint_recurse(m);
+            if let Ok(arm) = mres {
+                mat.arms.push(arm.0);
+                mat.curried_arms.push(arm.1);
+                return;
+            }
+            mat.arms.push(simple_tree!(UnknownValue));
+            mat.curried_arms.push(Type::Unknown);
+        });
+        let cur = mat.curried.clone();
+        return ok_tree!(Match, mat, cur);
     }
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
@@ -272,6 +295,20 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
         return ok_tree!(Plus, binop, curried);
     }
+
+    pub fn check_arm(&mut self, arm: &Arm) -> ResultTreeType {
+        let left = self.lint_recurse(&arm.left)?;
+        let right = self.lint_recurse(&arm.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: left.1,
+        };
+        let curried = binop.curried.clone();
+
+        return ok_tree!(Arm, binop, curried);
+    }
+
     pub fn check_borrow_mut(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
         let mut unop = UnaryOp {
@@ -317,7 +354,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(U64, val, typ);
     }
 
-    pub fn type_check(&mut self, start: &Expr) -> () {
+    pub fn lint_check(&mut self, start: &Expr) -> () {
         let mut vals: Vec<Rc<Box<TypeTree>>> = vec![];
         match start {
             Expr::FileAll(all) => {
@@ -328,7 +365,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                     }
                 }
             }
-            _ => panic!("type-lang linter issue expected all at type_check"),
+            _ => panic!("type-lang linter issue expected all at lint_check"),
         }
     }
 

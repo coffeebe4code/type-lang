@@ -9,7 +9,6 @@ use cranelift_codegen::isa::CallConv;
 use cranelift_codegen::settings;
 use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::*;
-use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use perror::*;
 use symtable::*;
 use token::*;

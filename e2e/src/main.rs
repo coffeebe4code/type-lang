@@ -52,7 +52,7 @@ fn main() {
     let mut sym = SymTable::new();
     let mut linter = LintSource::new(&contents, &mut sym);
     let borrow = res.unwrap();
-    linter.type_check(&mut borrow.to_owned());
+    linter.lint_check(&mut borrow.to_owned());
 
     if linter.issues.len() > 1 {
         linter.issues.into_iter().for_each(|x| {

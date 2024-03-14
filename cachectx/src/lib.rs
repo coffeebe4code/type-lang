@@ -41,7 +41,7 @@ impl CacheContext {
                     let mut sym = SymTable::new();
                     let mut linter = LintSource::new(&contents, &mut sym);
 
-                    let analysis = linter.type_check(&mut val);
+                    let analysis = linter.lint_check(&mut val);
                     ic.symtable = Some(sym);
                 }
                 Err(perr) => ic.parsed = Some(Err(perr)),

@@ -20,7 +20,7 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     let ast_parsed = parse.all().unwrap();
     let mut table = SymTable::new();
     let mut linter = LintSource::new(contents, &mut table);
-    linter.type_check(&ast_parsed);
+    linter.lint_check(&ast_parsed);
     let mut ir = IRSource::new(0, table);
     match *ast_parsed {
         Expr::FileAll(val) => {

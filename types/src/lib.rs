@@ -36,10 +36,8 @@ pub struct ArgInfo {
 pub struct MatchOp {
     pub expr: Rc<Box<TypeTree>>,
     pub curried: Type,
-    pub arms_left: Vec<Rc<Box<TypeTree>>>,
-    pub curried_left: Vec<Type>,
-    pub arms_right: Vec<Rc<Box<TypeTree>>>,
-    pub curried_right: Vec<Type>,
+    pub arms: Vec<Rc<Box<TypeTree>>>,
+    pub curried_arms: Vec<Type>,
 }
 
 #[derive(Debug)]
@@ -148,6 +146,7 @@ pub enum TypeTree {
     // flow
     For(ForOp),
     Match(MatchOp),
+    Arm(BinaryOp),
     Block(Block),
     Return(UnaryOp),
     ReturnVoid(NoOp),
@@ -212,7 +211,13 @@ impl TypeTree {
         match self {
             TypeTree::ConstInit(x) => x,
             TypeTree::MutInit(x) => x,
-            _ => panic!("issue no symbol found"),
+            _ => panic!("issue initialization not found"),
+        }
+    }
+    pub fn into_binary_op(&self) -> &BinaryOp {
+        match self {
+            TypeTree::Arm(x) => x,
+            _ => panic!("issue binary op not found"),
         }
     }
     pub fn whatami(&self) -> &'static str {
@@ -222,6 +227,7 @@ impl TypeTree {
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
             TypeTree::Match(_) => "match",
+            TypeTree::Arm(_) => "pattern match arm",
             TypeTree::Block(_) => "block of statements",
             TypeTree::Return(_) => "return expression",
             TypeTree::ReturnVoid(_) => "return",

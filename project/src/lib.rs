@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_yaml::{self};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Recipe {

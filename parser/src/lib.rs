@@ -891,10 +891,6 @@ trait ExpectExpr {
     fn xexpect_expr(self, parser: &Parser, title: String) -> ResultExpr;
 }
 
-trait OptOr {
-    fn xopt_or(self, func: impl FnOnce(Box<Expr>) -> ResultOptExpr) -> ResultOptExpr;
-}
-
 trait ResultOr {
     fn xresult_or(self, func: impl FnOnce(Box<Expr>) -> ResultExpr) -> ResultExpr;
 }
@@ -919,10 +915,6 @@ trait ConvertOptExpr {
     fn xconvert_expr(self, func: impl FnOnce(Lexeme) -> Box<Expr>) -> OptExpr;
 }
 
-trait ChainExpect {
-    fn xchain_expect(self, title: String) -> ResultExpr;
-}
-
 impl ResultOr for ResultExpr {
     fn xresult_or(self, func: impl FnOnce(Box<Expr>) -> ResultExpr) -> ResultExpr {
         match self {
@@ -938,15 +930,6 @@ impl ResultOptOr for ResultOptExpr {
             Err(err) => Err(err),
             Ok(Some(inner)) => func(inner),
             Ok(None) => Ok(None),
-        }
-    }
-}
-
-impl OptOr for OptExpr {
-    fn xopt_or(self, func: impl FnOnce(Box<Expr>) -> ResultOptExpr) -> ResultOptExpr {
-        match self {
-            None => return Ok(None),
-            Some(val) => return func(val),
         }
     }
 }
@@ -1028,7 +1011,6 @@ impl ConvertToResultOpt for ResultExpr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lexer::Lexeme;
     #[test]
     fn it_should_parse_unary() {
         let lexer = TLexer::new("-5");
