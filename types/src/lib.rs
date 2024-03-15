@@ -69,7 +69,7 @@ pub struct NoOp {
 pub struct Invoke {
     pub args: Vec<Rc<Box<TypeTree>>>,
     pub args_curried: Vec<Type>,
-    pub ident: String,
+    pub ident: Rc<Box<TypeTree>>,
     pub curried: Type,
 }
 
@@ -109,7 +109,6 @@ pub struct ArrayAccess {
 
 #[derive(Debug)]
 pub struct StructInitialize {
-    pub name: String,
     pub idents: Vec<String>,
     pub vals: Vec<Rc<Box<TypeTree>>>,
     pub curried: Type,
@@ -117,14 +116,13 @@ pub struct StructInitialize {
 
 #[derive(Debug)]
 pub struct ArrayInitialize {
-    pub name: String,
     pub vals: Vec<Rc<Box<TypeTree>>>,
+    pub vals_curried: Vec<Type>,
     pub curried: Type,
 }
 
 #[derive(Debug)]
 pub struct FunctionInitialize {
-    pub name: String,
     pub args: Vec<Rc<Box<TypeTree>>>,
     pub args_curried: Vec<Type>,
     pub block: Rc<Box<TypeTree>>,
@@ -145,6 +143,7 @@ pub enum TypeTree {
     ErrorInfo(ErrorInfo),
     // flow
     For(ForOp),
+    Invoke(Invoke),
     Match(MatchOp),
     Arm(BinaryOp),
     Block(Block),
@@ -226,6 +225,7 @@ impl TypeTree {
             TypeTree::TagInfo(_) => "tag declaration",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
+            TypeTree::Invoke(_) => "function invocation",
             TypeTree::Match(_) => "match",
             TypeTree::Arm(_) => "pattern match arm",
             TypeTree::Block(_) => "block of statements",

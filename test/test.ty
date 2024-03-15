@@ -1,7 +1,7 @@
 // comments are written with two '/' characters
 
 // variables can be declared constant, making them unmodifiable
-const a = -undefined
+const a = 5
 // or mutatable with let
 let b = 2
 

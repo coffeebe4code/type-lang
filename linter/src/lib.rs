@@ -29,8 +29,10 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         match to_cmp {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
+            Expr::ArrayDecl(decl) => self.check_array_decl(&decl),
             Expr::Match(_match) => self.check_match(&_match),
             Expr::Invoke(invoke) => self.check_invoke(&invoke),
+            Expr::PropAccess(prop) => self.check_prop_access(&prop),
             Expr::Arm(arm) => self.check_arm(&arm),
             Expr::Rest(_) => self.check_rest(),
             Expr::UndefinedValue(_) => self.check_undefined(),
@@ -64,10 +66,8 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn check_func_decl(&mut self, td: &FuncDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.block)?;
         let slice = td.identifier.into_symbol().val.slice;
-        let copy = slice.clone();
 
         let init = FunctionInitialize {
-            name: slice,
             args: vec![],
             args_curried: vec![],
             block: result.0,
@@ -76,7 +76,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
-        self.slt.table.insert(copy, (Rc::clone(&full), 0));
+        self.slt.table.insert(slice, (Rc::clone(&full), 0));
         return Ok((full, curried));
     }
 
@@ -135,6 +135,28 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         };
         let typ = Type::Void;
         return ok_tree!(SymbolAccess, sym, typ);
+    }
+
+    pub fn check_array_decl(&mut self, arr: &ArrayDecl) -> ResultTreeType {
+        let mut array = ArrayInitialize {
+            vals: vec![],
+            vals_curried: vec![],
+            curried: Type::Void,
+        };
+        if let Some(args) = &arr.args {
+            args.into_iter().for_each(|e| {
+                if let Ok(r) = self.lint_recurse(&e) {
+                    array.vals.push(r.0);
+                } else {
+                    array.vals.push(simple_tree!(UnknownValue));
+                    array.vals_curried.push(Type::Unknown);
+                    array.curried = Type::Unknown;
+                }
+            });
+        }
+
+        let curried = array.curried.clone();
+        return ok_tree!(ArrayInit, array, curried);
     }
 
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
@@ -285,17 +307,40 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(Not, unop, curried);
     }
 
-    pub fn check_invoke(&mut self, inv: &Invoke) -> ResultTreeType {
-        let left = self.lint_recurse(&bin.left)?;
-        let right = self.lint_recurse(&bin.right)?;
-        let binop = BinaryOp {
-            left: left.0,
-            right: right.0,
-            curried: left.1,
+    pub fn check_prop_access(&mut self, prop: &ast::PropAccess) -> ResultTreeType {
+        let prev = self.lint_recurse(&prop.prev)?;
+        let access = types::PropAccess {
+            prev: prev.0,
+            ident: prop.identifier.into_symbol().val.slice,
+            curried: prev.1,
         };
-        let curried = binop.curried.clone();
+        let curried = access.curried.clone();
 
-        return ok_tree!(Plus, binop, curried);
+        return ok_tree!(PropAccess, access, curried);
+    }
+
+    pub fn check_invoke(&mut self, inv: &ast::Invoke) -> ResultTreeType {
+        let prev = self.lint_recurse(&inv.prev)?;
+        let mut invoke = types::Invoke {
+            args: vec![],
+            args_curried: vec![],
+            ident: prev.0,
+            curried: prev.1,
+        };
+        if let Some(args) = &inv.args {
+            args.iter().for_each(|a| {
+                if let Ok(prev) = self.lint_recurse(&a) {
+                    invoke.args.push(prev.0);
+                    invoke.args_curried.push(prev.1);
+                    return;
+                }
+                invoke.args.push(simple_tree!(UnknownValue));
+                invoke.args_curried.push(Type::Unknown);
+            })
+        };
+        let curried = invoke.curried.clone();
+
+        return ok_tree!(Invoke, invoke, curried);
     }
 
     pub fn check_plus(&mut self, bin: &BinOp) -> ResultTreeType {
