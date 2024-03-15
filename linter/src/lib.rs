@@ -30,7 +30,9 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
             Expr::Match(_match) => self.check_match(&_match),
+            Expr::Invoke(invoke) => self.check_invoke(&invoke),
             Expr::Arm(arm) => self.check_arm(&arm),
+            Expr::Rest(_) => self.check_rest(),
             Expr::UndefinedValue(_) => self.check_undefined(),
             Expr::UnOp(un) => match un.op.token {
                 Token::Sub => self.check_negate(un),
@@ -283,6 +285,19 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(Not, unop, curried);
     }
 
+    pub fn check_invoke(&mut self, inv: &Invoke) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: left.1,
+        };
+        let curried = binop.curried.clone();
+
+        return ok_tree!(Plus, binop, curried);
+    }
+
     pub fn check_plus(&mut self, bin: &BinOp) -> ResultTreeType {
         let left = self.lint_recurse(&bin.left)?;
         let right = self.lint_recurse(&bin.right)?;
@@ -294,6 +309,15 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = binop.curried.clone();
 
         return ok_tree!(Plus, binop, curried);
+    }
+
+    pub fn check_rest(&mut self) -> ResultTreeType {
+        let restop = NoOp {
+            curried: Type::Rest,
+        };
+        let curried = restop.curried.clone();
+
+        return ok_tree!(RestAccess, restop, curried);
     }
 
     pub fn check_arm(&mut self, arm: &Arm) -> ResultTreeType {

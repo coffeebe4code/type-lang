@@ -291,6 +291,7 @@ pub enum Type {
     U32,
     F64,
     Unknown,
+    Rest,
     Undefined,
     Void,
     Never,
