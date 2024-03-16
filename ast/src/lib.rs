@@ -312,7 +312,7 @@ pub struct StructDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
-    pub declarators: Option<Vec<Box<Expr>>>,
+    pub declarators: Vec<Box<Expr>>,
     pub sig: Option<Box<Expr>>,
 }
 
@@ -321,7 +321,7 @@ impl StructDecl {
         visibility: Option<Lexeme>,
         mutability: Lexeme,
         identifier: Box<Expr>,
-        declarators: Option<Vec<Box<Expr>>>,
+        declarators: Vec<Box<Expr>>,
         sig: Option<Box<Expr>>,
     ) -> Self {
         StructDecl {
@@ -383,13 +383,12 @@ impl AnonFuncDecl {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FuncType {
-    // this can be an empty vec right now
-    pub args: Option<Vec<Box<Expr>>>,
+    pub args: Vec<Box<Expr>>,
     pub ret_typ: Box<Expr>,
 }
 
 impl FuncType {
-    pub fn new(args: Option<Vec<Box<Expr>>>, ret_typ: Box<Expr>) -> Self {
+    pub fn new(args: Vec<Box<Expr>>, ret_typ: Box<Expr>) -> Self {
         FuncType { args, ret_typ }
     }
 }

@@ -12,6 +12,7 @@ type ResultTreeType = Result<(Rc<Box<TypeTree>>, Type), usize>;
 
 pub struct LintSource<'buf, 'sym> {
     buffer: &'buf str,
+    idx: usize,
     slt: &'sym mut SymTable,
     pub issues: Vec<LinterError>,
 }
@@ -20,6 +21,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn new(buffer: &'buf str, slt: &'sym mut SymTable) -> Self {
         LintSource {
             buffer,
+            idx: 0,
             slt,
             issues: vec![],
         }
@@ -29,7 +31,10 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         match to_cmp {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
+            Expr::StructDecl(decl) => self.check_struct_decl(&decl),
+            Expr::ErrorDecl(decl) => self.check_error_decl(&decl),
             Expr::ArrayDecl(decl) => self.check_array_decl(&decl),
+            Expr::AnonFuncDecl(decl) => self.check_anon_func(&decl),
             Expr::Match(_match) => self.check_match(&_match),
             Expr::Invoke(invoke) => self.check_invoke(&invoke),
             Expr::PropAccess(prop) => self.check_prop_access(&prop),
@@ -67,7 +72,9 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let result = self.lint_recurse(&td.block)?;
         let slice = td.identifier.into_symbol().val.slice;
 
+        // todo:: function args aren't checked
         let init = FunctionInitialize {
+            name: slice.clone(),
             args: vec![],
             args_curried: vec![],
             block: result.0,
@@ -159,6 +166,49 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(ArrayInit, array, curried);
     }
 
+    pub fn check_error_decl(&mut self, err: &ErrorDecl) -> ResultTreeType {
+        let slice = err.identifier.into_symbol().val.slice;
+        let err_info = ErrorInfo {
+            message: "".to_string(),
+            code: 0,
+        };
+
+        let full = tree!(ErrorInfo, err_info);
+
+        self.slt.table.insert(slice.clone(), (Rc::clone(&full), 0));
+        let curried = Type::ErrorDecl;
+        return Ok((full, curried));
+    }
+
+    pub fn check_struct_decl(&mut self, obj: &StructDecl) -> ResultTreeType {
+        let result: Vec<ResultTreeType> = obj
+            .declarators
+            .iter()
+            .map(|e| self.lint_recurse(&e))
+            .collect();
+        let slice = obj.identifier.into_symbol().val.slice;
+        let mut obj_info = StructInfo {
+            props: vec![],
+            types: vec![],
+            curried: Type::Custom(slice.clone()),
+        };
+        result.into_iter().for_each(|res| {
+            if let Ok(exp) = res {
+                obj_info.props.push(exp.0);
+                obj_info.types.push(exp.1);
+                return;
+            }
+            tag_info.props.push(simple_tree!(UnknownValue));
+            tag_info.types.push(Type::Unknown);
+        });
+
+        let curried = tag_info.curried.clone();
+        let full = tree!(TagInfo, tag_info);
+
+        self.slt.table.insert(copy, (Rc::clone(&full), 0));
+        return Ok((full, curried));
+    }
+
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
         let result: Vec<ResultTreeType> = tag
             .declarators
@@ -187,6 +237,26 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let full = tree!(TagInfo, tag_info);
 
         self.slt.table.insert(copy, (Rc::clone(&full), 0));
+        return Ok((full, curried));
+    }
+
+    pub fn check_anon_func(&mut self, anon: &AnonFuncDecl) -> ResultTreeType {
+        let result = self.lint_recurse(&anon.block)?;
+        let slice = format!(":anon_{}", self.idx);
+        self.idx += 1;
+
+        // todo:: function args aren't checked
+        let init = FunctionInitialize {
+            name: slice.clone(),
+            args: vec![],
+            args_curried: vec![],
+            block: result.0,
+            block_curried: result.1,
+        };
+        let curried = init.block_curried.clone();
+        let full = tree!(AnonFuncInit, init);
+
+        self.slt.table.insert(slice, (Rc::clone(&full), 0));
         return Ok((full, curried));
     }
 

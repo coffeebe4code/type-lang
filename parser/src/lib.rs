@@ -100,7 +100,10 @@ impl<'s> Parser<'s> {
             .lexer
             .collect_if(Token::CBrace)
             .xexpect_token(&self, "expected '}'".to_string())?;
-        result_expr!(StructDecl, visibility, mutability, identifier, decls, sig)
+        if let Some(dcs) = decls {
+            return result_expr!(StructDecl, visibility, mutability, identifier, dcs, sig);
+        }
+        result_expr!(StructDecl, visibility, mutability, identifier, vec![], sig)
     }
 
     pub fn top_decl(&mut self) -> ResultExpr {
@@ -188,7 +191,7 @@ impl<'s> Parser<'s> {
             let ret_type = self
                 .sig_union()
                 .xexpect_expr(&self, "expected function return type".to_string())?;
-            return result_expr!(FuncType, Some(args_list), ret_type).xconvert_to_result_opt();
+            return result_expr!(FuncType, args_list, ret_type).xconvert_to_result_opt();
         }
         Ok(None)
     }

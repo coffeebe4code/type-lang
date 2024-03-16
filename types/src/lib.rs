@@ -123,6 +123,7 @@ pub struct ArrayInitialize {
 
 #[derive(Debug)]
 pub struct FunctionInitialize {
+    pub name: String,
     pub args: Vec<Rc<Box<TypeTree>>>,
     pub args_curried: Vec<Type>,
     pub block: Rc<Box<TypeTree>>,
@@ -293,6 +294,7 @@ pub enum Type {
     Unknown,
     Rest,
     Undefined,
+    ErrorDecl,
     Void,
     Never,
     Bool,
