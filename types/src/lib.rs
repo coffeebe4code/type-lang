@@ -33,6 +33,12 @@ pub struct ArgInfo {
 }
 
 #[derive(Debug)]
+pub struct DeclaratorInfo {
+    pub name: String,
+    pub curried: Type,
+}
+
+#[derive(Debug)]
 pub struct MatchOp {
     pub expr: Rc<Box<TypeTree>>,
     pub curried: Type,
@@ -140,6 +146,7 @@ pub struct Block {
 pub enum TypeTree {
     // info
     StructInfo(StructInfo),
+    DeclaratorInfo(DeclaratorInfo),
     TagInfo(TagInfo),
     ErrorInfo(ErrorInfo),
     // flow
@@ -223,6 +230,7 @@ impl TypeTree {
     pub fn whatami(&self) -> &'static str {
         match self {
             TypeTree::StructInfo(_) => "struct declaration",
+            TypeTree::DeclaratorInfo(_) => "property declaration",
             TypeTree::TagInfo(_) => "tag declaration",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",

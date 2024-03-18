@@ -58,6 +58,7 @@ impl<'s> Parser<'s> {
     ) -> ResultExpr {
         let mut variants: Vec<Box<Expr>> = vec![];
         while let Some(_) = self.lexer.collect_if(Token::Or) {
+            // todo:: needs to be declarator
             let x = self
                 .ident()
                 .xconvert_to_result(self, "expected identifier'".to_string())?;

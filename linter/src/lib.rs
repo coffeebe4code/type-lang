@@ -35,6 +35,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::ErrorDecl(decl) => self.check_error_decl(&decl),
             Expr::ArrayDecl(decl) => self.check_array_decl(&decl),
             Expr::AnonFuncDecl(decl) => self.check_anon_func(&decl),
+            Expr::Declarator(declarator) => self.check_declarators(&declarator),
             Expr::Match(_match) => self.check_match(&_match),
             Expr::Invoke(invoke) => self.check_invoke(&invoke),
             Expr::PropAccess(prop) => self.check_prop_access(&prop),
@@ -133,6 +134,15 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         });
         let cur = mat.curried.clone();
         return ok_tree!(Match, mat, cur);
+    }
+
+    pub fn check_declarator(&mut self, decl: &Declarator) -> ResultTreeType {
+        let dec = DeclaratorInfo {
+            name: decl.ident.into_symbol().val.slice.clone(),
+            curried: Type::Undefined,
+        };
+        let curried = dec.curried.clone();
+        return ok_tree!(DeclaratorInfo, dec, curried);
     }
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
