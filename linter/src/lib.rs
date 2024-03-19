@@ -32,10 +32,12 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
             Expr::StructDecl(decl) => self.check_struct_decl(&decl),
+            Expr::Reassignment(reas) => self.check_reassignment(&reas),
+            Expr::SelfValue(_) => self.check_self_value(),
             Expr::ErrorDecl(decl) => self.check_error_decl(&decl),
             Expr::ArrayDecl(decl) => self.check_array_decl(&decl),
             Expr::AnonFuncDecl(decl) => self.check_anon_func(&decl),
-            Expr::Declarator(declarator) => self.check_declarators(&declarator),
+            Expr::Declarator(declarator) => self.check_declarator(&declarator),
             Expr::Match(_match) => self.check_match(&_match),
             Expr::Invoke(invoke) => self.check_invoke(&invoke),
             Expr::PropAccess(prop) => self.check_prop_access(&prop),
@@ -190,6 +192,26 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return Ok((full, curried));
     }
 
+    pub fn check_self_value(&mut self) -> ResultTreeType {
+        let self_ref = NoOp {
+            curried: Type::Void,
+        };
+        let curried = self_ref.curried.clone();
+        ok_tree!(SelfRef, self_ref, curried)
+    }
+
+    pub fn check_reassignment(&mut self, reas: &ast::Reassignment) -> ResultTreeType {
+        let maybe_access = self.lint_recurse(&reas.left)?;
+        let result = self.lint_recurse(&reas.expr)?;
+        let reassignment = types::Reassignment {
+            left: maybe_access.0,
+            right: result.0,
+            curried: result.1,
+        };
+        let curried = reassignment.curried.clone();
+        ok_tree!(As, reassignment, curried)
+    }
+
     pub fn check_struct_decl(&mut self, obj: &StructDecl) -> ResultTreeType {
         let result: Vec<ResultTreeType> = obj
             .declarators
@@ -204,18 +226,20 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         };
         result.into_iter().for_each(|res| {
             if let Ok(exp) = res {
-                obj_info.props.push(exp.0);
+                obj_info.props.push(exp.0.into_declarator().name.clone());
                 obj_info.types.push(exp.1);
                 return;
             }
-            tag_info.props.push(simple_tree!(UnknownValue));
-            tag_info.types.push(Type::Unknown);
+            obj_info
+                .props
+                .push(res.unwrap().0.into_declarator().name.clone());
+            obj_info.types.push(Type::Unknown);
         });
 
-        let curried = tag_info.curried.clone();
-        let full = tree!(TagInfo, tag_info);
+        let curried = obj_info.curried.clone();
+        let full = tree!(StructInfo, obj_info);
 
-        self.slt.table.insert(copy, (Rc::clone(&full), 0));
+        self.slt.table.insert(slice, (Rc::clone(&full), 0));
         return Ok((full, curried));
     }
 

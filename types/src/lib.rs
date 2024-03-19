@@ -90,7 +90,7 @@ pub struct Initialization {
 pub struct Reassignment {
     pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
-    pub left_curried: Type,
+    pub curried: Type,
 }
 
 #[derive(Debug)]
@@ -214,6 +214,12 @@ pub enum TypeTree {
 }
 
 impl TypeTree {
+    pub fn into_declarator(&self) -> &DeclaratorInfo {
+        match self {
+            TypeTree::DeclaratorInfo(x) => x,
+            _ => panic!("issue declarator not found"),
+        }
+    }
     pub fn into_initialization(&self) -> &Initialization {
         match self {
             TypeTree::ConstInit(x) => x,
