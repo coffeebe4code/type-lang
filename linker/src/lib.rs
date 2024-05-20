@@ -13,6 +13,7 @@ pub fn link(obj_file: Vec<&PathBuf>, output: &PathBuf) -> () {
             .status()
             .unwrap();
     } else {
+        println!("cc {:?} -o {:?}", obj_file, output);
         Command::new("cc")
             .args(obj_file)
             .args(&[Path::new("-o"), output])
