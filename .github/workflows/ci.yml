@@ -24,7 +24,9 @@ jobs:
           if ($LASTEXITCODE) { throw "Error" }
           ./target/release/ty obj test/main.ty
           if ($LASTEXITCODE) { throw "Error" }
-          ./target/release/ty link test/main -o .ty-cache/main.o
+          ./target/release/ty link main -o .ty-cache/main.o
+          if ($LASTEXITCODE) { throw "Error" }
+          ./target/main
           if ($LASTEXITCODE) { throw "Error" }
         shell: pwsh
 
@@ -40,7 +42,8 @@ jobs:
           cargo test
           ./target/release/e2e
           ./target/release/ty obj test/main.ty
-          ./target/release/ty link test/main -o .ty-cache/main.o
+          ./target/release/ty link main -o .ty-cache/main.o
+          ./target/main
 
   build-macos:
     runs-on: macOS-latest
@@ -54,4 +57,5 @@ jobs:
           cargo test
           ./target/release/e2e
           ./target/release/ty obj test/main.ty
-          ./target/release/ty link test/main -o .ty-cache/main.o
+          ./target/release/ty link main -o .ty-cache/main.o
+          ./target/main
