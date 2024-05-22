@@ -1,6 +1,6 @@
 use ast::*;
 use cranelift_codegen::entity::EntityRef;
-use cranelift_codegen::ir::entities::{FuncRef, Inst};
+use cranelift_codegen::ir::entities::FuncRef;
 use cranelift_codegen::ir::function::DisplayFunction;
 use cranelift_codegen::ir::types::*;
 use cranelift_codegen::ir::AbiParam;
@@ -54,7 +54,6 @@ impl IRSource {
         builder: &mut FunctionBuilder,
     ) -> ResultFir<Variable> {
         let mut args: Vec<Value> = vec![];
-        let mut call: Inst = Inst::from_u32(0);
         if op.args.is_some() {
             args = op
                 .args
@@ -68,7 +67,7 @@ impl IRSource {
                 .collect::<Vec<Value>>();
         }
         // todo:: get this correct with funcref. on how to get this from slt?
-        call = builder.ins().call(FuncRef::from_u32(0), args.as_slice());
+        let call = builder.ins().call(FuncRef::from_u32(0), args.as_slice());
         let result = self.add_var();
         builder.declare_var(result, I64);
         builder.def_var(result, builder.inst_results(call)[0]);
@@ -125,9 +124,9 @@ impl IRSource {
         let arg2 = builder.use_var(right);
         let temp = match num.op.token {
             Token::Plus => builder.ins().iadd(arg1, arg2),
-            Token::Sub => builder.ins().isub(arg1, arg2),
-            Token::Mul => builder.ins().imul(arg1, arg2),
-            Token::Div => builder.ins().udiv(arg1, arg2),
+            Token::Dash => builder.ins().isub(arg1, arg2),
+            Token::Asterisk => builder.ins().imul(arg1, arg2),
+            Token::Slash => builder.ins().udiv(arg1, arg2),
             _ => panic!("invalid binary operand"),
         };
         builder.def_var(result, temp);
@@ -229,7 +228,7 @@ mod tests {
                     expr!(
                         Number,
                         Lexeme {
-                            token: Token::Num,
+                            token: Token::Number,
                             span: 6..7,
                             slice: "5".to_string()
                         }

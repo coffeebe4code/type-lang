@@ -23,13 +23,13 @@ pub enum Token {
     #[token("const")]
     Const,
     #[token("copy")]
-    WCopy,
+    Copy,
     #[token("clone")]
-    WClone,
+    Clone,
     #[token("scalar")]
     Scalar,
     #[token("sized")]
-    WSized,
+    Sized,
     #[token("i32")]
     I32,
     #[token("u32")]
@@ -71,7 +71,7 @@ pub enum Token {
     #[token("type")]
     Type,
     #[token("self")]
-    WSelf,
+    TSelf,
     #[token("undefined")]
     Undefined,
     #[token("char")]
@@ -146,6 +146,8 @@ pub enum Token {
     KeyOf,
     #[token("typeof")]
     TypeOf,
+    #[token("instanceof")]
+    InstanceOf,
     #[token("rangeof")]
     RangeOf,
 
@@ -164,14 +166,16 @@ pub enum Token {
     #[token("}")]
     CBrace,
     #[token("[")]
-    OArray,
+    OBracket,
     #[token("]")]
-    CArray,
+    CBracket,
 
     #[token("..")]
     Range,
+    #[token("...")]
+    Elipses,
     #[token(".")]
-    Dot,
+    Period,
     #[token(",")]
     Comma,
     #[token("$")]
@@ -195,7 +199,7 @@ pub enum Token {
     #[token(">=")]
     GtEq,
     #[token("/")]
-    Div,
+    Slash,
     #[token("\\")]
     BSlash,
     #[token("++")]
@@ -203,23 +207,23 @@ pub enum Token {
     #[token("+")]
     Plus,
     #[token("_")]
-    Rest,
+    Underscore,
     #[token("-")]
-    Sub,
+    Dash,
     #[token("*")]
-    Mul,
+    Asterisk,
     #[token("|")]
-    Or,
+    Bar,
     #[token("&")]
-    And,
+    Ampersand,
     #[token("^")]
-    Xor,
+    Caret,
     #[token("<<")]
     LShift,
     #[token(">>")]
     RShift,
     #[token("~")]
-    Not,
+    Tilde,
     #[token("=")]
     As,
     #[token("~=")]
@@ -243,7 +247,7 @@ pub enum Token {
     #[token("!")]
     NotLog,
     #[token("%")]
-    Mod,
+    Percent,
     #[token("+=")]
     AddAs,
     #[token("-=")]
@@ -258,11 +262,12 @@ pub enum Token {
     AndAs,
 
     #[regex(r#"'([^'\\]|\\t|\\u|\\n|\\')*'"#)]
+    #[regex(r#"`([^`\\]|\\t|\\u|\\n|\\`)*`"#)]
     #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
     Chars,
 
     #[regex("[1-9][0-9]*\\.[0-9]+|0\\.[0-9]+|0|[1-9][0-9]*")]
-    Num,
+    Number,
     #[regex("[a-zA-Z]+[_0-9a-zA-Z]*")]
     Symbol,
     #[regex("[1-9][0-9]*\\.[0-9]+|0\\.[0-9]+")]
@@ -292,13 +297,13 @@ mod tests {
         assert_eq!(lexer.next(), Some(Ok(Token::Let)));
         assert_eq!(lexer.next(), Some(Ok(Token::Symbol)));
         assert_eq!(lexer.next(), Some(Ok(Token::As)));
-        assert_eq!(lexer.next(), Some(Ok(Token::Num)));
+        assert_eq!(lexer.next(), Some(Ok(Token::Number)));
     }
     #[test]
     fn it_tokenizes_rest() {
         let mut lexer = Token::lexer("let _ = x_b");
         assert_eq!(lexer.next(), Some(Ok(Token::Let)));
-        assert_eq!(lexer.next(), Some(Ok(Token::Rest)));
+        assert_eq!(lexer.next(), Some(Ok(Token::Underscore)));
         assert_eq!(lexer.next(), Some(Ok(Token::As)));
         assert_eq!(lexer.next(), Some(Ok(Token::Symbol)));
     }
@@ -307,19 +312,19 @@ mod tests {
         let mut lexer = Token::lexer("wheels: [const char] ");
         assert_eq!(lexer.next(), Some(Ok(Token::Symbol)));
         assert_eq!(lexer.next(), Some(Ok(Token::Colon)));
-        assert_eq!(lexer.next(), Some(Ok(Token::OArray)));
+        assert_eq!(lexer.next(), Some(Ok(Token::OBracket)));
         assert_eq!(lexer.next(), Some(Ok(Token::Const)));
         assert_eq!(lexer.next(), Some(Ok(Token::Char)));
-        assert_eq!(lexer.next(), Some(Ok(Token::CArray)));
+        assert_eq!(lexer.next(), Some(Ok(Token::CBracket)));
     }
     #[test]
     fn it_tokenizes_nums() {
         let mut lexer1 = Token::lexer("5");
         let mut lexer2 = Token::lexer("50");
         let mut lexer3 = Token::lexer("0");
-        assert_eq!(lexer1.next(), Some(Ok(Token::Num)));
-        assert_eq!(lexer2.next(), Some(Ok(Token::Num)));
-        assert_eq!(lexer3.next(), Some(Ok(Token::Num)));
+        assert_eq!(lexer1.next(), Some(Ok(Token::Number)));
+        assert_eq!(lexer2.next(), Some(Ok(Token::Number)));
+        assert_eq!(lexer3.next(), Some(Ok(Token::Number)));
     }
     #[test]
     fn it_tokenizes_decimals() {
@@ -335,11 +340,11 @@ mod tests {
         assert_eq!(lexer2.next(), Some(Ok(Token::Decimal)));
         assert_eq!(lexer3.next(), Some(Ok(Token::Decimal)));
         assert_eq!(lexer4.next(), Some(Ok(Token::Decimal)));
-        assert_eq!(lexer5.next(), Some(Ok(Token::Dot)));
-        assert_eq!(lexer5.next(), Some(Ok(Token::Num)));
-        assert_eq!(lexer6.next(), Some(Ok(Token::Num)));
-        assert_eq!(lexer6.next(), Some(Ok(Token::Dot)));
-        assert_eq!(lexer7.next(), Some(Ok(Token::Num)));
+        assert_eq!(lexer5.next(), Some(Ok(Token::Period)));
+        assert_eq!(lexer5.next(), Some(Ok(Token::Number)));
+        assert_eq!(lexer6.next(), Some(Ok(Token::Number)));
+        assert_eq!(lexer6.next(), Some(Ok(Token::Period)));
+        assert_eq!(lexer7.next(), Some(Ok(Token::Number)));
         assert_eq!(lexer7.next(), Some(Ok(Token::Decimal)));
         assert_eq!(lexer8.next(), Some(Ok(Token::Decimal)));
     }
