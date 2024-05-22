@@ -26,7 +26,7 @@ fn main() {
         .get_matches();
 
     if matches.get_flag("version") {
-        println!("version: {}", 0);
+        println!("version: {}", 0.1f32);
     }
     if let Some(obj) = matches.subcommand_matches(OBJ) {
         obj_command(obj);
