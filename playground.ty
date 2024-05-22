@@ -1,0 +1,18 @@
+const Car = struct { wheels: u8 = 7 }
+
+type Named = prop { name: [char] }
+type Car: Named = struct { wheels: u8 }
+
+type Movable: Named = trait { 
+  fn set_wheels(self, wheels: u8) {
+    if (self.name == "Sparrow") {
+      assert(wheels == 3)
+    }
+
+    self.wheels = wheels
+  }
+}
+
+type Wheeled = prop { wheels: usize }
+
+type CarBase: Wheeled + Named = alias
