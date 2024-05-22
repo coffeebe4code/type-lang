@@ -35,7 +35,7 @@ impl<'s, 't> LintSource<'s, 't> {
 
             Expr::Number(x) => match x.val.token {
                 Token::Decimal => Ok(Type::F64),
-                Token::Num => Ok(Type::U64),
+                Token::Number => Ok(Type::U64),
                 _ => panic!("type-lang linter issue"),
             },
             _ => panic!("type-lang linter issue"),

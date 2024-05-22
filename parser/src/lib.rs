@@ -57,7 +57,7 @@ impl<'s> Parser<'s> {
         sig: Option<Box<Expr>>,
     ) -> ResultExpr {
         let mut variants: Vec<Box<Expr>> = vec![];
-        while let Some(_) = self.lexer.collect_if(Token::Or) {
+        while let Some(_) = self.lexer.collect_if(Token::Bar) {
             let x = self
                 .ident()
                 .xconvert_to_result(self, "expected identifier'".to_string())?;
@@ -257,8 +257,8 @@ impl<'s> Parser<'s> {
         Ok(None)
     }
     pub fn array_decl(&mut self) -> ResultOptExpr {
-        if let Some(_) = self.lexer.collect_if(Token::OArray) {
-            if let Some(_) = self.lexer.collect_if(Token::CArray) {
+        if let Some(_) = self.lexer.collect_if(Token::OBracket) {
+            if let Some(_) = self.lexer.collect_if(Token::CBracket) {
                 return result_expr!(ArrayDecl, None).xconvert_to_result_opt();
             }
             let res = self.or()?;
@@ -269,7 +269,7 @@ impl<'s> Parser<'s> {
             }
             let _ = self
                 .lexer
-                .collect_if(Token::CArray)
+                .collect_if(Token::CBracket)
                 .xexpect_token(&self, "expected ']'".to_string())?;
             return result_expr!(ArrayDecl, Some(args)).xconvert_to_result_opt();
         }
@@ -323,9 +323,12 @@ impl<'s> Parser<'s> {
         };
     }
     pub fn signature_no_colon(&mut self) -> ResultOptExpr {
-        let muta = self
-            .lexer
-            .collect_of_if(&[Token::Const, Token::Let, Token::And, Token::Mul]);
+        let muta = self.lexer.collect_of_if(&[
+            Token::Const,
+            Token::Let,
+            Token::Ampersand,
+            Token::Asterisk,
+        ]);
         if let Some(x) = self.val_type() {
             return Ok(Some(x));
         }
@@ -470,7 +473,7 @@ impl<'s> Parser<'s> {
         let mresult = self._match()?;
         if let None = mresult {
             return self.or().xresult_or(|mut left| {
-                while let Some(bin) = self.lexer.collect_if(Token::Or) {
+                while let Some(bin) = self.lexer.collect_if(Token::Bar) {
                     left = self
                         .and()
                         .xresult_or(|right| result_expr!(BinOp, left, bin, right))?
@@ -552,7 +555,7 @@ impl<'s> Parser<'s> {
 
     pub fn or(&mut self) -> ResultExpr {
         self.and().xresult_or(|mut left| {
-            while let Some(bin) = self.lexer.collect_if(Token::Or) {
+            while let Some(bin) = self.lexer.collect_if(Token::Bar) {
                 left = self
                     .and()
                     .xresult_or(|right| result_expr!(BinOp, left, bin, right))?
@@ -562,7 +565,7 @@ impl<'s> Parser<'s> {
     }
     pub fn and(&mut self) -> ResultExpr {
         self.equality().xresult_or(|mut left| {
-            while let Some(bin) = self.lexer.collect_if(Token::And) {
+            while let Some(bin) = self.lexer.collect_if(Token::Ampersand) {
                 left = self
                     .equality()
                     .xresult_or(|right| result_expr!(BinOp, left, bin, right))?
@@ -598,7 +601,7 @@ impl<'s> Parser<'s> {
     }
     pub fn low_bin(&mut self) -> ResultExpr {
         self.high_bin().xresult_or(|mut left| {
-            while let Some(bin) = self.lexer.collect_of_if(&[Token::Plus, Token::Sub]) {
+            while let Some(bin) = self.lexer.collect_of_if(&[Token::Plus, Token::Dash]) {
                 left = self
                     .high_bin()
                     .xresult_or(|right| result_expr!(BinOp, left, bin, right))?
@@ -609,9 +612,9 @@ impl<'s> Parser<'s> {
     pub fn high_bin(&mut self) -> ResultExpr {
         self.unary().xresult_or(|mut left| {
             while let Some(bin) = self.lexer.collect_of_if(&[
-                Token::Div,
-                Token::Mul,
-                Token::Mod,
+                Token::Slash,
+                Token::Asterisk,
+                Token::Percent,
                 Token::Range,
                 Token::CastAs,
             ]) {
@@ -624,11 +627,11 @@ impl<'s> Parser<'s> {
     }
     pub fn unary(&mut self) -> ResultExpr {
         let lexeme = self.lexer.collect_of_if(&[
-            Token::And,
-            Token::Mul,
+            Token::Ampersand,
+            Token::Asterisk,
             Token::NotLog,
-            Token::Sub,
-            Token::WCopy,
+            Token::Dash,
+            Token::Copy,
         ]);
         if let Some(x) = lexeme {
             let expr = self.unary();
@@ -642,23 +645,23 @@ impl<'s> Parser<'s> {
     pub fn resolve_access(&mut self, prev: Box<Expr>) -> ResultOptExpr {
         if let Some(x) = self.lexer.collect_of_if(&[
             Token::Question,
-            Token::Dot,
-            Token::Not,
-            Token::OArray,
+            Token::Period,
+            Token::Tilde,
+            Token::OBracket,
             Token::OParen,
             Token::OBrace,
         ]) {
             match x.token {
                 Token::Question => self.resolve_access(expr!(UndefBubble, prev)),
-                Token::Not => self.resolve_access(expr!(ErrBubble, prev)),
-                Token::Dot => {
+                Token::Tilde => self.resolve_access(expr!(ErrBubble, prev)),
+                Token::Period => {
                     let ident = self
                         .ident()
                         .xconvert_to_result(&self, "expected identifier".to_string())?;
 
                     self.resolve_access(expr!(PropAccess, prev, ident))
                 }
-                Token::OArray => {
+                Token::OBracket => {
                     let expr = self.array_access()?;
                     self.resolve_access(expr!(ArrayAccess, expr, prev))
                 }
@@ -748,11 +751,11 @@ impl<'s> Parser<'s> {
         }
     }
     pub fn rest(&mut self) -> OptExpr {
-        let lexeme = self.lexer.collect_if(Token::Rest)?;
+        let lexeme = self.lexer.collect_if(Token::Underscore)?;
         opt_expr!(Rest, lexeme)
     }
     pub fn num(&mut self) -> OptExpr {
-        let lexeme = self.lexer.collect_of_if(&[Token::Num, Token::Decimal])?;
+        let lexeme = self.lexer.collect_of_if(&[Token::Number, Token::Decimal])?;
         opt_expr!(Number, lexeme)
     }
     pub fn ident(&mut self) -> OptExpr {
@@ -772,7 +775,7 @@ impl<'s> Parser<'s> {
         opt_expr!(UndefinedValue, lexeme)
     }
     pub fn _self(&mut self) -> OptExpr {
-        let lexeme = self.lexer.collect_if(Token::WSelf)?;
+        let lexeme = self.lexer.collect_if(Token::TSelf)?;
         opt_expr!(SelfValue, lexeme)
     }
     pub fn never(&mut self) -> OptExpr {
@@ -783,7 +786,7 @@ impl<'s> Parser<'s> {
         let expr = self.expr()?;
         let _ = self
             .lexer
-            .collect_if(Token::CArray)
+            .collect_if(Token::CBracket)
             .xexpect_token(&self, "expected ']'".to_string())?;
 
         Ok(expr)
@@ -820,7 +823,7 @@ impl<'s> Parser<'s> {
         Ok(Some(expr))
     }
     pub fn arr_type(&mut self) -> ResultOptExpr {
-        let lexeme = self.lexer.collect_if(Token::OArray);
+        let lexeme = self.lexer.collect_if(Token::OBracket);
         if lexeme.is_none() {
             return Ok(None);
         }
@@ -831,13 +834,13 @@ impl<'s> Parser<'s> {
                     .xconvert_to_result(&self, "expected comptime size".to_string())?;
                 let _ = self
                     .lexer
-                    .collect_if(Token::CArray)
+                    .collect_if(Token::CBracket)
                     .xexpect_token(&self, "expected ']'".to_string());
                 return bubble_expr!(ArrayType, local, Some(size));
             }
             let _ = self
                 .lexer
-                .collect_if(Token::CArray)
+                .collect_if(Token::CBracket)
                 .xexpect_token(&self, "expected ']'".to_string());
             return bubble_expr!(ArrayType, local, None);
         }
@@ -869,10 +872,10 @@ impl<'s> Parser<'s> {
             Token::Utf64,
             Token::Bool,
             Token::Any,
-            Token::WSized,
+            Token::Sized,
             Token::Scalar,
             Token::Void,
-            Token::WSelf,
+            Token::TSelf,
         ]);
         return lexeme.xconvert_expr(|span| expr!(ValueType, span));
     }
@@ -888,10 +891,6 @@ trait ExpectToken {
 
 trait ExpectExpr {
     fn xexpect_expr(self, parser: &Parser, title: String) -> ResultExpr;
-}
-
-trait OptOr {
-    fn xopt_or(self, func: impl FnOnce(Box<Expr>) -> ResultOptExpr) -> ResultOptExpr;
 }
 
 trait ResultOr {
@@ -918,10 +917,6 @@ trait ConvertOptExpr {
     fn xconvert_expr(self, func: impl FnOnce(Lexeme) -> Box<Expr>) -> OptExpr;
 }
 
-trait ChainExpect {
-    fn xchain_expect(self, title: String) -> ResultExpr;
-}
-
 impl ResultOr for ResultExpr {
     fn xresult_or(self, func: impl FnOnce(Box<Expr>) -> ResultExpr) -> ResultExpr {
         match self {
@@ -937,15 +932,6 @@ impl ResultOptOr for ResultOptExpr {
             Err(err) => Err(err),
             Ok(Some(inner)) => func(inner),
             Ok(None) => Ok(None),
-        }
-    }
-}
-
-impl OptOr for OptExpr {
-    fn xopt_or(self, func: impl FnOnce(Box<Expr>) -> ResultOptExpr) -> ResultOptExpr {
-        match self {
-            None => return Ok(None),
-            Some(val) => return func(val),
         }
     }
 }
@@ -1036,14 +1022,14 @@ mod tests {
         let first = UnOp::new(
             Lexeme {
                 slice: String::from("-"),
-                token: Token::Sub,
+                token: Token::Dash,
                 span: 0..1,
             },
             expr!(
                 Number,
                 Lexeme {
                     slice: String::from("5"),
-                    token: Token::Num,
+                    token: Token::Number,
                     span: 1..2,
                 }
             ),
@@ -1057,7 +1043,7 @@ mod tests {
         let result = parser.unary();
         let first = Number::new(Lexeme {
             slice: String::from("5"),
-            token: Token::Num,
+            token: Token::Number,
             span: 0..1,
         });
         assert_eq!(result.unwrap(), Box::new(Expr::Number(first)));
@@ -1102,20 +1088,20 @@ mod tests {
                 Number,
                 Lexeme {
                     slice: String::from("5"),
-                    token: Token::Num,
+                    token: Token::Number,
                     span: 0..1,
                 }
             ),
             Lexeme {
                 slice: String::from("*"),
-                token: Token::Mul,
+                token: Token::Asterisk,
                 span: 2..3,
             },
             expr!(
                 Number,
                 Lexeme {
                     slice: String::from("2"),
-                    token: Token::Num,
+                    token: Token::Number,
                     span: 4..5,
                 }
             ),
@@ -1135,7 +1121,7 @@ mod tests {
                     Number,
                     Lexeme {
                         slice: String::from("5"),
-                        token: Token::Num,
+                        token: Token::Number,
                         span: 0..1,
                     }
                 ),
@@ -1150,20 +1136,20 @@ mod tests {
                         Number,
                         Lexeme {
                             slice: String::from("3"),
-                            token: Token::Num,
+                            token: Token::Number,
                             span: 4..5
                         }
                     ),
                     Lexeme {
                         slice: String::from("*"),
-                        token: Token::Mul,
+                        token: Token::Asterisk,
                         span: 6..7
                     },
                     expr!(
                         Number,
                         Lexeme {
                             slice: String::from("2"),
-                            token: Token::Num,
+                            token: Token::Number,
                             span: 8..9
                         }
                     )
@@ -1178,7 +1164,7 @@ mod tests {
                 Number,
                 Lexeme {
                     slice: String::from("1"),
-                    token: Token::Num,
+                    token: Token::Number,
                     span: 12..13,
                 }
             )
@@ -1214,7 +1200,7 @@ mod tests {
                         Number,
                         Lexeme {
                             slice: String::from("5"),
-                            token: Token::Num,
+                            token: Token::Number,
                             span: 10..11
                         }
                     ),
@@ -1253,7 +1239,7 @@ mod tests {
                     Number,
                     Lexeme {
                         slice: String::from("5"),
-                        token: Token::Num,
+                        token: Token::Number,
                         span: 0..1,
                     }
                 ),
@@ -1266,7 +1252,7 @@ mod tests {
                     Number,
                     Lexeme {
                         slice: String::from("3"),
-                        token: Token::Num,
+                        token: Token::Number,
                         span: 4..5
                     }
                 )
@@ -1280,7 +1266,7 @@ mod tests {
                 Number,
                 Lexeme {
                     slice: String::from("2"),
-                    token: Token::Num,
+                    token: Token::Number,
                     span: 8..9
                 }
             )
