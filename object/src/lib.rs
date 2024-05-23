@@ -24,15 +24,6 @@ pub fn build_std_fn(om: &mut ObjectModule, func: Function, obj_name: &str) -> ()
     om.define_function(func_id, &mut ctx).unwrap();
 }
 
-pub fn build_fn(om: &mut ObjectModule, func: Function, obj_name: &str) -> () {
-    let func_id = om
-        .declare_function(obj_name, Linkage::Export, &func.signature)
-        .unwrap();
-
-    let mut ctx = Context::for_function(func);
-    om.define_function(func_id, &mut ctx).unwrap();
-}
-
 pub fn flush_obj(om: ObjectModule) -> Vec<u8> {
     let object_product = om.finish();
     let bytes = object_product.emit().unwrap();
