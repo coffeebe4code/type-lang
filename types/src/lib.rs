@@ -207,6 +207,7 @@ pub enum TypeTree {
     UnknownValue,
     BoolValue(bool),
     I64(i64),
+    Char(char),
     I32(i32),
     U64(u64),
     U32(u32),
@@ -293,6 +294,7 @@ impl TypeTree {
             TypeTree::U64(_) => "unsigned integer 64 bit",
             TypeTree::U32(_) => "unsigned integer 32 bit",
             TypeTree::F64(_) => "floating point double precision 64 bit",
+            TypeTree::Char(_) => "ascii character",
             TypeTree::UnknownValue => "unknown value",
         }
     }

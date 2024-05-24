@@ -104,9 +104,7 @@ let m = "Hello"
 const spaces = count_spaces(m)
 // m can no longer be referenced
 
-// future versions of type-lang will have formal methods to check bounded ranges during compile time when casting, it is best to handle all outcomes for now as seen above.
-
-pub const q = import "std.io"
+const q = import "std.io"
 
 // given the struct definition from earlier...
 // const Car = struct {
@@ -126,12 +124,14 @@ let r = Car {
 // values can be borrowed with & or *. this allows r to be usable again
 const s = &r
 
-// you can make a block and return a value. these types of blocks return a value with the break keyword
+// you can declare a block and return a value with break
 let t = { 
   break 5 * -2 + 1 
 }
 
-// most types can be implicit, you can be explicit, function return types are the only required type
+// blocks are returned with break. functions and anonymous functions are returned with return
+
+// most types can be implied and implicit. You can be explicit, function return types are the only required type
 const mul2: fn(usize) usize = fn(a: usize) usize { 
   return a * 2
 }

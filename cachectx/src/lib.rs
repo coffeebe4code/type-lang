@@ -1,15 +1,15 @@
 use lexer::*;
 use linter::*;
 use parser::*;
-use std::{fs::File, io::Read, path::PathBuf};
+use std::{fs::File, io::Read, path::PathBuf, rc::Rc};
 use symtable::*;
 use types::*;
 
 struct InternalContext {
     source: PathBuf,
     parsed: Option<ResultExpr>,
-    symtable: Option<SymTable>,
-    tree: Option<TypeTree>,
+    symtable: Option<TypeTable>,
+    tree: Option<Vec<Rc<Box<TypeTree>>>>,
 }
 
 pub struct CacheContext {
@@ -37,10 +37,13 @@ impl CacheContext {
             let mut parser = Parser::new(lexer);
             match parser.all() {
                 Ok(mut val) => {
-                    let mut sym = SymTable::new();
+                    let mut sym = TypeTable::new();
                     let mut linter = LintSource::new(&contents, &mut sym);
 
-                    let analysis = linter.type_check(&mut val);
+                    let analysis = linter.lint_check(&mut val);
+                    println!("debug analysis {:?}", analysis);
+
+                    ic.tree = Some(analysis);
                     ic.symtable = Some(sym);
                 }
                 Err(perr) => ic.parsed = Some(Err(perr)),

@@ -34,6 +34,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::StructDecl(decl) => self.check_struct_decl(&decl),
             Expr::Reassignment(reas) => self.check_reassignment(&reas),
             Expr::SelfValue(_) => self.check_self_value(),
+            Expr::CharsValue(chars) => self.check_chars_value(&chars),
             Expr::ErrorDecl(decl) => self.check_error_decl(&decl),
             Expr::ArrayDecl(decl) => self.check_array_decl(&decl),
             Expr::AnonFuncDecl(decl) => self.check_anon_func(&decl),
@@ -200,6 +201,23 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         ok_tree!(SelfRef, self_ref, curried)
     }
 
+    pub fn check_chars_value(&mut self, chars: &ast::CharsValue) -> ResultTreeType {
+        let mut vals: Vec<Rc<Box<TypeTree>>> = vec![];
+        let mut vals_curried: Vec<Type> = vec![];
+        chars.val.slice.chars().for_each(|x| {
+            vals.push(tree!(Char, x));
+            vals_curried.push(Type::Char);
+        });
+
+        let chars_result = ArrayInitialize {
+            vals,
+            vals_curried,
+            curried: Type::String,
+        };
+        let curried = chars_result.curried.clone();
+        ok_tree!(StringInit, chars_result, curried)
+    }
+
     pub fn check_reassignment(&mut self, reas: &ast::Reassignment) -> ResultTreeType {
         let maybe_access = self.lint_recurse(&reas.left)?;
         let result = self.lint_recurse(&reas.expr)?;
@@ -213,7 +231,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     }
 
     pub fn check_struct_decl(&mut self, obj: &StructDecl) -> ResultTreeType {
-        if let Some(x) = obj.declarators {
+        if let Some(x) = &obj.declarators {
             let result: Vec<ResultTreeType> =
                 x.into_iter().map(|e| self.lint_recurse(&e)).collect();
             let slice = obj.identifier.into_symbol().val.slice;
@@ -533,7 +551,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(U64, val, typ);
     }
 
-    pub fn lint_check(&mut self, start: &Expr) -> () {
+    pub fn lint_check(&mut self, start: &Expr) -> Vec<Rc<Box<TypeTree>>> {
         let mut vals: Vec<Rc<Box<TypeTree>>> = vec![];
         match start {
             Expr::FileAll(all) => {
@@ -543,6 +561,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                         vals.push(res.unwrap().0);
                     }
                 }
+                return vals;
             }
             _ => panic!("type-lang linter issue expected all at lint_check"),
         }
