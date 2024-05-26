@@ -245,7 +245,7 @@ pub enum Token {
     #[token("==")]
     Equality,
     #[token("!")]
-    NotLog,
+    Exclam,
     #[token("%")]
     Percent,
     #[token("+=")]

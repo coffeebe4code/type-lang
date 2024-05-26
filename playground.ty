@@ -15,4 +15,4 @@ type Movable: Named = trait {
 
 type Wheeled = prop { wheels: usize }
 
-type CarBase: Wheeled + Named = alias
+type CarBase = Named + Wheeled

@@ -665,6 +665,12 @@ impl Expr {
             _ => panic!("issue no symbol found"),
         }
     }
+    pub fn into_chars_value(&self) -> CharsValue {
+        match self {
+            Expr::CharsValue(x) => x.to_owned(),
+            _ => panic!("issue no symbol found"),
+        }
+    }
     pub fn into_val_type(&self) -> ValueType {
         match self {
             Expr::ValueType(x) => x.to_owned(),

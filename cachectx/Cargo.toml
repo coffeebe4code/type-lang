@@ -6,3 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+lexer = { path = "../lexer" }
+parser = { path = "../parser" }
+ast = { path = "../ast" }
+symtable = { path = "../symtable" }
+types = { path = "../types" }
+linter = { path = "../linter" }
+ir = { path = "../ir" }

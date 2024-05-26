@@ -4,6 +4,7 @@ use linter::LintSource;
 use parser::Parser;
 use std::fs::File;
 use std::io::Read;
+use symtable::TypeTable;
 
 use std::path::Path;
 use std::process::Command;
@@ -47,13 +48,17 @@ fn main() {
             std::process::exit(1);
         }
     }
-    //println!("[run] full linting");
-    //let mut linter = LintSource::new(&contents);
-    //let borrow = res.unwrap();
-    //let result = linter.type_check(&mut borrow.to_owned());
+    println!("[run] full linting without cache context");
+    let mut typ_table = TypeTable::new();
+    let mut linter = LintSource::new(&contents, &mut typ_table);
+    let borrow = res.unwrap();
+    let result = linter.lint_check(&mut borrow.to_owned());
 
-    //match result {
-    //    Ok(_) => println!("  [ok] full lint success!"),
-    //    Err(x) => println!("{}", x),
-    //}
+    if linter.issues.len() > 0 {
+        println!(
+            "  [fail]\n issues: {:?}\n completed: {:?}\n",
+            linter.issues, result
+        );
+        std::process::exit(1);
+    }
 }

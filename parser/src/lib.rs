@@ -292,7 +292,7 @@ impl<'s> Parser<'s> {
     }
     pub fn sig_union(&mut self) -> ResultOptExpr {
         let start = self.signature_no_colon();
-        let err = self.lexer.collect_if(Token::NotLog);
+        let err = self.lexer.collect_if(Token::Exclam);
         let undef = self.lexer.collect_if(Token::Question);
         let fin = self.signature_no_colon();
         if start.is_err() {
@@ -629,7 +629,7 @@ impl<'s> Parser<'s> {
         let lexeme = self.lexer.collect_of_if(&[
             Token::Ampersand,
             Token::Asterisk,
-            Token::NotLog,
+            Token::Exclam,
             Token::Dash,
             Token::Copy,
         ]);
