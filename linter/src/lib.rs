@@ -30,7 +30,10 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn lint_recurse(&mut self, to_cmp: &Expr) -> ResultTreeType {
         match to_cmp {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
+            Expr::Import(import) => self.check_import(&import),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
+            Expr::PropAssignments(props) => self.check_props_init(&props),
+            Expr::PropAssignment(prop) => self.check_prop_init(&prop),
             Expr::StructDecl(decl) => self.check_struct_decl(&decl),
             Expr::Reassignment(reas) => self.check_reassignment(&reas),
             Expr::SelfValue(_) => self.check_self_value(),
@@ -40,6 +43,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::AnonFuncDecl(decl) => self.check_anon_func(&decl),
             Expr::Declarator(declarator) => self.check_declarator(&declarator),
             Expr::Match(_match) => self.check_match(&_match),
+            Expr::For(_for) => self.check_for(&_for),
             Expr::Invoke(invoke) => self.check_invoke(&invoke),
             Expr::PropAccess(prop) => self.check_prop_access(&prop),
             Expr::Arm(arm) => self.check_arm(&arm),
@@ -55,8 +59,13 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                 _ => panic!("type-lang linter issue, unary op not implemented"),
             },
             Expr::BinOp(bin) => match bin.op.token {
-                Token::Plus => self.check_plus(bin),
-                _ => panic!("type-lang linter issue, binary op not implemented"),
+                Token::Plus => self.check_plus(&bin),
+                Token::Equality => self.check_equality(&bin),
+                Token::Asterisk => self.check_mul(&bin),
+                _ => panic!(
+                    "type-lang linter issue, binary op not implemented {:?}",
+                    bin
+                ),
             },
             Expr::Number(num) => match num.val.token {
                 Token::Decimal => self.check_f64(num),
@@ -76,7 +85,6 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let result = self.lint_recurse(&td.block)?;
         let slice = td.identifier.into_symbol().val.slice;
 
-        // todo:: function args aren't checked
         let init = FunctionInitialize {
             name: slice.clone(),
             args: vec![],
@@ -114,7 +122,20 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
     pub fn check_undefined(&mut self) -> ResultTreeType {
         let typ = Type::Undefined;
-        return ok_simple_tree!(UndefinedValue, typ);
+        ok_simple_tree!(UndefinedValue, typ)
+    }
+
+    pub fn check_for(&mut self, _for: &For) -> ResultTreeType {
+        let res = self.lint_recurse(&_for.expr)?;
+        let body = self.lint_recurse(&_for.var_loop)?;
+        let for_op = ForOp {
+            in_expr: res.0,
+            in_curried: res.1,
+            body: body.0,
+            body_curried: body.1,
+        };
+        let cur = for_op.body_curried.clone();
+        ok_tree!(For, for_op, cur)
     }
 
     pub fn check_match(&mut self, _match: &Match) -> ResultTreeType {
@@ -268,6 +289,63 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return Err(self.issues.len() - 1);
     }
 
+    pub fn check_prop_init(&mut self, prop: &PropAssignment) -> ResultTreeType {
+        let result = self.lint_recurse(&prop.val)?;
+        let slice = prop.ident.into_symbol().val.slice.clone();
+        let init = Initialization {
+            left: slice.clone(),
+            right: result.0,
+            curried: result.1,
+        };
+        let curried = init.curried.clone();
+        let full = tree!(PropInit, init);
+
+        self.slt.table.insert(slice.clone(), (Rc::clone(&full), 0));
+        return Ok((full, curried));
+    }
+
+    pub fn check_props_init(&mut self, props: &PropAssignments) -> ResultTreeType {
+        let prev = self.lint_recurse(&props.prev)?;
+        if let Some(p) = &props.props {
+            let result: Vec<ResultTreeType> =
+                p.into_iter().map(|e| self.lint_recurse(&e)).collect();
+            let mut struct_init = StructInitialize {
+                idents: vec![],
+                vals: vec![],
+                vals_curried: vec![],
+                curried: prev.0.into_symbol_access().curried.clone(),
+            };
+            result.into_iter().for_each(|res| {
+                if let Ok(x) = res {
+                    struct_init.idents.push(x.0.into_prop_init().left.clone());
+                    struct_init
+                        .vals_curried
+                        .push(x.0.into_prop_init().curried.clone());
+                } else {
+                    struct_init.idents.push("unknown".to_string());
+                    struct_init.vals_curried.push(Type::Unknown);
+                }
+            });
+
+            let curried = struct_init.curried.clone();
+            let full = tree!(StructInit, struct_init);
+
+            self.slt.table.insert(
+                prev.0.into_symbol_access().ident.clone(),
+                (Rc::clone(&full), 0),
+            );
+            return Ok((full, curried));
+        }
+        let mut err = make_error("expected at least one property".to_string());
+        self.update_error(
+            &mut err,
+            format!("found empty {{}}, expected property"),
+            props.prev.into_symbol().val,
+        );
+        self.issues.push(err);
+        return Err(self.issues.len() - 1);
+    }
+
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
         let result: Vec<ResultTreeType> = tag
             .declarators
@@ -304,7 +382,6 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let slice = format!(":anon_{}", self.idx);
         self.idx += 1;
 
-        // todo:: function args aren't checked
         let init = FunctionInitialize {
             name: slice.clone(),
             args: vec![],
@@ -316,6 +393,23 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let full = tree!(AnonFuncInit, init);
 
         self.slt.table.insert(slice, (Rc::clone(&full), 0));
+        return Ok((full, curried));
+    }
+
+    pub fn check_import(&mut self, import: &Import) -> ResultTreeType {
+        let result = self.lint_recurse(&import.expr)?;
+        let slice = import.expr.into_chars_value();
+
+        let init = Initialization {
+            left: slice.val.slice.clone(),
+            right: result.0,
+            curried: result.1,
+        };
+        let curried = init.curried.clone();
+        let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
+        self.slt
+            .table
+            .insert(slice.val.slice, (Rc::clone(&full), 0));
         return Ok((full, curried));
     }
 
@@ -469,6 +563,32 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = invoke.curried.clone();
 
         return ok_tree!(Invoke, invoke, curried);
+    }
+
+    pub fn check_mul(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: Type::F64,
+        };
+        let curried = binop.curried.clone();
+
+        ok_tree!(Multiply, binop, curried)
+    }
+
+    pub fn check_equality(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: Type::Bool,
+        };
+        let curried = binop.curried.clone();
+
+        ok_tree!(Plus, binop, curried)
     }
 
     pub fn check_plus(&mut self, bin: &BinOp) -> ResultTreeType {

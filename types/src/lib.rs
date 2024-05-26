@@ -51,6 +51,7 @@ pub struct ForOp {
     pub in_expr: Rc<Box<TypeTree>>,
     pub in_curried: Type,
     pub body: Rc<Box<TypeTree>>,
+    pub body_curried: Type,
 }
 
 #[derive(Debug)]
@@ -117,6 +118,7 @@ pub struct ArrayAccess {
 pub struct StructInitialize {
     pub idents: Vec<String>,
     pub vals: Vec<Rc<Box<TypeTree>>>,
+    pub vals_curried: Vec<Type>,
     pub curried: Type,
 }
 
@@ -184,6 +186,7 @@ pub enum TypeTree {
     SelfRef(NoOp),
     // data types
     StructInit(StructInitialize),
+    PropInit(Initialization),
     ArrayInit(ArrayInitialize),
     FuncInit(FunctionInitialize),
     AnonFuncInit(FunctionInitialize),
@@ -221,11 +224,16 @@ impl TypeTree {
             _ => panic!("issue declarator not found"),
         }
     }
-    pub fn into_initialization(&self) -> &Initialization {
+    pub fn into_symbol_access(&self) -> &SymbolAccess {
         match self {
-            TypeTree::ConstInit(x) => x,
-            TypeTree::MutInit(x) => x,
-            _ => panic!("issue initialization not found"),
+            TypeTree::SymbolAccess(x) => x,
+            _ => panic!("issue declarator not found"),
+        }
+    }
+    pub fn into_prop_init(&self) -> &Initialization {
+        match self {
+            TypeTree::PropInit(x) => x,
+            _ => panic!("issue declarator not found"),
         }
     }
     pub fn into_binary_op(&self) -> &BinaryOp {
@@ -270,6 +278,7 @@ impl TypeTree {
             TypeTree::RestAccess(_) => "rest access",
             TypeTree::SelfRef(_) => "self reference",
             TypeTree::StructInit(_) => "struct initialization",
+            TypeTree::PropInit(_) => "property assignment",
             TypeTree::ArrayInit(_) => "array initialization",
             TypeTree::FuncInit(_) => "function initialization",
             TypeTree::AnonFuncInit(_) => "anonymous function initialization",
