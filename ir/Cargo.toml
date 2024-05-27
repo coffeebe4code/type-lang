@@ -11,5 +11,7 @@ symtable = { path="../symtable" }
 token = { path="../token" }
 perror = { path="../perror" }
 lexer = { path="../lexer" }
+linter = { path="../linter" }
+types = { path="../types" }
 cranelift-frontend = "0"
 cranelift-codegen = "0"
