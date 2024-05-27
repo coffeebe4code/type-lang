@@ -682,7 +682,7 @@ impl Expr {
 #[macro_export]
 macro_rules! expr {
     ($val:ident, $($inner:tt)*) => {
-        Box::new(Expr::$val($val::new($($inner)*)))
+        Box::new(Expr::$val(ast::$val::new($($inner)*)))
     };
 }
 

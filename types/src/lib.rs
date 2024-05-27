@@ -3,7 +3,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct FileContainer {
     pub top_items: Vec<Rc<Box<TypeTree>>>,
-    pub curried: Vec<Type>,
+    pub curried: Vec<Ty>,
 }
 
 #[derive(Debug)]
@@ -16,132 +16,132 @@ pub struct ErrorInfo {
 pub struct TagInfo {
     pub name: String,
     pub props: Vec<Rc<Box<TypeTree>>>,
-    pub types: Vec<Type>,
-    pub curried: Type,
+    pub types: Vec<Ty>,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct StructInfo {
     pub props: Vec<String>,
-    pub types: Vec<Type>,
-    pub curried: Type,
+    pub types: Vec<Ty>,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct ArgInfo {
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct DeclaratorInfo {
     pub name: String,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct MatchOp {
     pub expr: Rc<Box<TypeTree>>,
-    pub curried: Type,
+    pub curried: Ty,
     pub arms: Vec<Rc<Box<TypeTree>>>,
-    pub curried_arms: Vec<Type>,
+    pub curried_arms: Vec<Ty>,
 }
 
 #[derive(Debug)]
 pub struct ForOp {
     pub in_expr: Rc<Box<TypeTree>>,
-    pub in_curried: Type,
+    pub in_curried: Ty,
     pub body: Rc<Box<TypeTree>>,
-    pub body_curried: Type,
+    pub body_curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct BinaryOp {
     pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct UnaryOp {
     pub val: Rc<Box<TypeTree>>,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct NoOp {
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct Invoke {
     pub args: Vec<Rc<Box<TypeTree>>>,
-    pub args_curried: Vec<Type>,
+    pub args_curried: Vec<Ty>,
     pub ident: Rc<Box<TypeTree>>,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct Initialization {
     pub left: String,
     pub right: Rc<Box<TypeTree>>,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct Reassignment {
     pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct PropAccess {
     pub prev: Rc<Box<TypeTree>>,
     pub ident: String,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct SymbolAccess {
     pub ident: String,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct ArrayAccess {
     pub prev: Rc<Box<TypeTree>>,
     pub inner: Rc<Box<TypeTree>>,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct StructInitialize {
     pub idents: Vec<String>,
     pub vals: Vec<Rc<Box<TypeTree>>>,
-    pub vals_curried: Vec<Type>,
-    pub curried: Type,
+    pub vals_curried: Vec<Ty>,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct ArrayInitialize {
     pub vals: Vec<Rc<Box<TypeTree>>>,
-    pub vals_curried: Vec<Type>,
-    pub curried: Type,
+    pub vals_curried: Vec<Ty>,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct FunctionInitialize {
     pub name: String,
     pub args: Vec<Rc<Box<TypeTree>>>,
-    pub args_curried: Vec<Type>,
+    pub args_curried: Vec<Ty>,
     pub block: Rc<Box<TypeTree>>,
-    pub block_curried: Type,
+    pub block_curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct Block {
     pub exprs: Vec<Rc<Box<TypeTree>>>,
-    pub curried: Type,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
@@ -221,6 +221,12 @@ impl TypeTree {
     pub fn into_declarator(&self) -> &DeclaratorInfo {
         match self {
             TypeTree::DeclaratorInfo(x) => x,
+            _ => panic!("issue declarator not found"),
+        }
+    }
+    pub fn into_func_init(&self) -> &FunctionInitialize {
+        match self {
+            TypeTree::FuncInit(x) => x,
             _ => panic!("issue declarator not found"),
         }
     }
@@ -310,7 +316,7 @@ impl TypeTree {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Type {
+pub enum Ty {
     I64,
     I32,
     U64,
@@ -325,16 +331,16 @@ pub enum Type {
     Bool,
     Char,
     String,
-    MutBorrow(Box<Type>),
-    ReadBorrow(Box<Type>),
-    Frame(Vec<Type>),
-    Error(Box<Type>),
-    Struct(Vec<Type>),
-    Tag(Vec<Type>),
-    Function(Vec<Type>, Box<Type>),
+    MutBorrow(Box<Ty>),
+    ReadBorrow(Box<Ty>),
+    Frame(Vec<Ty>),
+    Error(Box<Ty>),
+    Struct(Vec<Ty>),
+    Tag(Vec<Ty>),
+    Function(Vec<Ty>, Box<Ty>),
     Custom(String),
-    Array(Box<Type>),
-    Multi(Vec<Type>),
+    Array(Box<Ty>),
+    Multi(Vec<Ty>),
 }
 
 #[macro_export]
