@@ -725,7 +725,6 @@ mod tests {
         let mut linter = LintSource::new("8 + --5", &mut tt);
         let test = linter.lint_recurse(&result.unwrap());
 
-        println!("{:?}", linter.issues);
         assert!(test.is_err_and(|x| { x == 0 }));
         assert_eq!(
             linter.issues.get(0).unwrap().points.get(0).unwrap(),
