@@ -5,7 +5,7 @@ pub type ResultFir<T> = std::result::Result<T, FirError>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FirError {
-    title: String,
+    pub title: String,
 }
 
 impl fmt::Display for FirError {
@@ -27,9 +27,9 @@ impl FirError {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct LinterError {
-    title: String,
-    points: Vec<LinterErrorPoint>,
-    suggestions: Vec<String>,
+    pub title: String,
+    pub points: Vec<LinterErrorPoint>,
+    pub suggestions: Vec<String>,
 }
 
 impl LinterError {
@@ -48,9 +48,9 @@ impl LinterError {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct LinterErrorPoint {
-    code: String,
-    line: usize,
-    col: usize,
+    pub code: String,
+    pub line: usize,
+    pub col: usize,
 }
 
 impl LinterErrorPoint {
@@ -93,11 +93,11 @@ impl fmt::Display for LinterErrorPoint {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParserError {
-    title: String,
-    found: String,
-    code: String,
-    line: usize,
-    col: usize,
+    pub title: String,
+    pub found: String,
+    pub code: String,
+    pub line: usize,
+    pub col: usize,
 }
 
 impl fmt::Display for ParserError {

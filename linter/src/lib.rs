@@ -278,14 +278,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
             return Ok((full, curried));
         }
-        let mut err = make_error("expected at least one declarator".to_string());
-        self.update_error(
-            &mut err,
+        Err(self.set_error(
+            "expected at least one declarator".to_string(),
             format!("found empty {{}}, expected declarator"),
             obj.identifier.into_symbol().val,
-        );
-        self.issues.push(err);
-        return Err(self.issues.len() - 1);
+        ))
     }
 
     pub fn check_prop_init(&mut self, prop: &PropAssignment) -> ResultTreeType {
@@ -335,14 +332,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             );
             return Ok((full, curried));
         }
-        let mut err = make_error("expected at least one property".to_string());
-        self.update_error(
-            &mut err,
+        Err(self.set_error(
+            "expected at least one property".to_string(),
             format!("found empty {{}}, expected property"),
             props.prev.into_symbol().val,
-        );
-        self.issues.push(err);
-        return Err(self.issues.len() - 1);
+        ))
     }
 
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
@@ -458,17 +452,23 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             TypeTree::U32(_) => unop.curried = Ty::I32,
             TypeTree::I64(_) => unop.curried = Ty::I64,
             TypeTree::I32(_) => unop.curried = Ty::I32,
+            TypeTree::Negate(_) => {
+                return Err(self.set_error(
+                    "invalid negation".to_string(),
+                    "double negation superfluous. decrement must be done with (val - 1)"
+                        .to_string(),
+                    un.op.clone(),
+                ));
+            }
             _ => {
-                let mut err = make_error("invalid negation".to_string());
-                self.update_error(
-                    &mut err,
+                return Err(self.set_error(
+                    "invalid negation".to_string(),
                     format!(
                         "found type {}, expected negatable value",
                         unop.val.whatami()
                     ),
                     un.op.clone(),
-                );
-                self.issues.push(err);
+                ));
             }
         }
         let curried = unop.curried.clone();
@@ -697,13 +697,42 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         }
     }
 
-    fn update_error(&self, err: &mut LinterError, suggestion: String, lexeme: Lexeme) -> () {
+    fn set_error(&mut self, title: String, suggestion: String, lexeme: Lexeme) -> usize {
+        let mut le = LinterError::new(title);
         let xcl = CodeLocation::new(self.buffer, lexeme);
         let lep = LinterErrorPoint::new(xcl.code, xcl.line, xcl.col);
-        err.add_point(lep, suggestion);
+        le.add_point(lep, suggestion);
+
+        self.issues.push(le);
+        return self.issues.len() - 1;
     }
 }
 
 pub fn make_error(title: String) -> LinterError {
     LinterError::new(title)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use parser::*;
+    #[test]
+    fn it_should_check_double_negation() {
+        let lexer = TLexer::new("8 + --5");
+        let mut parser = Parser::new(lexer);
+        let result = parser.low_bin();
+        let mut tt = TypeTable::new();
+        let mut linter = LintSource::new("8 + --5", &mut tt);
+        let test = linter.lint_recurse(&result.unwrap());
+
+        assert!(test.is_err_and(|x| { x == 0 }));
+        assert_eq!(
+            linter.issues.get(0).unwrap().points.get(0).unwrap(),
+            &LinterErrorPoint {
+                code: "8 + -".to_string(),
+                line: 1,
+                col: 5
+            }
+        );
+    }
 }
