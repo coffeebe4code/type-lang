@@ -145,17 +145,17 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             expr: res.0,
             curried: res.1,
             arms: vec![],
-            curried_arms: vec![],
+            curried_arms: Ty::Tag(vec![]),
         };
         _match.arms.iter().for_each(|m| {
             let mres = self.lint_recurse(m);
             if let Ok(arm) = mres {
                 mat.arms.push(arm.0);
-                mat.curried_arms.push(arm.1);
+                mat.curried_arms.into_vec().push(arm.1);
                 return;
             }
             mat.arms.push(simple_tree!(UnknownValue));
-            mat.curried_arms.push(Ty::Unknown);
+            mat.curried_arms.into_vec().push(Ty::Unknown);
         });
         let cur = mat.curried.clone();
         return ok_tree!(Match, mat, cur);
@@ -206,12 +206,13 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let err_info = ErrorInfo {
             message: "".to_string(),
             code: 0,
+            curried: Ty::Error,
         };
 
+        let curried = err_info.curried.clone();
         let full = tree!(ErrorInfo, err_info);
 
         self.ttbl.table.insert(slice.clone(), (Rc::clone(&full), 0));
-        let curried = Ty::ErrorDecl;
         return Ok((full, curried));
     }
 
@@ -246,6 +247,15 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             right: result.0,
             curried: result.1,
         };
+        // assert left type == right type
+        // assert left type is mutable
+        let result = reassignment.left.get_curried().ensure_const().or_else(|x| {
+            Err(self.set_error(
+                format!("found {}", x),
+                "did you mean to make it mutable?".to_string(),
+                reas.left.into_symbol().val,
+            ))
+        });
         let curried = reassignment.curried.clone();
         ok_tree!(As, reassignment, curried)
     }
@@ -391,53 +401,62 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
     pub fn check_import(&mut self, import: &Import) -> ResultTreeType {
         let result = self.lint_recurse(&import.expr)?;
-        let slice = import.expr.into_chars_value();
+        let slice = import.expr.into_chars_value().val.slice;
 
         let init = Initialization {
-            left: slice.val.slice.clone(),
+            left: slice.clone(),
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-        self.ttbl
-            .table
-            .insert(slice.val.slice, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        if import.mutability.token == Token::Const {
+            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
+            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            return Ok((full, Ty::Const(Box::new(curried))));
+        }
+        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
+        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
     pub fn check_inner_decl(&mut self, inner: &InnerDecl) -> ResultTreeType {
         let result = self.lint_recurse(&inner.expr)?;
         let slice = inner.identifier.into_symbol().val.slice;
-        let copy = slice.clone();
 
         let init = Initialization {
-            left: slice,
+            left: slice.clone(),
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full = tree!(ConstInit, init);
-
-        self.ttbl.table.insert(copy, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        if inner.mutability.token == Token::Const {
+            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
+            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            return Ok((full, Ty::Const(Box::new(curried))));
+        }
+        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
+        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
     pub fn check_top_decl(&mut self, td: &TopDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.expr)?;
         let slice = td.identifier.into_symbol().val.slice;
-        let copy = slice.clone();
 
         let init = Initialization {
-            left: slice,
+            left: slice.clone(),
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full = tree!(ConstInit, init);
-
-        self.ttbl.table.insert(copy, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        if td.mutability.token == Token::Const {
+            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
+            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            return Ok((full, Ty::Const(Box::new(curried))));
+        }
+        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
+        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
     pub fn check_negate(&mut self, un: &UnOp) -> ResultTreeType {
