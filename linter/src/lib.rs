@@ -247,17 +247,20 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             right: result.0,
             curried: result.1,
         };
-        // assert left type == right type
+        // assert left type == right type or elidable
         // assert left type is mutable
-        let result = reassignment.left.get_curried().ensure_const().or_else(|x| {
+        let result = reassignment.left.get_curried().ensure_mut().or_else(|x| {
             Err(self.set_error(
                 format!("found {}", x),
                 "did you mean to make it mutable?".to_string(),
                 reas.left.into_symbol().val,
             ))
         });
+        if let Err(err) = result {
+            return Err(err);
+        }
         let curried = reassignment.curried.clone();
-        ok_tree!(As, reassignment, curried)
+        return ok_tree!(As, reassignment, curried);
     }
 
     pub fn check_struct_decl(&mut self, obj: &StructDecl) -> ResultTreeType {

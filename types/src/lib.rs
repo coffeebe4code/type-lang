@@ -294,19 +294,19 @@ impl TypeTree {
     pub fn into_func_init(&self) -> &FunctionInitialize {
         match self {
             TypeTree::FuncInit(x) => x,
-            _ => panic!("issue declarator not found"),
+            _ => panic!("issue function not found"),
         }
     }
     pub fn into_symbol_access(&self) -> &SymbolAccess {
         match self {
             TypeTree::SymbolAccess(x) => x,
-            _ => panic!("issue declarator not found"),
+            _ => panic!("issue symbol not found"),
         }
     }
     pub fn into_prop_init(&self) -> &Initialization {
         match self {
             TypeTree::PropInit(x) => x,
-            _ => panic!("issue declarator not found"),
+            _ => panic!("issue property not found"),
         }
     }
     pub fn into_binary_op(&self) -> &BinaryOp {
@@ -470,14 +470,17 @@ impl fmt::Display for Ty {
 }
 
 impl Ty {
-    pub fn ensure_const(&self) -> Result<bool, Ty> {
+    pub fn ensure_mut(&self) -> Result<(), Ty> {
         match self {
-            Ty::I64 => Ok(true),
-            Ty::I32 => Ok(true),
-            Ty::U64 => Ok(true),
-            Ty::Const(_) => Ok(true),
+            Ty::I64 => Err(Ty::I64),
+            Ty::I32 => Err(Ty::I32),
+            Ty::U64 => Err(Ty::U64),
+            Ty::Const(val) => Err(Ty::Const(val.to_owned())),
+            Ty::Mut(_) => Ok(()),
             Ty::ReadBorrow(val) => Err(Ty::ReadBorrow(val.to_owned())),
-            _ => panic!("type lang issue. unhandled match arm"),
+            Ty::MutBorrow(_) => Ok(()),
+            Ty::Void => Ok(()),
+            _ => panic!("type lang issue. type not associatable to const"),
         }
     }
     pub fn into_vec(&mut self) -> &mut Vec<Ty> {
