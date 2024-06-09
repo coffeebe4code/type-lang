@@ -13,7 +13,7 @@ type ResultTreeType = Result<(Rc<Box<TypeTree>>, Ty), usize>;
 pub struct LintSource<'buf, 'sym> {
     buffer: &'buf str,
     idx: usize,
-    curr_self: Option<String>,
+    curr_self: Option<Ty>,
     pub ttbl: &'sym mut TypeTable,
     pub issues: Vec<LinterError>,
 }
@@ -72,7 +72,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             },
             Expr::Number(num) => match num.val.token {
                 Token::Decimal => self.check_f64(num),
-                Token::Number => self.check_u64(num),
+                Token::Number => self.check_i64(num),
                 _ => panic!("type-lang linter issue, number not implemented"),
             },
             Expr::TopDecl(top) => self.check_top_decl(&top),
@@ -86,16 +86,39 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
     pub fn check_func_decl(&mut self, td: &FuncDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.block)?;
-        let args = self.lint_recurse(&td.args)?;
         let slice = td.identifier.into_symbol().val.slice;
 
-        let init = FunctionInitialize {
+        let mut init = FunctionInitialize {
             name: slice.clone(),
             args: vec![],
             args_curried: vec![],
             block: result.0,
             block_curried: result.1,
         };
+        if let Some(args) = td.args.as_ref() {
+            args.iter().for_each(|x| {
+                let temp = x.into_arg_def();
+                if temp.ident.is_self_val() {
+                    if let Some(typ) = temp.typ {
+                    } else {
+                        self.set_error(
+                            "self requires type specificity in argument definition".to_string(),
+                            "give the type of 'self'".to_string(),
+                            temp.ident.into_self_val().val.clone(),
+                        );
+                    }
+                }
+
+                let res = self.lint_recurse(x);
+                if let Ok(a) = res {
+                    init.args.push(a.0);
+                    init.args_curried.push(a.1);
+                    return;
+                }
+                init.args.push(simple_tree!(UnknownValue));
+                init.args_curried.push(Ty::Unknown);
+            });
+        }
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
@@ -224,14 +247,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             .as_ref()
             .expect("expected self to be defined");
         let self_ref = NoOp {
-            curried: self
-                .ttbl
-                .table
-                .get(curr_self)
-                .unwrap()
-                .0
-                .get_curried()
-                .clone(),
+            curried: curr_self.clone(),
         };
         let curried = self_ref.curried.clone();
         ok_tree!(SelfRef, self_ref, curried)
@@ -712,10 +728,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(F64, val, typ);
     }
 
-    pub fn check_u64(&mut self, num: &Number) -> ResultTreeType {
-        let val = num.val.slice.parse::<u64>().unwrap();
-        let typ = Ty::U64;
-        return ok_tree!(U64, val, typ);
+    // todo:: convert this back to u64, need to check to see if it fits in i64 and return type
+    pub fn check_i64(&mut self, num: &Number) -> ResultTreeType {
+        let val = num.val.slice.parse::<i64>().unwrap();
+        let typ = Ty::I64;
+        return ok_tree!(I64, val, typ);
     }
 
     pub fn lint_check(&mut self, start: &Expr) -> Vec<Rc<Box<TypeTree>>> {
@@ -747,6 +764,55 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
 pub fn make_error(title: String) -> LinterError {
     LinterError::new(title)
+}
+
+trait DoConvert {
+    fn into_type(self) -> Ty;
+}
+
+impl DoConvert for &Expr {
+    fn into_type(self) -> Ty {
+        match self {
+            Expr::Number(num) => match num.val.token {
+                Token::Decimal => Ty::F64,
+                // todo:: check if it fits in u64
+                Token::Number => Ty::I64,
+                _ => panic!("type-lang linter issue, number not implemented"),
+            },
+            Expr::ValueType(val) => match val.val.token {
+                Token::I32 => Ty::I32,
+                Token::U32 => Ty::U32,
+                Token::I64 => Ty::I64,
+                Token::U64 => Ty::U64,
+                Token::I16 => Ty::I32,
+                Token::U16 => Ty::U32,
+                Token::U8 => Ty::U32,
+                Token::I8 => Ty::U32,
+                Token::Bit => Ty::U32,
+                Token::F64 => Ty::F64,
+                Token::D64 => Ty::U32,
+                Token::F32 => Ty::U32,
+                Token::D32 => Ty::U32,
+                Token::D128 => Ty::U32,
+                Token::F128 => Ty::U32,
+                Token::ISize => Ty::U32,
+                Token::USize => Ty::U32,
+                Token::Char => Ty::Char,
+                Token::Utf8 => Ty::Char,
+                Token::Utf16 => Ty::Char,
+                Token::Utf32 => Ty::Char,
+                Token::Utf64 => Ty::Char,
+                Token::Bool => Ty::Char,
+                Token::Any => Ty::Custom("any".to_string()),
+                Token::Sized => Ty::Custom("sized".to_string()),
+                Token::Scalar => Ty::Custom("scalar".to_string()),
+                Token::Void => Ty::Void,
+                Token::TSelf => Ty::TSelf,
+                _ => panic!("type-lang linter issue, not a value type"),
+            },
+            _ => panic!("type-lang linter issue, unhandled expr"),
+        }
+    }
 }
 
 #[cfg(test)]

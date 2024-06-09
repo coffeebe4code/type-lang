@@ -407,6 +407,8 @@ pub enum Ty {
     Tag(Vec<Ty>),
     Function(Vec<Ty>, Box<Ty>),
     Custom(String),
+    Trait(String),
+    TSelf,
     Array(Box<Ty>),
 }
 
@@ -425,7 +427,7 @@ impl fmt::Display for Ty {
             Ty::Never => write!(f, "never"),
             Ty::Bool => write!(f, "bool"),
             Ty::Char => write!(f, "char"),
-            // might want to just make this a Multi
+            // might want to just make this an Array
             Ty::String => write!(f, "[char]"),
             Ty::Const(x) => write!(f, "const {}", x),
             Ty::Mut(x) => write!(f, "let {}", x),
@@ -465,6 +467,8 @@ impl fmt::Display for Ty {
             }
             Ty::Custom(x) => write!(f, "type {}", x),
             Ty::Array(x) => write!(f, "[{}]", x),
+            Ty::Trait(x) => write!(f, "trait {}", x),
+            Ty::TSelf => write!(f, "self"),
         }
     }
 }
@@ -479,7 +483,7 @@ impl Ty {
             Ty::Mut(_) => Ok(()),
             Ty::ReadBorrow(val) => Err(Ty::ReadBorrow(val.to_owned())),
             Ty::MutBorrow(_) => Ok(()),
-            Ty::Void => Ok(()),
+            Ty::Void => Err(Ty::Void),
             _ => panic!("type lang issue. type not associatable to const"),
         }
     }

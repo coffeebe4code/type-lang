@@ -659,10 +659,28 @@ impl Expr {
             _ => panic!("issue no symbol found"),
         }
     }
+    pub fn into_self_val(&self) -> SelfValue {
+        match self {
+            Expr::SelfValue(x) => x.to_owned(),
+            _ => panic!("issue no self keyword found"),
+        }
+    }
+    pub fn is_self_val(&self) -> bool {
+        match self {
+            Expr::SelfValue(_) => true,
+            _ => false,
+        }
+    }
     pub fn into_symbol(&self) -> Symbol {
         match self {
             Expr::Symbol(x) => x.to_owned(),
             _ => panic!("issue no symbol found"),
+        }
+    }
+    pub fn into_arg_def(&self) -> ArgDef {
+        match self {
+            Expr::ArgDef(x) => x.to_owned(),
+            _ => panic!("issue no argument definition found"),
         }
     }
     pub fn into_chars_value(&self) -> CharsValue {
