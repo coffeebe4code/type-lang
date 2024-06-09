@@ -184,6 +184,7 @@ pub enum TypeTree {
     // values
     PropAccess(PropAccess),
     SymbolAccess(SymbolAccess),
+    ArgValue(NoOp),
     RestAccess(NoOp),
     SelfRef(NoOp),
     // data types
@@ -283,6 +284,7 @@ impl TypeTree {
             TypeTree::F64(_) => Ty::F64,
             TypeTree::Char(_) => Ty::Char,
             TypeTree::UnknownValue => Ty::Unknown,
+            TypeTree::ArgValue(x) => x.curried.clone(),
         }
     }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
@@ -378,6 +380,7 @@ impl TypeTree {
             TypeTree::F64(_) => "floating point double precision 64 bit",
             TypeTree::Char(_) => "ascii character",
             TypeTree::UnknownValue => "unknown value",
+            TypeTree::ArgValue(_) => "function argument",
         }
     }
 }

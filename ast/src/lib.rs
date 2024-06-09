@@ -120,10 +120,10 @@ impl PropAccess {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArgDef {
     pub ident: Box<Expr>,
-    pub typ: Option<Box<Expr>>,
+    pub typ: Box<Expr>,
 }
 impl ArgDef {
-    pub fn new(ident: Box<Expr>, typ: Option<Box<Expr>>) -> Self {
+    pub fn new(ident: Box<Expr>, typ: Box<Expr>) -> Self {
         ArgDef { ident, typ }
     }
 }

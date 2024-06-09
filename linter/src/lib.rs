@@ -80,6 +80,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::Block(blk) => self.check_block(&blk),
             Expr::FuncDecl(fun) => self.check_func_decl(&fun),
             Expr::RetOp(ret) => self.check_ret_op(&ret),
+            Expr::ArgDef(arg) => self.check_arg_def(&arg),
             _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
@@ -98,16 +99,6 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         if let Some(args) = td.args.as_ref() {
             args.iter().for_each(|x| {
                 let temp = x.into_arg_def();
-                if temp.ident.is_self_val() {
-                    if let Some(typ) = temp.typ {
-                    } else {
-                        self.set_error(
-                            "self requires type specificity in argument definition".to_string(),
-                            "give the type of 'self'".to_string(),
-                            temp.ident.into_self_val().val.clone(),
-                        );
-                    }
-                }
 
                 let res = self.lint_recurse(x);
                 if let Ok(a) = res {
@@ -565,6 +556,19 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
         let curried = unop.curried.clone();
         return ok_tree!(Return, unop, curried);
+    }
+
+    pub fn check_arg_def(&mut self, arg: &ArgDef) -> ResultTreeType {
+        let result = self.lint_recurse(&arg.ident)?;
+        let slice = arg.ident.into_symbol().val.slice;
+        let typ = self.lint_recurse(&arg.typ)?;
+        let a = NoOp { curried: typ.1 };
+
+        let curried = a.curried.clone();
+        let full: Rc<Box<TypeTree>> = tree!(ArgValue, a);
+        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+
+        return Ok((full, curried));
     }
 
     pub fn check_not(&mut self, un: &UnOp) -> ResultTreeType {

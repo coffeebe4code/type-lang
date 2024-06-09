@@ -71,8 +71,7 @@ const explicit: const[const char; 11] = "Hello There"
 // here f is mutable, meaning the array can be lengthend or shortened. this will not compile, as explicitly sized arrays, can't be resized
 let f: [char; 11] = "Hello There" //! we can't give this array a compile time known size, and still be mutable!
 
-// here g is mutable, and its elements are mutable. can be lengthened, shortened, or elements mutated
-let g: [char] = "Hello There"
+// here g is mutable, and its elements are mutable. can be lengthened, shortened, or elements mutated let g: [char] = "Hello There"
 // can also use single quotes
 let h: [char] = 'Hello There'
 
@@ -132,6 +131,6 @@ let t = {
 // blocks are returned with break. functions and anonymous functions are returned with return
 
 // most types can be implied and implicit. You can be explicit, function return types are the only required type
-const mul2: fn(usize) usize = fn(a: usize) usize { 
+const mul2: fn(usize) usize = fn(a) usize { 
   return a * 2
 }

@@ -277,16 +277,24 @@ impl<'s> Parser<'s> {
     }
     pub fn arg(&mut self) -> ResultOptExpr {
         if let Some(id) = self.ident() {
-            if let Some(sig) = self.opt_signature()? {
-                return result_expr!(ArgDef, id, Some(sig)).xconvert_to_result_opt();
+            let result = self.opt_signature()?.xexpect_expr(
+                &self,
+                "all function declarations must have types in arguments".to_string(),
+            );
+            if let Ok(sig) = result {
+                return result_expr!(ArgDef, id, sig).xconvert_to_result_opt();
             }
-            return result_expr!(ArgDef, id, None).xconvert_to_result_opt();
+            return result.xconvert_to_result_opt();
         }
         if let Some(id) = self._self() {
-            if let Some(sig) = self.opt_signature()? {
-                return result_expr!(ArgDef, id, Some(sig)).xconvert_to_result_opt();
+            let result = self.opt_signature()?.xexpect_expr(
+                &self,
+                "all function declarations must have types in arguments".to_string(),
+            );
+            if let Ok(sig) = result {
+                return result_expr!(ArgDef, id, sig).xconvert_to_result_opt();
             }
-            return result_expr!(ArgDef, id, None).xconvert_to_result_opt();
+            return result.xconvert_to_result_opt();
         }
         Ok(None)
     }
@@ -1275,7 +1283,7 @@ mod tests {
     }
     #[test]
     fn it_should_parse_fn() {
-        let lexer = TLexer::new("pub const add = fn(x) usize { return x }");
+        let lexer = TLexer::new("pub const add = fn(x: usize) usize { return x }");
         let mut parser = Parser::new(lexer);
         let result = parser.top_decl();
         let expr = expr!(
@@ -1308,7 +1316,20 @@ mod tests {
                         span: 19..20
                     }
                 ),
-                None
+                expr!(
+                    Sig,
+                    Some(expr!(
+                        ValueType,
+                        Lexeme {
+                            slice: "usize".to_string(),
+                            token: Token::USize,
+                            span: 22..27
+                        }
+                    )),
+                    None,
+                    None,
+                    None
+                )
             )]),
             expr!(
                 Sig,
@@ -1317,7 +1338,7 @@ mod tests {
                     Lexeme {
                         slice: "usize".to_string(),
                         token: Token::USize,
-                        span: 22..27
+                        span: 29..34
                     }
                 )),
                 None,
@@ -1331,14 +1352,14 @@ mod tests {
                     Lexeme {
                         slice: "return".to_string(),
                         token: Token::Return,
-                        span: 30..36
+                        span: 37..43
                     },
                     expr!(
                         Symbol,
                         Lexeme {
                             slice: "x".to_string(),
                             token: Token::Symbol,
-                            span: 37..38
+                            span: 44..45
                         }
                     )
                 )]
