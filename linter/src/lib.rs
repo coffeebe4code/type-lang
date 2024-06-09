@@ -13,6 +13,7 @@ type ResultTreeType = Result<(Rc<Box<TypeTree>>, Ty), usize>;
 pub struct LintSource<'buf, 'sym> {
     buffer: &'buf str,
     idx: usize,
+    curr_self: Option<String>,
     pub ttbl: &'sym mut TypeTable,
     pub issues: Vec<LinterError>,
 }
@@ -22,6 +23,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         LintSource {
             buffer,
             idx: 0,
+            curr_self: None,
             ttbl: slt,
             issues: vec![],
         }
@@ -84,6 +86,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
     pub fn check_func_decl(&mut self, td: &FuncDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.block)?;
+        let args = self.lint_recurse(&td.args)?;
         let slice = td.identifier.into_symbol().val.slice;
 
         let init = FunctionInitialize {
@@ -97,7 +100,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let full = tree!(FuncInit, init);
 
         self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        Ok((full, curried))
     }
 
     pub fn check_block(&mut self, td: &ast::Block) -> ResultTreeType {
@@ -117,8 +120,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         });
 
         let curried = blk.curried.clone();
-
-        return ok_tree!(Block, blk, curried);
+        ok_tree!(Block, blk, curried)
     }
 
     pub fn check_undefined(&mut self) -> ResultTreeType {
@@ -217,7 +219,20 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     }
 
     pub fn check_self_value(&mut self) -> ResultTreeType {
-        let self_ref = NoOp { curried: Ty::Void };
+        let curr_self = self
+            .curr_self
+            .as_ref()
+            .expect("expected self to be defined");
+        let self_ref = NoOp {
+            curried: self
+                .ttbl
+                .table
+                .get(curr_self)
+                .unwrap()
+                .0
+                .get_curried()
+                .clone(),
+        };
         let curried = self_ref.curried.clone();
         ok_tree!(SelfRef, self_ref, curried)
     }
