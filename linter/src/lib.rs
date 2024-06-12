@@ -232,6 +232,21 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return Ok((full, curried));
     }
 
+    //pub fn check_sig(&mut self, sig: &Sig) -> ResultTreeType {
+    //    let slice = sig.identifier.into_symbol().val.slice;
+    //    let err_info = ErrorInfo {
+    //        message: "".to_string(),
+    //        code: 0,
+    //        curried: Ty::Error,
+    //    };
+
+    //    let curried = err_info.curried.clone();
+    //    let full = tree!(ErrorInfo, err_info);
+
+    //    self.ttbl.table.insert(slice.clone(), (Rc::clone(&full), 0));
+    //    return Ok((full, curried));
+    //}
+
     pub fn check_self_value(&mut self) -> ResultTreeType {
         let curr_self = self
             .curr_self
@@ -565,6 +580,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let a = NoOp { curried: typ.1 };
 
         let curried = a.curried.clone();
+        self.curr_self = Some(a.curried.clone());
         let full: Rc<Box<TypeTree>> = tree!(ArgValue, a);
         self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
 

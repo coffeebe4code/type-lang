@@ -551,10 +551,10 @@ impl ValueType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sig {
     // look at parser to see how this is implemented
-    pub left_most_ident: Option<Box<Expr>>,
+    pub left_most_type: Option<Box<Expr>>,
     pub err: Option<Lexeme>,
     pub undef: Option<Lexeme>,
-    pub right_most_ident: Option<Box<Expr>>,
+    pub right_most_type: Option<Box<Expr>>,
 }
 
 impl Sig {
@@ -565,10 +565,10 @@ impl Sig {
         right_most_ident: Option<Box<Expr>>,
     ) -> Self {
         Sig {
-            left_most_ident,
+            left_most_type: left_most_ident,
             err,
             undef,
-            right_most_ident,
+            right_most_type: right_most_ident,
         }
     }
 }

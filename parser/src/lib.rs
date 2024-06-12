@@ -1282,6 +1282,42 @@ mod tests {
         assert_eq!(result.unwrap(), expr);
     }
     #[test]
+    fn it_should_parse_sig() {
+        // 1
+        let lexer1 = TLexer::new("Error");
+        let mut parser1 = Parser::new(lexer1);
+        let result1 = parser1.sig_union();
+        assert!(result1.is_ok());
+
+        // 2
+        let lexer2 = TLexer::new("Error!void");
+        let mut parser2 = Parser::new(lexer2);
+        let result2 = parser2.sig_union();
+        assert!(result2.is_ok());
+
+        // 3
+        let lexer3 = TLexer::new("!void");
+        let mut parser3 = Parser::new(lexer3);
+        let result3 = parser3.sig_union();
+        assert!(result3.is_ok());
+
+        let lexer4 = TLexer::new("!?void");
+        let mut parser4 = Parser::new(lexer4);
+        let result4 = parser4.sig_union();
+        assert!(result4.is_ok());
+
+        let lexer5 = TLexer::new("?void");
+        let mut parser5 = Parser::new(lexer5);
+        let result5 = parser5.sig_union();
+        assert!(result5.is_ok());
+
+        // 6
+        let lexer6 = TLexer::new("Error!?void");
+        let mut parser6 = Parser::new(lexer6);
+        let result6 = parser6.sig_union();
+        assert!(result6.is_ok());
+    }
+    #[test]
     fn it_should_parse_fn() {
         let lexer = TLexer::new("pub const add = fn(x: usize) usize { return x }");
         let mut parser = Parser::new(lexer);

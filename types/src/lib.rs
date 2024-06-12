@@ -8,6 +8,14 @@ pub struct FileContainer {
 }
 
 #[derive(Debug)]
+pub struct SigInfo {
+    pub left: Option<Ty>,
+    pub err: Option<Ty>,
+    pub undefined: Option<Ty>,
+    pub right: Ty,
+}
+
+#[derive(Debug)]
 pub struct ErrorInfo {
     pub message: String,
     pub code: usize,
