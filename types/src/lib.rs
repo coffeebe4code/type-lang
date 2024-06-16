@@ -161,6 +161,7 @@ pub enum TypeTree {
     DeclaratorInfo(DeclaratorInfo),
     TagInfo(TagInfo),
     ErrorInfo(ErrorInfo),
+    SigInfo(SigInfo),
     // flow
     For(ForOp),
     Invoke(Invoke),
@@ -234,6 +235,7 @@ impl TypeTree {
             TypeTree::DeclaratorInfo(x) => x.curried.clone(),
             TypeTree::StructInfo(x) => x.curried.clone(),
             TypeTree::TagInfo(x) => x.curried.clone(),
+            TypeTree::SigInfo(x) => x.right.clone(),
             TypeTree::ErrorInfo(x) => x.curried.clone(),
             TypeTree::For(x) => x.body_curried.clone(),
             TypeTree::Invoke(x) => x.curried.clone(),
@@ -330,6 +332,7 @@ impl TypeTree {
             TypeTree::StructInfo(_) => "struct declaration",
             TypeTree::DeclaratorInfo(_) => "property declaration",
             TypeTree::TagInfo(_) => "tag declaration",
+            TypeTree::SigInfo(_) => "type signature",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
             TypeTree::Invoke(_) => "function invocation",
@@ -495,7 +498,8 @@ impl Ty {
             Ty::ReadBorrow(val) => Err(Ty::ReadBorrow(val.to_owned())),
             Ty::MutBorrow(_) => Ok(()),
             Ty::Void => Err(Ty::Void),
-            _ => panic!("type lang issue. type not associatable to const"),
+            Ty::Error => Ok(()),
+            _ => panic!("type lang issue. type not able to be associated to const"),
         }
     }
     pub fn into_vec(&mut self) -> &mut Vec<Ty> {

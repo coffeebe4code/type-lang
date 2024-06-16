@@ -674,7 +674,7 @@ impl Expr {
     pub fn into_symbol(&self) -> Symbol {
         match self {
             Expr::Symbol(x) => x.to_owned(),
-            _ => panic!("issue no symbol found"),
+            _ => panic!("issue no symbol found {:?}", self),
         }
     }
     pub fn into_arg_def(&self) -> ArgDef {
