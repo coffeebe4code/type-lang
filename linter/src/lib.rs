@@ -13,6 +13,7 @@ type ResultTreeType = Result<(Rc<Box<TypeTree>>, Ty), usize>;
 pub struct LintSource<'buf, 'sym> {
     buffer: &'buf str,
     idx: usize,
+    curr_self: Option<Ty>,
     pub ttbl: &'sym mut TypeTable,
     pub issues: Vec<LinterError>,
 }
@@ -22,6 +23,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         LintSource {
             buffer,
             idx: 0,
+            curr_self: None,
             ttbl: slt,
             issues: vec![],
         }
@@ -32,6 +34,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::Import(import) => self.check_import(&import),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
+            Expr::Sig(sig) => self.check_sig(&sig),
             Expr::PropAssignments(props) => self.check_props_init(&props),
             Expr::PropAssignment(prop) => self.check_prop_init(&prop),
             Expr::StructDecl(decl) => self.check_struct_decl(&decl),
@@ -70,7 +73,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             },
             Expr::Number(num) => match num.val.token {
                 Token::Decimal => self.check_f64(num),
-                Token::Number => self.check_u64(num),
+                Token::Number => self.check_i64(num),
                 _ => panic!("type-lang linter issue, number not implemented"),
             },
             Expr::TopDecl(top) => self.check_top_decl(&top),
@@ -78,6 +81,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             Expr::Block(blk) => self.check_block(&blk),
             Expr::FuncDecl(fun) => self.check_func_decl(&fun),
             Expr::RetOp(ret) => self.check_ret_op(&ret),
+            Expr::ArgDef(arg) => self.check_arg_def(&arg),
             _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
@@ -86,18 +90,30 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let result = self.lint_recurse(&td.block)?;
         let slice = td.identifier.into_symbol().val.slice;
 
-        let init = FunctionInitialize {
+        let mut init = FunctionInitialize {
             name: slice.clone(),
             args: vec![],
             args_curried: vec![],
             block: result.0,
             block_curried: result.1,
         };
+        if let Some(args) = td.args.as_ref() {
+            args.iter().for_each(|x| {
+                let res = self.lint_recurse(x);
+                if let Ok(a) = res {
+                    init.args.push(a.0);
+                    init.args_curried.push(a.1);
+                    return;
+                }
+                init.args.push(simple_tree!(UnknownValue));
+                init.args_curried.push(Ty::Unknown);
+            });
+        }
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
         self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        Ok((full, curried))
     }
 
     pub fn check_block(&mut self, td: &ast::Block) -> ResultTreeType {
@@ -117,8 +133,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         });
 
         let curried = blk.curried.clone();
-
-        return ok_tree!(Block, blk, curried);
+        ok_tree!(Block, blk, curried)
     }
 
     pub fn check_undefined(&mut self) -> ResultTreeType {
@@ -145,17 +160,17 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             expr: res.0,
             curried: res.1,
             arms: vec![],
-            curried_arms: vec![],
+            curried_arms: Ty::Tag(vec![]),
         };
         _match.arms.iter().for_each(|m| {
             let mres = self.lint_recurse(m);
             if let Ok(arm) = mres {
                 mat.arms.push(arm.0);
-                mat.curried_arms.push(arm.1);
+                mat.curried_arms.into_vec().push(arm.1);
                 return;
             }
             mat.arms.push(simple_tree!(UnknownValue));
-            mat.curried_arms.push(Ty::Unknown);
+            mat.curried_arms.into_vec().push(Ty::Unknown);
         });
         let cur = mat.curried.clone();
         return ok_tree!(Match, mat, cur);
@@ -173,10 +188,23 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
-            curried: Ty::Void,
+            curried: Ty::Unknown,
         };
-        let typ = Ty::Void;
-        return ok_tree!(SymbolAccess, sym, typ);
+        let curried = sym.curried.clone();
+        return ok_tree!(SymbolAccess, sym, curried);
+        //let sym = SymbolAccess {
+        //    ident: symbol.val.slice.clone(),
+        //    curried: self
+        //        .ttbl
+        //        .table
+        //        .get(&symbol.val.slice)
+        //        .unwrap()
+        //        .0
+        //        .get_curried()
+        //        .clone(),
+        //};
+        //let curried = sym.curried.clone();
+        //return ok_tree!(SymbolAccess, sym, curried);
     }
 
     pub fn check_array_decl(&mut self, arr: &ArrayDecl) -> ResultTreeType {
@@ -206,19 +234,40 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let err_info = ErrorInfo {
             message: "".to_string(),
             code: 0,
+            curried: Ty::Error,
         };
 
+        let curried = err_info.curried.clone();
         let full = tree!(ErrorInfo, err_info);
 
         self.ttbl.table.insert(slice.clone(), (Rc::clone(&full), 0));
-        let curried = Ty::ErrorDecl;
+        return Ok((full, curried));
+    }
+
+    pub fn check_sig(&mut self, _sig: &Sig) -> ResultTreeType {
+        let sig_info = SigInfo {
+            left: Some(Ty::Error),
+            err: Some(Ty::Error),
+            undefined: Some(Ty::Error),
+            right: Ty::Error,
+        };
+
+        let curried = sig_info.right.clone();
+        let full = tree!(SigInfo, sig_info);
+
         return Ok((full, curried));
     }
 
     pub fn check_self_value(&mut self) -> ResultTreeType {
-        let self_ref = NoOp { curried: Ty::Void };
+        let curr_self = self
+            .curr_self
+            .as_ref()
+            .expect("expected self to be defined");
+        let self_ref = NoOp {
+            curried: curr_self.clone(),
+        };
         let curried = self_ref.curried.clone();
-        ok_tree!(SelfRef, self_ref, curried)
+        ok_tree!(SelfAccess, self_ref, curried)
     }
 
     pub fn check_chars_value(&mut self, chars: &ast::CharsValue) -> ResultTreeType {
@@ -244,10 +293,24 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let reassignment = types::Reassignment {
             left: maybe_access.0,
             right: result.0,
-            curried: result.1,
+            curried: maybe_access.1,
         };
+        // assert left type == right type or elidable
+        // assert left type is mutable
+
+        //println!("reassignment {:?}", reassignment);
+        //let end = reassignment.left.get_curried().ensure_mut().or_else(|x| {
+        //    Err(self.set_error(
+        //        format!("found {}", x),
+        //        "did you mean to make it mutable?".to_string(),
+        //        reas.left.into_symbol().val,
+        //    ))
+        //});
+        //if let Err(err) = end {
+        //    return Err(err);
+        //}
         let curried = reassignment.curried.clone();
-        ok_tree!(As, reassignment, curried)
+        return ok_tree!(As, reassignment, curried);
     }
 
     pub fn check_struct_decl(&mut self, obj: &StructDecl) -> ResultTreeType {
@@ -391,53 +454,64 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
     pub fn check_import(&mut self, import: &Import) -> ResultTreeType {
         let result = self.lint_recurse(&import.expr)?;
-        let slice = import.expr.into_chars_value();
+        let slice = import.expr.into_chars_value().val.slice;
 
         let init = Initialization {
-            left: slice.val.slice.clone(),
+            left: slice.clone(),
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-        self.ttbl
-            .table
-            .insert(slice.val.slice, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        if import.mutability.token == Token::Const {
+            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
+            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            return Ok((full, Ty::Const(Box::new(curried))));
+        }
+        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
+        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
     pub fn check_inner_decl(&mut self, inner: &InnerDecl) -> ResultTreeType {
         let result = self.lint_recurse(&inner.expr)?;
         let slice = inner.identifier.into_symbol().val.slice;
-        let copy = slice.clone();
 
-        let init = Initialization {
-            left: slice,
+        let mut init = Initialization {
+            left: slice.clone(),
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full = tree!(ConstInit, init);
-
-        self.ttbl.table.insert(copy, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        if inner.mutability.token == Token::Const {
+            init.curried = Ty::Const(Box::new(init.curried));
+            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
+            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            return Ok((full, Ty::Const(Box::new(curried))));
+        }
+        init.curried = Ty::Mut(Box::new(init.curried));
+        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
+        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
     pub fn check_top_decl(&mut self, td: &TopDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.expr)?;
         let slice = td.identifier.into_symbol().val.slice;
-        let copy = slice.clone();
 
         let init = Initialization {
-            left: slice,
+            left: slice.clone(),
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
-        let full = tree!(ConstInit, init);
-
-        self.ttbl.table.insert(copy, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        if td.mutability.token == Token::Const {
+            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
+            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            return Ok((full, Ty::Const(Box::new(curried))));
+        }
+        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
+        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
     pub fn check_negate(&mut self, un: &UnOp) -> ResultTreeType {
@@ -512,6 +586,35 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
         let curried = unop.curried.clone();
         return ok_tree!(Return, unop, curried);
+    }
+
+    pub fn check_arg_def(&mut self, arg: &ArgDef) -> ResultTreeType {
+        match arg.ident.as_ref() {
+            Expr::Symbol(x) => {
+                let slice = x.val.slice.clone();
+                let typ = self.lint_recurse(&arg.typ)?;
+                let a = NoOp { curried: typ.1 };
+
+                let curried = a.curried.clone();
+                self.curr_self = Some(a.curried.clone());
+                let full: Rc<Box<TypeTree>> = tree!(ArgInit, a);
+                self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+
+                return Ok((full, curried));
+            }
+            Expr::SelfValue(_) => {
+                let typ = self.lint_recurse(&arg.typ)?;
+                let a = NoOp { curried: typ.1 };
+
+                let curried = a.curried.clone();
+                self.curr_self = Some(a.curried.clone());
+
+                let full: Rc<Box<TypeTree>> = tree!(SelfAccess, a);
+
+                return Ok((full, curried));
+            }
+            _ => panic!("unexpected expression in arg_def"),
+        }
     }
 
     pub fn check_not(&mut self, un: &UnOp) -> ResultTreeType {
@@ -646,7 +749,9 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             TypeTree::SymbolAccess(sym) => {
                 unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
             }
-            TypeTree::SelfRef(sym) => unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone())),
+            TypeTree::SelfAccess(sym) => {
+                unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
+            }
             _ => panic!("borrow_check failed"),
         }
         let curried = unop.curried.clone();
@@ -675,10 +780,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(F64, val, typ);
     }
 
-    pub fn check_u64(&mut self, num: &Number) -> ResultTreeType {
-        let val = num.val.slice.parse::<u64>().unwrap();
-        let typ = Ty::U64;
-        return ok_tree!(U64, val, typ);
+    // todo:: convert this back to u64, need to check to see if it fits in i64 and return type
+    pub fn check_i64(&mut self, num: &Number) -> ResultTreeType {
+        let val = num.val.slice.parse::<i64>().unwrap();
+        let typ = Ty::I64;
+        return ok_tree!(I64, val, typ);
     }
 
     pub fn lint_check(&mut self, start: &Expr) -> Vec<Rc<Box<TypeTree>>> {
@@ -710,6 +816,55 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
 pub fn make_error(title: String) -> LinterError {
     LinterError::new(title)
+}
+
+trait DoConvert {
+    fn into_type(self) -> Ty;
+}
+
+impl DoConvert for &Expr {
+    fn into_type(self) -> Ty {
+        match self {
+            Expr::Number(num) => match num.val.token {
+                Token::Decimal => Ty::F64,
+                // todo:: check if it fits in u64
+                Token::Number => Ty::I64,
+                _ => panic!("type-lang linter issue, number not implemented"),
+            },
+            Expr::ValueType(val) => match val.val.token {
+                Token::I32 => Ty::I32,
+                Token::U32 => Ty::U32,
+                Token::I64 => Ty::I64,
+                Token::U64 => Ty::U64,
+                Token::I16 => Ty::I32,
+                Token::U16 => Ty::U32,
+                Token::U8 => Ty::U32,
+                Token::I8 => Ty::U32,
+                Token::Bit => Ty::U32,
+                Token::F64 => Ty::F64,
+                Token::D64 => Ty::U32,
+                Token::F32 => Ty::U32,
+                Token::D32 => Ty::U32,
+                Token::D128 => Ty::U32,
+                Token::F128 => Ty::U32,
+                Token::ISize => Ty::U32,
+                Token::USize => Ty::U32,
+                Token::Char => Ty::Char,
+                Token::Utf8 => Ty::Char,
+                Token::Utf16 => Ty::Char,
+                Token::Utf32 => Ty::Char,
+                Token::Utf64 => Ty::Char,
+                Token::Bool => Ty::Char,
+                Token::Any => Ty::Custom("any".to_string()),
+                Token::Sized => Ty::Custom("sized".to_string()),
+                Token::Scalar => Ty::Custom("scalar".to_string()),
+                Token::Void => Ty::Void,
+                Token::TSelf => Ty::TSelf,
+                _ => panic!("type-lang linter issue, not a value type"),
+            },
+            _ => panic!("type-lang linter issue, unhandled expr"),
+        }
+    }
 }
 
 #[cfg(test)]

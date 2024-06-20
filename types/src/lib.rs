@@ -1,3 +1,4 @@
+use core::fmt;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -7,9 +8,18 @@ pub struct FileContainer {
 }
 
 #[derive(Debug)]
+pub struct SigInfo {
+    pub left: Option<Ty>,
+    pub err: Option<Ty>,
+    pub undefined: Option<Ty>,
+    pub right: Ty,
+}
+
+#[derive(Debug)]
 pub struct ErrorInfo {
     pub message: String,
     pub code: usize,
+    pub curried: Ty,
 }
 
 #[derive(Debug)]
@@ -43,7 +53,7 @@ pub struct MatchOp {
     pub expr: Rc<Box<TypeTree>>,
     pub curried: Ty,
     pub arms: Vec<Rc<Box<TypeTree>>>,
-    pub curried_arms: Vec<Ty>,
+    pub curried_arms: Ty,
 }
 
 #[derive(Debug)]
@@ -151,6 +161,7 @@ pub enum TypeTree {
     DeclaratorInfo(DeclaratorInfo),
     TagInfo(TagInfo),
     ErrorInfo(ErrorInfo),
+    SigInfo(SigInfo),
     // flow
     For(ForOp),
     Invoke(Invoke),
@@ -183,8 +194,10 @@ pub enum TypeTree {
     PropAccess(PropAccess),
     SymbolAccess(SymbolAccess),
     RestAccess(NoOp),
-    SelfRef(NoOp),
+    SelfAccess(NoOp),
     // data types
+    ArgInit(NoOp),
+    SelfInit(NoOp),
     StructInit(StructInitialize),
     PropInit(Initialization),
     ArrayInit(ArrayInitialize),
@@ -218,6 +231,74 @@ pub enum TypeTree {
 }
 
 impl TypeTree {
+    pub fn get_curried(&self) -> Ty {
+        match self {
+            TypeTree::DeclaratorInfo(x) => x.curried.clone(),
+            TypeTree::StructInfo(x) => x.curried.clone(),
+            TypeTree::TagInfo(x) => x.curried.clone(),
+            TypeTree::SigInfo(x) => x.right.clone(),
+            TypeTree::ErrorInfo(x) => x.curried.clone(),
+            TypeTree::For(x) => x.body_curried.clone(),
+            TypeTree::Invoke(x) => x.curried.clone(),
+            TypeTree::Match(x) => x.curried_arms.clone(),
+            TypeTree::Arm(x) => x.curried.clone(),
+            TypeTree::Block(x) => x.curried.clone(),
+            TypeTree::Return(x) => x.curried.clone(),
+            TypeTree::ReturnVoid(_) => Ty::Void,
+            TypeTree::Never(_) => Ty::Never,
+            TypeTree::Break(x) => x.curried.clone(),
+            TypeTree::BreakVoid(x) => x.curried.clone(),
+            TypeTree::Plus(x) => x.curried.clone(),
+            TypeTree::Minus(x) => x.curried.clone(),
+            TypeTree::Divide(x) => x.curried.clone(),
+            TypeTree::Multiply(x) => x.curried.clone(),
+            TypeTree::Modulo(x) => x.curried.clone(),
+            TypeTree::Range(x) => x.curried.clone(),
+            TypeTree::CastAs(x) => x.curried.clone(),
+            TypeTree::BubbleUndef(x) => x.curried.clone(),
+            TypeTree::BubbleError(x) => x.curried.clone(),
+            TypeTree::ReadBorrow(x) => x.curried.clone(),
+            TypeTree::MutBorrow(x) => x.curried.clone(),
+            TypeTree::Copy(x) => x.curried.clone(),
+            TypeTree::Clone(x) => x.curried.clone(),
+            TypeTree::Negate(x) => x.curried.clone(),
+            TypeTree::Not(x) => x.curried.clone(),
+            TypeTree::PropAccess(x) => x.curried.clone(),
+            TypeTree::SymbolAccess(x) => x.curried.clone(),
+            TypeTree::RestAccess(x) => x.curried.clone(),
+            TypeTree::SelfAccess(x) => x.curried.clone(),
+            TypeTree::StructInit(x) => x.curried.clone(),
+            TypeTree::PropInit(x) => x.curried.clone(),
+            TypeTree::ArrayInit(x) => x.curried.clone(),
+            TypeTree::FuncInit(x) => x.block_curried.clone(),
+            TypeTree::AnonFuncInit(x) => x.block_curried.clone(),
+            TypeTree::ConstInit(x) => x.curried.clone(),
+            TypeTree::MutInit(x) => x.curried.clone(),
+            TypeTree::StringInit(x) => x.curried.clone(),
+            TypeTree::As(x) => x.curried.clone(),
+            TypeTree::PlusAs(x) => x.curried.clone(),
+            TypeTree::MinusAs(x) => x.curried.clone(),
+            TypeTree::MultiplyAs(x) => x.curried.clone(),
+            TypeTree::DivideAs(x) => x.curried.clone(),
+            TypeTree::ModAs(x) => x.curried.clone(),
+            TypeTree::OrAs(x) => x.curried.clone(),
+            TypeTree::NotAs(x) => x.curried.clone(),
+            TypeTree::XorAs(x) => x.curried.clone(),
+            TypeTree::LShiftAs(x) => x.curried.clone(),
+            TypeTree::RShiftAs(x) => x.curried.clone(),
+            TypeTree::UndefinedValue => Ty::Undefined,
+            TypeTree::BoolValue(_) => Ty::Bool,
+            TypeTree::I64(_) => Ty::I64,
+            TypeTree::I32(_) => Ty::I32,
+            TypeTree::U64(_) => Ty::U64,
+            TypeTree::U32(_) => Ty::U32,
+            TypeTree::F64(_) => Ty::F64,
+            TypeTree::Char(_) => Ty::Char,
+            TypeTree::UnknownValue => Ty::Unknown,
+            TypeTree::ArgInit(x) => x.curried.clone(),
+            TypeTree::SelfInit(x) => x.curried.clone(),
+        }
+    }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
         match self {
             TypeTree::DeclaratorInfo(x) => x,
@@ -227,19 +308,19 @@ impl TypeTree {
     pub fn into_func_init(&self) -> &FunctionInitialize {
         match self {
             TypeTree::FuncInit(x) => x,
-            _ => panic!("issue declarator not found"),
+            _ => panic!("issue function not found"),
         }
     }
     pub fn into_symbol_access(&self) -> &SymbolAccess {
         match self {
             TypeTree::SymbolAccess(x) => x,
-            _ => panic!("issue declarator not found"),
+            _ => panic!("issue symbol not found"),
         }
     }
     pub fn into_prop_init(&self) -> &Initialization {
         match self {
             TypeTree::PropInit(x) => x,
-            _ => panic!("issue declarator not found"),
+            _ => panic!("issue property not found"),
         }
     }
     pub fn into_binary_op(&self) -> &BinaryOp {
@@ -253,6 +334,7 @@ impl TypeTree {
             TypeTree::StructInfo(_) => "struct declaration",
             TypeTree::DeclaratorInfo(_) => "property declaration",
             TypeTree::TagInfo(_) => "tag declaration",
+            TypeTree::SigInfo(_) => "type signature",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
             TypeTree::Invoke(_) => "function invocation",
@@ -282,7 +364,7 @@ impl TypeTree {
             TypeTree::PropAccess(_) => "property access",
             TypeTree::SymbolAccess(_) => "symbol reference",
             TypeTree::RestAccess(_) => "rest access",
-            TypeTree::SelfRef(_) => "self reference",
+            TypeTree::SelfAccess(_) => "self reference",
             TypeTree::StructInit(_) => "struct initialization",
             TypeTree::PropInit(_) => "property assignment",
             TypeTree::ArrayInit(_) => "array initialization",
@@ -311,6 +393,8 @@ impl TypeTree {
             TypeTree::F64(_) => "floating point double precision 64 bit",
             TypeTree::Char(_) => "ascii character",
             TypeTree::UnknownValue => "unknown value",
+            TypeTree::ArgInit(_) => "function argument",
+            TypeTree::SelfInit(_) => "self as function argument",
         }
     }
 }
@@ -325,22 +409,108 @@ pub enum Ty {
     Unknown,
     Rest,
     Undefined,
-    ErrorDecl,
     Void,
     Never,
     Bool,
     Char,
     String,
+    Const(Box<Ty>),
+    Mut(Box<Ty>),
     MutBorrow(Box<Ty>),
     ReadBorrow(Box<Ty>),
     Frame(Vec<Ty>),
-    Error(Box<Ty>),
     Struct(Vec<Ty>),
+    Error,
     Tag(Vec<Ty>),
     Function(Vec<Ty>, Box<Ty>),
     Custom(String),
+    Trait(String),
+    TSelf,
     Array(Box<Ty>),
-    Multi(Vec<Ty>),
+}
+
+impl fmt::Display for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Ty::I64 => write!(f, "i64"),
+            Ty::I32 => write!(f, "i32"),
+            Ty::U64 => write!(f, "u64"),
+            Ty::U32 => write!(f, "u32"),
+            Ty::F64 => write!(f, "f64"),
+            Ty::Unknown => write!(f, "unknown"),
+            Ty::Rest => write!(f, "_"),
+            Ty::Undefined => write!(f, "undefined"),
+            Ty::Void => write!(f, "void"),
+            Ty::Never => write!(f, "never"),
+            Ty::Bool => write!(f, "bool"),
+            Ty::Char => write!(f, "char"),
+            // might want to just make this an Array
+            Ty::String => write!(f, "[char]"),
+            Ty::Const(x) => write!(f, "const {}", x),
+            Ty::Mut(x) => write!(f, "let {}", x),
+            Ty::ReadBorrow(x) => write!(f, "&{}", x),
+            Ty::MutBorrow(x) => write!(f, "*{}", x),
+            Ty::Frame(x) => {
+                write!(f, "frame(").unwrap();
+                for a in x {
+                    write!(f, "{},", a).unwrap();
+                }
+                write!(f, ")").unwrap();
+                Ok(())
+            }
+            Ty::Struct(x) => {
+                write!(f, "struct {{").unwrap();
+                for a in x {
+                    write!(f, "{},", a).unwrap();
+                }
+                write!(f, "}}").unwrap();
+                Ok(())
+            }
+            Ty::Error => write!(f, "error"),
+            Ty::Tag(x) => {
+                write!(f, "tag ").unwrap();
+                for a in x {
+                    write!(f, "| {}", a).unwrap();
+                }
+                Ok(())
+            }
+            Ty::Function(x, y) => {
+                write!(f, "function(").unwrap();
+                for a in x {
+                    write!(f, "{},", a).unwrap();
+                }
+                write!(f, ") {}", y).unwrap();
+                Ok(())
+            }
+            Ty::Custom(x) => write!(f, "type {}", x),
+            Ty::Array(x) => write!(f, "[{}]", x),
+            Ty::Trait(x) => write!(f, "trait {}", x),
+            Ty::TSelf => write!(f, "self"),
+        }
+    }
+}
+
+impl Ty {
+    pub fn ensure_mut(&self) -> Result<(), Ty> {
+        match self {
+            Ty::I64 => Err(Ty::I64),
+            Ty::I32 => Err(Ty::I32),
+            Ty::U64 => Err(Ty::U64),
+            Ty::Const(val) => Err(Ty::Const(val.to_owned())),
+            Ty::Mut(_) => Ok(()),
+            Ty::ReadBorrow(val) => Err(Ty::ReadBorrow(val.to_owned())),
+            Ty::MutBorrow(_) => Ok(()),
+            Ty::Void => Err(Ty::Void),
+            Ty::Error => Ok(()),
+            _ => panic!("type lang issue. type not able to be associated to const"),
+        }
+    }
+    pub fn into_vec(&mut self) -> &mut Vec<Ty> {
+        match self {
+            Ty::Tag(x) => x,
+            _ => panic!("type lang issue. unhandled match arm"),
+        }
+    }
 }
 
 #[macro_export]

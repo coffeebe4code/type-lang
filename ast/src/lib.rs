@@ -27,11 +27,11 @@ impl Match {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Declarator {
     pub ident: Box<Expr>,
-    pub typ: Option<Box<Expr>>,
+    pub typ: Box<Expr>,
 }
 
 impl Declarator {
-    pub fn new(ident: Box<Expr>, typ: Option<Box<Expr>>) -> Self {
+    pub fn new(ident: Box<Expr>, typ: Box<Expr>) -> Self {
         Declarator { ident, typ }
     }
 }
@@ -120,10 +120,10 @@ impl PropAccess {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArgDef {
     pub ident: Box<Expr>,
-    pub typ: Option<Box<Expr>>,
+    pub typ: Box<Expr>,
 }
 impl ArgDef {
-    pub fn new(ident: Box<Expr>, typ: Option<Box<Expr>>) -> Self {
+    pub fn new(ident: Box<Expr>, typ: Box<Expr>) -> Self {
         ArgDef { ident, typ }
     }
 }
@@ -551,10 +551,10 @@ impl ValueType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sig {
     // look at parser to see how this is implemented
-    pub left_most_ident: Option<Box<Expr>>,
+    pub left_most_type: Option<Box<Expr>>,
     pub err: Option<Lexeme>,
     pub undef: Option<Lexeme>,
-    pub right_most_ident: Option<Box<Expr>>,
+    pub right_most_type: Option<Box<Expr>>,
 }
 
 impl Sig {
@@ -565,10 +565,10 @@ impl Sig {
         right_most_ident: Option<Box<Expr>>,
     ) -> Self {
         Sig {
-            left_most_ident,
+            left_most_type: left_most_ident,
             err,
             undef,
-            right_most_ident,
+            right_most_type: right_most_ident,
         }
     }
 }
@@ -659,10 +659,28 @@ impl Expr {
             _ => panic!("issue no symbol found"),
         }
     }
+    pub fn into_self_val(&self) -> SelfValue {
+        match self {
+            Expr::SelfValue(x) => x.to_owned(),
+            _ => panic!("issue no self keyword found"),
+        }
+    }
+    pub fn is_self_val(&self) -> bool {
+        match self {
+            Expr::SelfValue(_) => true,
+            _ => false,
+        }
+    }
     pub fn into_symbol(&self) -> Symbol {
         match self {
             Expr::Symbol(x) => x.to_owned(),
-            _ => panic!("issue no symbol found"),
+            _ => panic!("issue no symbol found {:?}", self),
+        }
+    }
+    pub fn into_arg_def(&self) -> ArgDef {
+        match self {
+            Expr::ArgDef(x) => x.to_owned(),
+            _ => panic!("issue no argument definition found"),
         }
     }
     pub fn into_chars_value(&self) -> CharsValue {
