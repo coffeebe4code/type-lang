@@ -193,10 +193,11 @@ pub enum TypeTree {
     // values
     PropAccess(PropAccess),
     SymbolAccess(SymbolAccess),
-    ArgValue(NoOp),
     RestAccess(NoOp),
-    SelfRef(NoOp),
+    SelfAccess(NoOp),
     // data types
+    ArgInit(NoOp),
+    SelfInit(NoOp),
     StructInit(StructInitialize),
     PropInit(Initialization),
     ArrayInit(ArrayInitialize),
@@ -265,7 +266,7 @@ impl TypeTree {
             TypeTree::PropAccess(x) => x.curried.clone(),
             TypeTree::SymbolAccess(x) => x.curried.clone(),
             TypeTree::RestAccess(x) => x.curried.clone(),
-            TypeTree::SelfRef(x) => x.curried.clone(),
+            TypeTree::SelfAccess(x) => x.curried.clone(),
             TypeTree::StructInit(x) => x.curried.clone(),
             TypeTree::PropInit(x) => x.curried.clone(),
             TypeTree::ArrayInit(x) => x.curried.clone(),
@@ -294,7 +295,8 @@ impl TypeTree {
             TypeTree::F64(_) => Ty::F64,
             TypeTree::Char(_) => Ty::Char,
             TypeTree::UnknownValue => Ty::Unknown,
-            TypeTree::ArgValue(x) => x.curried.clone(),
+            TypeTree::ArgInit(x) => x.curried.clone(),
+            TypeTree::SelfInit(x) => x.curried.clone(),
         }
     }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
@@ -362,7 +364,7 @@ impl TypeTree {
             TypeTree::PropAccess(_) => "property access",
             TypeTree::SymbolAccess(_) => "symbol reference",
             TypeTree::RestAccess(_) => "rest access",
-            TypeTree::SelfRef(_) => "self reference",
+            TypeTree::SelfAccess(_) => "self reference",
             TypeTree::StructInit(_) => "struct initialization",
             TypeTree::PropInit(_) => "property assignment",
             TypeTree::ArrayInit(_) => "array initialization",
@@ -391,7 +393,8 @@ impl TypeTree {
             TypeTree::F64(_) => "floating point double precision 64 bit",
             TypeTree::Char(_) => "ascii character",
             TypeTree::UnknownValue => "unknown value",
-            TypeTree::ArgValue(_) => "function argument",
+            TypeTree::ArgInit(_) => "function argument",
+            TypeTree::SelfInit(_) => "self as function argument",
         }
     }
 }

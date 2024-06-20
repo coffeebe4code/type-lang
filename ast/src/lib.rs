@@ -27,11 +27,11 @@ impl Match {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Declarator {
     pub ident: Box<Expr>,
-    pub typ: Option<Box<Expr>>,
+    pub typ: Box<Expr>,
 }
 
 impl Declarator {
-    pub fn new(ident: Box<Expr>, typ: Option<Box<Expr>>) -> Self {
+    pub fn new(ident: Box<Expr>, typ: Box<Expr>) -> Self {
         Declarator { ident, typ }
     }
 }

@@ -239,7 +239,9 @@ impl<'s> Parser<'s> {
         if id.is_none() {
             return Ok(None);
         }
-        let sig = self.opt_signature()?;
+        let sig = self
+            .opt_signature()
+            .xexpect_expr(&self, "expected signature".to_string())?;
         return result_expr!(Declarator, id.unwrap(), sig).xconvert_to_result_opt();
     }
     pub fn args(&mut self) -> Result<Option<Vec<Box<Expr>>>> {

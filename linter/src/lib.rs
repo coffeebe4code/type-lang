@@ -188,10 +188,23 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
-            curried: Ty::Void,
+            curried: Ty::Unknown,
         };
-        let typ = Ty::Void;
-        return ok_tree!(SymbolAccess, sym, typ);
+        let curried = sym.curried.clone();
+        return ok_tree!(SymbolAccess, sym, curried);
+        //let sym = SymbolAccess {
+        //    ident: symbol.val.slice.clone(),
+        //    curried: self
+        //        .ttbl
+        //        .table
+        //        .get(&symbol.val.slice)
+        //        .unwrap()
+        //        .0
+        //        .get_curried()
+        //        .clone(),
+        //};
+        //let curried = sym.curried.clone();
+        //return ok_tree!(SymbolAccess, sym, curried);
     }
 
     pub fn check_array_decl(&mut self, arr: &ArrayDecl) -> ResultTreeType {
@@ -254,7 +267,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             curried: curr_self.clone(),
         };
         let curried = self_ref.curried.clone();
-        ok_tree!(SelfRef, self_ref, curried)
+        ok_tree!(SelfAccess, self_ref, curried)
     }
 
     pub fn check_chars_value(&mut self, chars: &ast::CharsValue) -> ResultTreeType {
@@ -280,22 +293,22 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let reassignment = types::Reassignment {
             left: maybe_access.0,
             right: result.0,
-            curried: result.1,
+            curried: maybe_access.1,
         };
         // assert left type == right type or elidable
         // assert left type is mutable
 
-        println!("reassignment {:?}", reassignment);
-        let end = reassignment.left.get_curried().ensure_mut().or_else(|x| {
-            Err(self.set_error(
-                format!("found {}", x),
-                "did you mean to make it mutable?".to_string(),
-                reas.left.into_symbol().val,
-            ))
-        });
-        if let Err(err) = end {
-            return Err(err);
-        }
+        //println!("reassignment {:?}", reassignment);
+        //let end = reassignment.left.get_curried().ensure_mut().or_else(|x| {
+        //    Err(self.set_error(
+        //        format!("found {}", x),
+        //        "did you mean to make it mutable?".to_string(),
+        //        reas.left.into_symbol().val,
+        //    ))
+        //});
+        //if let Err(err) = end {
+        //    return Err(err);
+        //}
         let curried = reassignment.curried.clone();
         return ok_tree!(As, reassignment, curried);
     }
@@ -463,19 +476,19 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let result = self.lint_recurse(&inner.expr)?;
         let slice = inner.identifier.into_symbol().val.slice;
 
-        let init = Initialization {
+        let mut init = Initialization {
             left: slice.clone(),
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
         if inner.mutability.token == Token::Const {
-            println!("slice {} {:?}", slice, "const");
+            init.curried = Ty::Const(Box::new(init.curried));
             let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
             self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
             return Ok((full, Ty::Const(Box::new(curried))));
         }
-        println!("slice {} {:?}", slice, "mut");
+        init.curried = Ty::Mut(Box::new(init.curried));
         let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
         self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
         return Ok((full, Ty::Mut(Box::new(curried))));
@@ -584,7 +597,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
                 let curried = a.curried.clone();
                 self.curr_self = Some(a.curried.clone());
-                let full: Rc<Box<TypeTree>> = tree!(ArgValue, a);
+                let full: Rc<Box<TypeTree>> = tree!(ArgInit, a);
                 self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
 
                 return Ok((full, curried));
@@ -596,7 +609,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                 let curried = a.curried.clone();
                 self.curr_self = Some(a.curried.clone());
 
-                let full: Rc<Box<TypeTree>> = tree!(SelfRef, a);
+                let full: Rc<Box<TypeTree>> = tree!(SelfAccess, a);
 
                 return Ok((full, curried));
             }
@@ -736,7 +749,9 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             TypeTree::SymbolAccess(sym) => {
                 unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
             }
-            TypeTree::SelfRef(sym) => unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone())),
+            TypeTree::SelfAccess(sym) => {
+                unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
+            }
             _ => panic!("borrow_check failed"),
         }
         let curried = unop.curried.clone();

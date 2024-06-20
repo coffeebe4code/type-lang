@@ -55,10 +55,7 @@ fn main() {
     let result = linter.lint_check(&mut borrow.to_owned());
 
     if linter.issues.len() > 0 {
-        println!(
-            "  [fail]\n issues: {:?}\n completed: {:?}\n",
-            linter.issues, result
-        );
+        println!("  [fail]\n issues: {:?}\n", linter.issues);
         std::process::exit(1);
     }
 }
