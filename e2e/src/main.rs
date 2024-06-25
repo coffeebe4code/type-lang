@@ -58,4 +58,5 @@ fn main() {
         println!("  [fail]\n issues: {:?}\n", linter.issues);
         std::process::exit(1);
     }
+    println!("  [ok] full lint success!");
 }
