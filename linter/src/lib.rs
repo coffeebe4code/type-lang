@@ -123,15 +123,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let result: Vec<ResultTreeType> = td.exprs.iter().map(|e| self.lint_recurse(&e)).collect();
         let mut blk = types::Block {
             exprs: vec![],
-            curried: Ty::Void,
+            curried: Ty::Unknown,
         };
-        let mut typ = Ty::Void;
         result.into_iter().for_each(|res| {
             if let Ok(exp) = res {
                 blk.exprs.push(exp.0);
-                typ = exp.1;
-            } else {
-                typ = Ty::Void;
             }
         });
 
@@ -221,7 +217,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let mut array = ArrayInitialize {
             vals: vec![],
             vals_curried: vec![],
-            curried: Ty::Void,
+            curried: Ty::Unknown,
         };
         if let Some(args) = &arr.args {
             args.into_iter().for_each(|e| {
@@ -306,19 +302,18 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             curried: maybe_access.1,
         };
         // assert left type == right type or elidable
-        // assert left type is mutable
 
-        //println!("reassignment {:?}", reassignment);
-        //let end = reassignment.left.get_curried().ensure_mut().or_else(|x| {
-        //    Err(self.set_error(
-        //        format!("found {}", x),
-        //        "did you mean to make it mutable?".to_string(),
-        //        reas.left.into_symbol().val,
-        //    ))
-        //});
-        //if let Err(err) = end {
-        //    return Err(err);
-        //}
+        // need to ensure constness is checked on the property
+        let end = reassignment.left.get_curried().ensure_mut().or_else(|x| {
+            Err(self.set_error(
+                format!("found {}", x),
+                "did you mean to make it mutable?".to_string(),
+                reas.left.into_symbol().val,
+            ))
+        });
+        if let Err(err) = end {
+            return Err(err);
+        }
         let curried = reassignment.curried.clone();
         return ok_tree!(As, reassignment, curried);
     }
