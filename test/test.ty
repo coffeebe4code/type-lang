@@ -97,9 +97,15 @@ const count_spaces = fn(to_check: &[&char]) f64 {
 // note: do not think of these as pointers, as &[&char] in tradional pointer terminolgy would mean this is a reference to an array of char references. this is clearly an array of chars, they are just read-only
 
 // you can pass a value with ownership passed as well, (moved)
-const count_spaces = fn(to_check: [char]) f64 { }
-let m = "Hello"
-const spaces = count_spaces(m)
+const count_char = fn(to_check: [char]) f64 { 
+  let count: f64 = 0
+  for (to_check) fn(x) void {
+    count += 1
+  }
+  return count
+}
+const m = "Hello"
+const spaces = count_char(m)
 // m can no longer be referenced
 
 const q = import "std.io"

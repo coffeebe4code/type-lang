@@ -1,18 +1,42 @@
-const Car = struct { wheels: u8 = 7 }
+type Motorcycle = struct {
+  name: [char],
+  wheels: u8
+}
 
-type Named = prop { name: [char] }
-type Car: Named = struct { wheels: u8 }
+type Car = struct {
+  name: [char],
+  wheels: u8
+}
 
-type Movable: Named = trait { 
+// or make a props type
+type Movable: struct {wheels: u8} = trait { 
+  // linter will fail self without signature right now
   fn set_wheels(self, wheels: u8) {
-    if (self.name == "Sparrow") {
-      assert(wheels == 3)
-    }
-
     self.wheels = wheels
+  }
+  fn drive(self) {
   }
 }
 
-type Wheeled = prop { wheels: usize }
+impl Movable: Car = self
+impl Movable: Motorcycle = self
 
-type CarBase = Named + Wheeled
+let toyoba = Car {
+  name = "Toyoba"
+}
+toyoba.set_wheels(4)
+toyoba.drive()
+
+let bonda = Motorcycle {
+  name = "Bonda"
+}
+
+bonda.set_wheels(2)
+bonda.drive()
+
+const assert_wheels = fn(self: Movable) !void {
+  if (self.wheels == 0) {
+    return error {}
+  }
+  return 
+}
