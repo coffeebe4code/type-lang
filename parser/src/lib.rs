@@ -58,9 +58,7 @@ impl<'s> Parser<'s> {
     ) -> ResultExpr {
         let mut variants: Vec<Box<Expr>> = vec![];
         while let Some(_) = self.lexer.collect_if(Token::Bar) {
-            let x = self
-                .ident()
-                .xconvert_to_result(self, "expected identifier'".to_string())?;
+            let x = self.ident().xconvert_to_sym_decl()?;
             variants.push(x);
         }
         result_expr!(TagDecl, visibility, mutability, identifier, variants, sig)
@@ -111,7 +109,8 @@ impl<'s> Parser<'s> {
             .xexpect_token(&self, "expected mutability".to_string())?;
         let identifier = self
             .ident()
-            .xexpect_expr(&self, "expected identifier".to_string())?;
+            .xexpect_expr(&self, "expected identifier".to_string())
+            .xconvert_to_sym_decl()?;
         let sig = self.opt_signature()?;
         let _ = self
             .lexer
@@ -242,7 +241,8 @@ impl<'s> Parser<'s> {
         let sig = self
             .opt_signature()
             .xexpect_expr(&self, "expected signature".to_string())?;
-        return result_expr!(Declarator, id.unwrap(), sig).xconvert_to_result_opt();
+        return result_expr!(Declarator, id.xconvert_to_sym_decl().unwrap(), sig)
+            .xconvert_to_result_opt();
     }
     pub fn args(&mut self) -> Result<Option<Vec<Box<Expr>>>> {
         let mut arg_list: Vec<Box<Expr>> = vec![];
@@ -283,8 +283,9 @@ impl<'s> Parser<'s> {
                 &self,
                 "all function declarations must have types in arguments".to_string(),
             );
+            let sym = Box::new(Expr::SymbolDecl(id.into_symbol()));
             if let Ok(sig) = result {
-                return result_expr!(ArgDef, id, sig).xconvert_to_result_opt();
+                return result_expr!(ArgDef, sym, sig).xconvert_to_result_opt();
             }
             return result.xconvert_to_result_opt();
         }
@@ -293,8 +294,9 @@ impl<'s> Parser<'s> {
                 &self,
                 "all function declarations must have types in arguments".to_string(),
             );
+            let sym = Box::new(Expr::SelfDecl(id.into_self()));
             if let Ok(sig) = result {
-                return result_expr!(ArgDef, id, sig).xconvert_to_result_opt();
+                return result_expr!(ArgDef, sym, sig).xconvert_to_result_opt();
             }
             return result.xconvert_to_result_opt();
         }
@@ -782,15 +784,17 @@ impl<'s> Parser<'s> {
     }
     pub fn undefined(&mut self) -> OptExpr {
         let lexeme = self.lexer.collect_if(Token::Undefined)?;
-        opt_expr!(UndefinedValue, lexeme)
+        Some(Box::new(Expr::UndefinedValue(UndefinedKeyword {
+            val: lexeme,
+        })))
     }
     pub fn _self(&mut self) -> OptExpr {
         let lexeme = self.lexer.collect_if(Token::TSelf)?;
-        opt_expr!(SelfValue, lexeme)
+        Some(Box::new(Expr::SelfValue(SelfKeyword { val: lexeme })))
     }
     pub fn never(&mut self) -> OptExpr {
         let lexeme = self.lexer.collect_if(Token::Never)?;
-        opt_expr!(Never, lexeme)
+        Some(Box::new(Expr::Never(NeverKeyword { val: lexeme })))
     }
     pub fn array_access(&mut self) -> ResultExpr {
         let expr = self.expr()?;
@@ -919,6 +923,14 @@ trait ConvertToResult {
     fn xconvert_to_result(self, parser: &Parser, title: String) -> ResultExpr;
 }
 
+trait ConvertToSymbolDecl {
+    fn xconvert_to_sym_decl(self) -> ResultExpr;
+}
+
+trait ConvertToSymbolDeclResult {
+    fn xconvert_to_sym_decl(self) -> ResultExpr;
+}
+
 trait ConvertToResultOpt {
     fn xconvert_to_result_opt(self) -> ResultOptExpr;
 }
@@ -988,6 +1000,34 @@ impl ExpectExpr for OptExpr {
         match self {
             None => Err(parser.make_error(title)),
             Some(val) => Ok(val),
+        }
+    }
+}
+
+impl ConvertToSymbolDeclResult for ResultExpr {
+    fn xconvert_to_sym_decl(self) -> ResultExpr {
+        match self {
+            Err(x) => Err(x),
+            Ok(val) => match *val {
+                Expr::Symbol(x) => {
+                    return Ok(Box::new(Expr::SymbolDecl(x)));
+                }
+                _ => panic!("type lang issue, expected into symbol"),
+            },
+        }
+    }
+}
+
+impl ConvertToSymbolDecl for OptExpr {
+    fn xconvert_to_sym_decl(self) -> ResultExpr {
+        match self {
+            None => panic!("type lang issue, expected a symbol"),
+            Some(val) => match *val {
+                Expr::Symbol(x) => {
+                    return Ok(Box::new(Expr::SymbolDecl(x)));
+                }
+                _ => panic!("type lang issue, expected into symbol"),
+            },
         }
     }
 }
@@ -1336,24 +1376,18 @@ mod tests {
                 token: Token::Const,
                 span: 4..9
             },
-            expr!(
-                Symbol,
-                Lexeme {
-                    slice: "add".to_string(),
-                    token: Token::Symbol,
-                    span: 10..13
-                }
-            ),
+            Box::new(Expr::SymbolDecl(Symbol::new(Lexeme {
+                slice: "add".to_string(),
+                token: Token::Symbol,
+                span: 10..13
+            }))),
             Some(vec![expr!(
                 ArgDef,
-                expr!(
-                    Symbol,
-                    Lexeme {
-                        slice: "x".to_string(),
-                        token: Token::Symbol,
-                        span: 19..20
-                    }
-                ),
+                Box::new(Expr::SymbolDecl(Symbol::new(Lexeme {
+                    slice: "x".to_string(),
+                    token: Token::Symbol,
+                    span: 19..20
+                }))),
                 expr!(
                     Sig,
                     Some(expr!(

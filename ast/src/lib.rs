@@ -482,35 +482,35 @@ impl Symbol {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Never {
+pub struct NeverKeyword {
     pub val: Lexeme,
 }
 
-impl Never {
+impl NeverKeyword {
     pub fn new(val: Lexeme) -> Self {
-        Never { val }
+        NeverKeyword { val }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SelfValue {
+pub struct SelfKeyword {
     pub val: Lexeme,
 }
 
-impl SelfValue {
+impl SelfKeyword {
     pub fn new(val: Lexeme) -> Self {
-        SelfValue { val }
+        SelfKeyword { val }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct UndefinedValue {
+pub struct UndefinedKeyword {
     pub val: Lexeme,
 }
 
-impl UndefinedValue {
+impl UndefinedKeyword {
     pub fn new(val: Lexeme) -> Self {
-        UndefinedValue { val }
+        UndefinedKeyword { val }
     }
 }
 
@@ -628,12 +628,14 @@ pub enum Expr {
     CharsValue(CharsValue),
     ArrayType(ArrayType),
     ValueType(ValueType),
+    FuncType(FuncType),
     ArgDef(ArgDef),
     BoolValue(BoolValue),
     Symbol(Symbol),
+    SymbolDecl(Symbol),
     AnonFuncDecl(AnonFuncDecl),
     FuncDecl(FuncDecl),
-    FuncType(FuncType),
+    SelfDecl(SelfKeyword),
     TraitDecl(TraitDecl),
     StructDecl(StructDecl),
     ErrorDecl(ErrorDecl),
@@ -642,9 +644,9 @@ pub enum Expr {
     TopDecl(TopDecl),
     Reassignment(Reassignment),
     Import(Import),
-    UndefinedValue(UndefinedValue),
-    SelfValue(SelfValue),
-    Never(Never),
+    UndefinedValue(UndefinedKeyword),
+    SelfValue(SelfKeyword),
+    Never(NeverKeyword),
     ArrayAccess(ArrayAccess),
     PropAccess(PropAccess),
     Invoke(Invoke),
@@ -659,9 +661,10 @@ impl Expr {
             _ => panic!("issue no symbol found"),
         }
     }
-    pub fn into_self_val(&self) -> SelfValue {
+    pub fn into_self(&self) -> SelfKeyword {
         match self {
             Expr::SelfValue(x) => x.to_owned(),
+            Expr::SelfDecl(x) => x.to_owned(),
             _ => panic!("issue no self keyword found"),
         }
     }
@@ -674,6 +677,7 @@ impl Expr {
     pub fn into_symbol(&self) -> Symbol {
         match self {
             Expr::Symbol(x) => x.to_owned(),
+            Expr::SymbolDecl(x) => x.to_owned(),
             _ => panic!("issue no symbol found {:?}", self),
         }
     }

@@ -198,6 +198,7 @@ pub enum TypeTree {
     // data types
     ArgInit(NoOp),
     SelfInit(NoOp),
+    SymbolInit(SymbolAccess),
     StructInit(StructInitialize),
     PropInit(Initialization),
     ArrayInit(ArrayInitialize),
@@ -297,6 +298,7 @@ impl TypeTree {
             TypeTree::UnknownValue => Ty::Unknown,
             TypeTree::ArgInit(x) => x.curried.clone(),
             TypeTree::SelfInit(x) => x.curried.clone(),
+            TypeTree::SymbolInit(x) => x.curried.clone(),
         }
     }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
@@ -395,6 +397,7 @@ impl TypeTree {
             TypeTree::UnknownValue => "unknown value",
             TypeTree::ArgInit(_) => "function argument",
             TypeTree::SelfInit(_) => "self as function argument",
+            TypeTree::SymbolInit(_) => "symbol definition or initialization",
         }
     }
 }

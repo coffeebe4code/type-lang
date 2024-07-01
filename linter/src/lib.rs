@@ -78,6 +78,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             },
             Expr::TopDecl(top) => self.check_top_decl(&top),
             Expr::Symbol(symbol) => self.check_symbol_ref(&symbol),
+            Expr::SymbolDecl(symbol) => self.check_symbol_decl(&symbol),
             Expr::Block(blk) => self.check_block(&blk),
             Expr::FuncDecl(fun) => self.check_func_decl(&fun),
             Expr::RetOp(ret) => self.check_ret_op(&ret),
@@ -87,28 +88,30 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     }
 
     pub fn check_func_decl(&mut self, td: &FuncDecl) -> ResultTreeType {
-        let result = self.lint_recurse(&td.block)?;
-        let slice = td.identifier.into_symbol().val.slice;
-
-        let mut init = FunctionInitialize {
-            name: slice.clone(),
-            args: vec![],
-            args_curried: vec![],
-            block: result.0,
-            block_curried: result.1,
-        };
+        let mut largs = vec![];
+        let mut largs_curried = vec![];
         if let Some(args) = td.args.as_ref() {
             args.iter().for_each(|x| {
                 let res = self.lint_recurse(x);
                 if let Ok(a) = res {
-                    init.args.push(a.0);
-                    init.args_curried.push(a.1);
+                    largs.push(a.0);
+                    largs_curried.push(a.1);
                     return;
                 }
-                init.args.push(simple_tree!(UnknownValue));
-                init.args_curried.push(Ty::Unknown);
+                largs.push(simple_tree!(UnknownValue));
+                largs_curried.push(Ty::Unknown);
             });
         }
+        let result = self.lint_recurse(&td.block)?;
+        let slice = td.identifier.into_symbol().val.slice;
+
+        let init = FunctionInitialize {
+            name: slice.clone(),
+            args: largs,
+            args_curried: largs_curried,
+            block: result.0,
+            block_curried: result.1,
+        };
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
@@ -185,26 +188,33 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         return ok_tree!(DeclaratorInfo, dec, curried);
     }
 
-    pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
+    pub fn check_symbol_decl(&mut self, symbol: &Symbol) -> ResultTreeType {
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
             curried: Ty::Unknown,
         };
         let curried = sym.curried.clone();
+        let full = tree!(SymbolInit, sym);
+        self.ttbl
+            .table
+            .insert(symbol.val.slice.clone(), (Rc::clone(&full), 0));
+        return Ok((full, curried));
+    }
+
+    pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
+        let sym = SymbolAccess {
+            ident: symbol.val.slice.clone(),
+            curried: self
+                .ttbl
+                .table
+                .get(&symbol.val.slice)
+                .unwrap()
+                .0
+                .get_curried()
+                .clone(),
+        };
+        let curried = sym.curried.clone();
         return ok_tree!(SymbolAccess, sym, curried);
-        //let sym = SymbolAccess {
-        //    ident: symbol.val.slice.clone(),
-        //    curried: self
-        //        .ttbl
-        //        .table
-        //        .get(&symbol.val.slice)
-        //        .unwrap()
-        //        .0
-        //        .get_curried()
-        //        .clone(),
-        //};
-        //let curried = sym.curried.clone();
-        //return ok_tree!(SymbolAccess, sym, curried);
     }
 
     pub fn check_array_decl(&mut self, arr: &ArrayDecl) -> ResultTreeType {
@@ -434,22 +444,36 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
     }
 
     pub fn check_anon_func(&mut self, anon: &AnonFuncDecl) -> ResultTreeType {
+        let mut largs = vec![];
+        let mut largs_curried = vec![];
+        if let Some(args) = anon.args.as_ref() {
+            args.iter().for_each(|x| {
+                let res = self.lint_recurse(x);
+                if let Ok(a) = res {
+                    largs.push(a.0);
+                    largs_curried.push(a.1);
+                    return;
+                }
+                largs.push(simple_tree!(UnknownValue));
+                largs_curried.push(Ty::Unknown);
+            });
+        }
         let result = self.lint_recurse(&anon.block)?;
         let slice = format!(":anon_{}", self.idx);
         self.idx += 1;
 
         let init = FunctionInitialize {
             name: slice.clone(),
-            args: vec![],
-            args_curried: vec![],
+            args: largs,
+            args_curried: largs_curried,
             block: result.0,
             block_curried: result.1,
         };
         let curried = init.block_curried.clone();
-        let full = tree!(AnonFuncInit, init);
+        let full = tree!(FuncInit, init);
 
         self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
-        return Ok((full, curried));
+        Ok((full, curried))
     }
 
     pub fn check_import(&mut self, import: &Import) -> ResultTreeType {
@@ -590,7 +614,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
     pub fn check_arg_def(&mut self, arg: &ArgDef) -> ResultTreeType {
         match arg.ident.as_ref() {
-            Expr::Symbol(x) => {
+            Expr::SymbolDecl(x) => {
                 let slice = x.val.slice.clone();
                 let typ = self.lint_recurse(&arg.typ)?;
                 let a = NoOp { curried: typ.1 };
@@ -602,7 +626,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
 
                 return Ok((full, curried));
             }
-            Expr::SelfValue(_) => {
+            Expr::SelfDecl(_) => {
                 let typ = self.lint_recurse(&arg.typ)?;
                 let a = NoOp { curried: typ.1 };
 
