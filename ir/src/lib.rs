@@ -263,10 +263,11 @@ mod tests {
             ),
             None,
         );
-        let mut type_table = TypeTable::new();
-        let mut linter = LintSource::new("test", &mut type_table);
+        let mut tt = vec![];
+        let mut scp = vec![];
+        let mut linter = LintSource::new("test", &mut scp, &mut tt);
         let linter_result = linter.check_func_decl(&func_def).unwrap();
-        let mut fir = IRSource::new(0, SymTable::new(), &linter.ttbl);
+        let mut fir = IRSource::new(0, SymTable::new(), &linter.ttbls.get(0).unwrap());
         let result = fir.begin(linter_result.0);
         /*
          * function u0:0() -> i64 system_v

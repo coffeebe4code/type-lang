@@ -49,8 +49,9 @@ fn main() {
         }
     }
     println!("[run] full linting without cache context");
-    let mut typ_table = TypeTable::new();
-    let mut linter = LintSource::new(&contents, &mut typ_table);
+    let mut ttbls = vec![];
+    let mut scopes = vec![];
+    let mut linter = LintSource::new(&contents, &mut scopes, &mut ttbls);
     let borrow = res.unwrap();
     let result = linter.lint_check(&mut borrow.to_owned());
 

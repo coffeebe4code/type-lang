@@ -11,6 +11,7 @@ parser = { path = "../parser" }
 ast = { path = "../ast" }
 symtable = { path = "../symtable" }
 typetable = { path = "../typetable" }
+scopetable = { path = "../scopetable" }
 types = { path = "../types" }
 linter = { path = "../linter" }
 ir = { path = "../ir" }

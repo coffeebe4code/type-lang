@@ -18,10 +18,11 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     let lex = TLexer::new(&contents);
     let mut parse = Parser::new(lex);
     let ast_parsed = parse.all().unwrap();
-    let mut type_table = TypeTable::new();
-    let mut linter = LintSource::new(path.to_str().unwrap(), &mut type_table);
+    let mut type_tables = vec![];
+    let mut scopes = vec![];
+    let mut linter = LintSource::new(path.to_str().unwrap(), &mut scopes, &mut type_tables);
     let lint_res = linter.lint_check(&ast_parsed);
-    let mut ir = IRSource::new(0, SymTable::new(), linter.ttbl);
+    let mut ir = IRSource::new(0, SymTable::new(), linter.ttbls.get(0).unwrap());
     if linter.issues.len() > 0 {
         for x in linter.issues {
             println!("{}", x);
@@ -51,10 +52,11 @@ pub fn from_file(input_path: &PathBuf) -> () {
     let lex = TLexer::new(&contents);
     let mut parse = Parser::new(lex);
     let ast_parsed = parse.all().unwrap();
-    let mut type_table = TypeTable::new();
-    let mut linter = LintSource::new(input_path.to_str().unwrap(), &mut type_table);
+    let mut type_tables = vec![];
+    let mut scopes = vec![];
+    let mut linter = LintSource::new(input_path.to_str().unwrap(), &mut scopes, &mut type_tables);
     let lint_res = linter.lint_check(&ast_parsed);
-    let mut ir = IRSource::new(0, SymTable::new(), linter.ttbl);
+    let mut ir = IRSource::new(0, SymTable::new(), linter.ttbls.get(0).unwrap());
     if linter.issues.len() > 0 {
         panic!("linter issues exist");
     }

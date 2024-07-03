@@ -1,6 +1,7 @@
 use lexer::*;
 use linter::*;
 use parser::*;
+use scopetable::*;
 use std::{fs::File, io::Read, path::PathBuf, rc::Rc};
 use symtable::*;
 use types::*;
@@ -9,7 +10,8 @@ use typetable::*;
 struct InternalContext {
     source: PathBuf,
     parsed: Option<ResultExpr>,
-    symtable: Option<TypeTable>,
+    ttbls: Option<Vec<TypeTable>>,
+    scopes: Option<Vec<ScopeTable>>,
     tree: Option<Vec<Rc<Box<TypeTree>>>>,
 }
 
@@ -25,7 +27,8 @@ impl CacheContext {
         self.files.push(InternalContext {
             source,
             parsed: None,
-            symtable: None,
+            ttbls: None,
+            scopes: None,
             tree: None,
         });
     }
@@ -38,14 +41,14 @@ impl CacheContext {
             let mut parser = Parser::new(lexer);
             match parser.all() {
                 Ok(mut val) => {
-                    let mut sym = TypeTable::new();
-                    let mut linter = LintSource::new(&contents, &mut sym);
+                    let mut ttbls = vec![];
+                    let mut scopes = vec![];
+                    let mut linter = LintSource::new(&contents, &mut scopes, &mut ttbls);
 
                     let analysis = linter.lint_check(&mut val);
-                    println!("debug analysis {:?}", analysis);
 
                     ic.tree = Some(analysis);
-                    ic.symtable = Some(sym);
+                    ic.ttbls = Some(ttbls);
                 }
                 Err(perr) => ic.parsed = Some(Err(perr)),
             }
