@@ -13,6 +13,7 @@ use perror::*;
 use std::rc::Rc;
 use symtable::*;
 use types::*;
+use typetable::*;
 
 pub struct IRSource<'tt> {
     package: u32,

@@ -4,7 +4,7 @@ use linter::LintSource;
 use parser::Parser;
 use std::fs::File;
 use std::io::Read;
-use symtable::TypeTable;
+use typetable::TypeTable;
 
 use std::path::Path;
 use std::process::Command;

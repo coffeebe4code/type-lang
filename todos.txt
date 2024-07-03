@@ -1,6 +1,2 @@
-- readup on all conversations in zulip chat to refamiliarlize myself
-- figure out data layout and how modules build in cranelift
-- look up linters and how to do so
-- mark down linter todos as far as what is not allowed: ie valid syntax, but incorrect context
-- type work in Lexers + IR for signatures
-- formalize SLT and IRSource job and how that works.
+- data layout
+- scopes

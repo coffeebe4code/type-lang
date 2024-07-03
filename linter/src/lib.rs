@@ -4,9 +4,9 @@ use lexer::*;
 use perror::LinterError;
 use perror::LinterErrorPoint;
 use std::rc::Rc;
-use symtable::*;
 use token::Token;
 use types::*;
+use typetable::*;
 
 type ResultTreeType = Result<(Rc<Box<TypeTree>>, Ty), usize>;
 
@@ -115,7 +115,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
-        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        self.ttbl.table.insert(slice, Rc::clone(&full));
         Ok((full, curried))
     }
 
@@ -193,7 +193,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let full = tree!(SymbolInit, sym);
         self.ttbl
             .table
-            .insert(symbol.val.slice.clone(), (Rc::clone(&full), 0));
+            .insert(symbol.val.slice.clone(), Rc::clone(&full));
         return Ok((full, curried));
     }
 
@@ -205,7 +205,6 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                 .table
                 .get(&symbol.val.slice)
                 .unwrap()
-                .0
                 .get_curried()
                 .clone(),
         };
@@ -246,7 +245,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = err_info.curried.clone();
         let full = tree!(ErrorInfo, err_info);
 
-        self.ttbl.table.insert(slice.clone(), (Rc::clone(&full), 0));
+        self.ttbl.table.insert(slice.clone(), Rc::clone(&full));
         return Ok((full, curried));
     }
 
@@ -343,7 +342,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             let curried = obj_info.curried.clone();
             let full = tree!(StructInfo, obj_info);
 
-            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            self.ttbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, curried));
         }
         Err(self.set_error(
@@ -364,7 +363,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = init.curried.clone();
         let full = tree!(PropInit, init);
 
-        self.ttbl.table.insert(slice.clone(), (Rc::clone(&full), 0));
+        self.ttbl.table.insert(slice.clone(), Rc::clone(&full));
         return Ok((full, curried));
     }
 
@@ -394,10 +393,9 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
             let curried = struct_init.curried.clone();
             let full = tree!(StructInit, struct_init);
 
-            self.ttbl.table.insert(
-                prev.0.into_symbol_access().ident.clone(),
-                (Rc::clone(&full), 0),
-            );
+            self.ttbl
+                .table
+                .insert(prev.0.into_symbol_access().ident.clone(), Rc::clone(&full));
             return Ok((full, curried));
         }
         Err(self.set_error(
@@ -434,7 +432,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = tag_info.curried.clone();
         let full = tree!(TagInfo, tag_info);
 
-        self.ttbl.table.insert(copy, (Rc::clone(&full), 0));
+        self.ttbl.table.insert(copy, Rc::clone(&full));
         return Ok((full, curried));
     }
 
@@ -467,7 +465,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
-        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        self.ttbl.table.insert(slice, Rc::clone(&full));
         Ok((full, curried))
     }
 
@@ -483,11 +481,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = init.curried.clone();
         if import.mutability.token == Token::Const {
             let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            self.ttbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, Ty::Const(Box::new(curried))));
         }
         let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
-        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        self.ttbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
@@ -504,12 +502,12 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         if inner.mutability.token == Token::Const {
             init.curried = Ty::Const(Box::new(init.curried));
             let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            self.ttbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, Ty::Const(Box::new(curried))));
         }
         init.curried = Ty::Mut(Box::new(init.curried));
         let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
-        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        self.ttbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
@@ -525,11 +523,11 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
         let curried = init.curried.clone();
         if td.mutability.token == Token::Const {
             let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-            self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+            self.ttbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, Ty::Const(Box::new(curried))));
         }
         let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
-        self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+        self.ttbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, Ty::Mut(Box::new(curried))));
     }
 
@@ -617,7 +615,7 @@ impl<'buf, 'sym> LintSource<'buf, 'sym> {
                 let curried = a.curried.clone();
                 self.curr_self = Some(a.curried.clone());
                 let full: Rc<Box<TypeTree>> = tree!(ArgInit, a);
-                self.ttbl.table.insert(slice, (Rc::clone(&full), 0));
+                self.ttbl.table.insert(slice, Rc::clone(&full));
 
                 return Ok((full, curried));
             }
