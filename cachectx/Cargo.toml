@@ -10,6 +10,7 @@ lexer = { path = "../lexer" }
 parser = { path = "../parser" }
 ast = { path = "../ast" }
 symtable = { path = "../symtable" }
+typetable = { path = "../typetable" }
 types = { path = "../types" }
 linter = { path = "../linter" }
 ir = { path = "../ir" }

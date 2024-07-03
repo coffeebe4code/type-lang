@@ -4,6 +4,7 @@ use parser::*;
 use std::{fs::File, io::Read, path::PathBuf, rc::Rc};
 use symtable::*;
 use types::*;
+use typetable::*;
 
 struct InternalContext {
     source: PathBuf,

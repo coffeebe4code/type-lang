@@ -12,7 +12,7 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use symtable::SymTable;
-use symtable::TypeTable;
+use typetable::TypeTable;
 
 pub fn from_buffer(contents: &str, path: &Path) -> () {
     let lex = TLexer::new(&contents);
@@ -23,6 +23,9 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     let lint_res = linter.lint_check(&ast_parsed);
     let mut ir = IRSource::new(0, SymTable::new(), linter.ttbl);
     if linter.issues.len() > 0 {
+        for x in linter.issues {
+            println!("{}", x);
+        }
         panic!("linter issues exist");
     }
     let rc_thing = lint_res.first().unwrap().to_owned();
