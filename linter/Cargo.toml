@@ -9,6 +9,7 @@ edition = "2021"
 ast = { path = "../ast" }
 types = { path = "../types" }
 typetable = { path = "../typetable" }
+scopetable = { path = "../scopetable" }
 parser = { path = "../parser" }
 token = { path = "../token" }
 lexer = { path = "../lexer" }

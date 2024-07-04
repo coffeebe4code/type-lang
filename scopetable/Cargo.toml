@@ -1,0 +1,8 @@
+[package]
+name = "scopetable"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+typetable = { path = "../typetable" }
+types = { path = "../types" }

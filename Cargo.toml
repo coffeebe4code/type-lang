@@ -17,6 +17,9 @@ members = [
   "linter", 
   "codelocation",
   "types", 
-  "cachectx", "typetable"]
+  "cachectx", 
+  "typetable", 
+  "scopetable"
+]
 resolver = "2"
 
