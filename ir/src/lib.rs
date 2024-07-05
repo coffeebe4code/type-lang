@@ -15,7 +15,7 @@ use symtable::*;
 use types::*;
 use typetable::*;
 
-pub struct IRSource<'tt> {
+pub struct IRFunc<'tt> {
     package: u32,
     fname: u32,
     variables: u32,
@@ -23,9 +23,9 @@ pub struct IRSource<'tt> {
     t_scope: &'tt TypeTable,
 }
 
-impl<'tt> IRSource<'tt> {
+impl<'tt> IRFunc<'tt> {
     pub fn new(package: u32, scope: SymTable, t_scope: &'tt TypeTable) -> Self {
-        IRSource {
+        IRFunc {
             package,
             fname: 0,
             variables: 0,
@@ -267,7 +267,7 @@ mod tests {
         let mut scp = vec![];
         let mut linter = LintSource::new("test", &mut scp, &mut tt);
         let linter_result = linter.check_func_decl(&func_def).unwrap();
-        let mut fir = IRSource::new(0, SymTable::new(), &linter.ttbls.get(0).unwrap());
+        let mut fir = IRFunc::new(0, SymTable::new(), &linter.ttbls.get(0).unwrap());
         let result = fir.begin(linter_result.0);
         /*
          * function u0:0() -> i64 system_v

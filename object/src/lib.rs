@@ -1,31 +1,51 @@
 use cranelift_codegen::ir::Function;
 use cranelift_codegen::settings::*;
 use cranelift_codegen::Context;
-use cranelift_module::{Linkage, Module};
+use cranelift_module::{DataDescription, Linkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
-pub fn new_obj_handler(obj_name: &str) -> ObjectModule {
-    let settings = builder();
-    let flags = Flags::new(settings);
-    let isa_builder = cranelift_native::builder().unwrap();
-    let isa = isa_builder.finish(flags).unwrap();
-
-    let obj_builder =
-        ObjectBuilder::new(isa, obj_name, cranelift_module::default_libcall_names()).unwrap();
-    ObjectModule::new(obj_builder)
+pub struct ObjectSource {
+    pub obj_mod: ObjectModule,
+    pub data: DataDescription,
+    pub name: String,
 }
 
-pub fn build_std_fn(om: &mut ObjectModule, func: Function, obj_name: &str) -> () {
-    let func_id = om
-        .declare_function(obj_name, Linkage::Export, &func.signature)
-        .unwrap();
+impl ObjectSource {
+    pub fn new(obj_name: &str) -> ObjectSource {
+        let settings = builder();
+        let flags = Flags::new(settings);
+        let isa_builder = cranelift_native::builder().unwrap();
+        let isa = isa_builder.finish(flags).unwrap();
 
-    let mut ctx = Context::for_function(func);
-    om.define_function(func_id, &mut ctx).unwrap();
-}
+        let obj_builder =
+            ObjectBuilder::new(isa, obj_name, cranelift_module::default_libcall_names()).unwrap();
+        ObjectSource {
+            obj_mod: ObjectModule::new(obj_builder),
+            data: DataDescription::new(),
+            name: obj_name.to_string(),
+        }
+    }
+    pub fn add_const_data(&mut self, contents: Vec<u8>) -> () {
+        self.data.define(contents.into_boxed_slice());
+        let id = self
+            .obj_mod
+            .declare_data(&self.name, Linkage::Export, false, false)
+            .unwrap();
+        self.obj_mod.define_data(id, &self.data).unwrap();
+        self.data.clear();
+    }
+    pub fn add_fn(&mut self, func: Function) -> () {
+        let func_id = self
+            .obj_mod
+            .declare_function(&self.name, Linkage::Export, &func.signature)
+            .unwrap();
 
-pub fn flush_obj(om: ObjectModule) -> Vec<u8> {
-    let object_product = om.finish();
-    let bytes = object_product.emit().unwrap();
-    return bytes;
+        let mut ctx = Context::for_function(func);
+        self.obj_mod.define_function(func_id, &mut ctx).unwrap();
+    }
+    pub fn flush_self(self) -> Vec<u8> {
+        let object_product = self.obj_mod.finish();
+        let bytes = object_product.emit().unwrap();
+        return bytes;
+    }
 }

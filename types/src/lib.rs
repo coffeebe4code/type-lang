@@ -301,6 +301,25 @@ impl TypeTree {
             TypeTree::SymbolInit(x) => x.curried.clone(),
         }
     }
+    pub fn into_init(&self) -> &Initialization {
+        match self {
+            TypeTree::ConstInit(x) => x,
+            _ => panic!("type lang issue, failed into init"),
+        }
+    }
+    pub fn into_data(&self) -> Vec<u8> {
+        let mut v = vec![];
+        match self {
+            TypeTree::U64(x) => {
+                v.extend_from_slice(&u64::to_ne_bytes(x.clone()));
+            }
+            TypeTree::I64(x) => {
+                v.extend_from_slice(&i64::to_ne_bytes(x.clone()));
+            }
+            _ => panic!("type lang issue, failed into data"),
+        }
+        return v;
+    }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
         match self {
             TypeTree::DeclaratorInfo(x) => x,

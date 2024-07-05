@@ -1,9 +1,7 @@
-use ir::IRSource;
+use ir::IRFunc;
 use lexer::TLexer;
 use linter::LintSource;
-use object::build_std_fn;
-use object::flush_obj;
-use object::new_obj_handler;
+use object::*;
 use parser::Parser;
 use std::fs::create_dir;
 use std::fs::write;
@@ -12,7 +10,6 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use symtable::SymTable;
-use typetable::TypeTable;
 
 pub fn from_buffer(contents: &str, path: &Path) -> () {
     let lex = TLexer::new(&contents);
@@ -22,14 +19,17 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     let mut scopes = vec![];
     let mut linter = LintSource::new(path.to_str().unwrap(), &mut scopes, &mut type_tables);
     let lint_res = linter.lint_check(&ast_parsed);
-    let mut ir = IRSource::new(0, SymTable::new(), linter.ttbls.get(0).unwrap());
+    let mut ir = IRFunc::new(0, SymTable::new(), linter.ttbls.get(0).unwrap());
     if linter.issues.len() > 0 {
         for x in linter.issues {
             println!("{}", x);
         }
         panic!("linter issues exist");
     }
-    let rc_thing = lint_res.first().unwrap().to_owned();
+    let mut om = ObjectSource::new(path.to_str().unwrap());
+    println!("lint res {:?}", lint_res);
+    om.add_const_data(lint_res.get(0).unwrap().into_init().right.into_data());
+    let rc_thing = lint_res.get(1).unwrap().to_owned();
     let result = ir.begin(rc_thing);
     if !Path::new(".ty-cache").is_dir() {
         create_dir(".ty-cache").unwrap();
@@ -40,9 +40,9 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     output.push(".ty-cache");
     output.push(filename);
     output.set_extension("o");
-    let mut om = new_obj_handler(filename);
-    build_std_fn(&mut om, result, filename);
-    write(output, flush_obj(om)).unwrap();
+    let mut om = ObjectSource::new(filename);
+    om.add_fn(result);
+    write(output, om.flush_self()).unwrap();
 }
 
 pub fn from_file(input_path: &PathBuf) -> () {
@@ -56,7 +56,7 @@ pub fn from_file(input_path: &PathBuf) -> () {
     let mut scopes = vec![];
     let mut linter = LintSource::new(input_path.to_str().unwrap(), &mut scopes, &mut type_tables);
     let lint_res = linter.lint_check(&ast_parsed);
-    let mut ir = IRSource::new(0, SymTable::new(), linter.ttbls.get(0).unwrap());
+    let mut ir = IRFunc::new(0, SymTable::new(), linter.ttbls.get(0).unwrap());
     if linter.issues.len() > 0 {
         panic!("linter issues exist");
     }
@@ -71,7 +71,7 @@ pub fn from_file(input_path: &PathBuf) -> () {
     output.push(".ty-cache");
     output.push(filename);
     output.set_extension("o");
-    let mut om = new_obj_handler(filename);
-    build_std_fn(&mut om, result, filename);
-    write(output, flush_obj(om)).unwrap();
+    let mut om = ObjectSource::new(filename);
+    om.add_fn(result);
+    write(output, om.flush_self()).unwrap();
 }
