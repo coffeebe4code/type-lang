@@ -25,19 +25,18 @@ impl ObjectSource {
             name: obj_name.to_string(),
         }
     }
-    pub fn add_const_data(&mut self, contents: Vec<u8>) -> () {
+    pub fn add_const_data(&mut self, name: &str, contents: Vec<u8>) -> () {
         self.data.define(contents.into_boxed_slice());
         let id = self
             .obj_mod
-            .declare_data(&self.name, Linkage::Export, false, false)
+            .declare_data(name, Linkage::Export, false, false)
             .unwrap();
         self.obj_mod.define_data(id, &self.data).unwrap();
-        self.data.clear();
     }
-    pub fn add_fn(&mut self, func: Function) -> () {
+    pub fn add_fn(&mut self, name: &str, func: Function) -> () {
         let func_id = self
             .obj_mod
-            .declare_function(&self.name, Linkage::Export, &func.signature)
+            .declare_function(name, Linkage::Export, &func.signature)
             .unwrap();
 
         let mut ctx = Context::for_function(func);
