@@ -1,0 +1,455 @@
+pub type TokenError = error 
+  | InvalidToken
+  | UnexpectedEnd
+
+pub type Token = tag
+  | Error
+  | Defer
+  | ErrDefer
+  | Any
+  | Macro
+  | Import
+  | Test
+  | Bench
+  | Let
+  | Const
+  | Copy
+  | Clone
+  | Scalar
+  | Sized
+  | I32
+  | U32
+  | I64
+  | U64
+  | I16
+  | U16
+  | I8
+  | U8
+  | Bit
+  | F64
+  | D64
+  | F32
+  | D32
+  | D128
+  | F128
+  | ISize
+  | USize
+  | If
+  | Else
+  | Type
+  | Self
+  | Char
+  | Utf8
+  | Utf16
+  | Utf32
+  | Utf64
+  | Match
+  | While
+  | For
+  | Of
+  | In
+  | Break
+  | Tag
+  | Pub
+  | Return
+  | Await
+  | Async
+  | As
+  | Alias
+  | NoSuspend
+  | Suspend
+  | Resume
+  | Frame
+  | Trait
+  | Impl
+  | True
+  | False
+  | Void
+  | Never
+  | Bool
+  | Contract
+  | Comptime
+  | Func
+  | Struct
+  | Extern
+  | Export
+  | KeyOf
+  | TypeOf
+  | InstanceOf
+  | RangeOf
+  // end keywords
+  | Split
+  | Yield
+  | Arrow
+  | OParen
+  | CParen
+  | OBrace
+  | CBrace
+  | OBracket
+  | CBracket
+  | Range
+  | Elipses
+  | Period
+  | Comma
+  | Dollar
+  | Question
+  | Pound
+  | Colon
+  | SColon
+  | At
+  | Lt
+  | LtEq
+  | Gt
+  | GtEq
+  | FSlash
+  | BSlash
+  | Concat
+  | Plus
+  | Underscore
+  | Dash
+  | Asterisk
+  | Bar
+  | Ampersand
+  | Caret
+  | LShift
+  | RShift
+  | Tilde
+  | As
+  | NotAs
+  | OrAs
+  | XorAs
+  | LShiftAs
+  | RShiftAs
+  | AndLog
+  | OrLog
+  | NotEquality
+  | Equality
+  | Exclam
+  | Percent
+  | AddAs
+  | SubAs
+  | DivAs
+  | MulAs
+  | ModAs
+  | AndAs
+  | String
+  | Number
+  | Symbol
+  | Decimal
+  | NewLine
+  | Comment
+  | Wsp
+
+const keywords: [[char]] = [
+  "error",
+  "defer",
+  "errdefer",
+  "any",
+  "macro",
+  "import",
+  "test",
+  "bench",
+  "let",
+  "const",
+  "copy",
+  "clone",
+  "scalar",
+  "sized",
+  "i32",
+  "u32",
+  "i64",
+  "u64",
+  "i16",
+  "u16",
+  "i8",
+  "u8",
+  "bit",
+  "f64",
+  "d64",
+  "f32",
+  "d32",
+  "d128",
+  "f128",
+  "isize",
+  "usize",
+  "if",
+  "else",
+  "type",
+  "self",
+  "char",
+  "utf8",
+  "utf16",
+  "utf32",
+  "utf64",
+  "match",
+  "while",
+  "for",
+  "of",
+  "in",
+  "break",
+  "tag",
+  "pub",
+  "return",
+  "await",
+  "async",
+  "as",
+  "alias",
+  "nosuspend",
+  "suspend",
+  "resume",
+  "frame",
+  "trait",
+  "impl",
+  "true",
+  "false",
+  "void",
+  "never",
+  "bool",
+  "contract",
+  "comptime",
+  "func",
+  "struct",
+  "extern",
+  "export",
+  "keyof",
+  "typeof",
+  "instanceof",
+  "rangeof",
+  ]
+
+pub const get_next = fn(buf: &[char], len: *u32) TokenError!Token {
+  len = 0
+  const c = buf[0]
+  if (c.isAlphabetic()) {
+    return tokenize_chars(buf, len)
+  } else if (c.isDigit()) {
+    return tokenize_num(buf, len)
+  } else {
+    return match (c) {
+      ' ' => {
+        len = skip_whitespace(buf)
+        return Token.Wsp
+      },
+      '"' => {
+        return build_string(buf, len, '"')
+      },
+      '\'' => {
+        return build_string(buf, len, '\'')
+      },
+      '`' => {
+        return build_string(buf, len, '`')
+      },
+      '(' => {
+        len = 1
+        return Token.OParen
+      },
+      ')' => {
+        len = 1
+        return Token.CParen
+      },
+      '{' => {
+        len = 1
+        return Token.OBrace
+      },
+      '}' => {
+        len = 1
+        return Token.CBrace
+      },
+      '[' => {
+        len = 1
+        return Token.OBracket
+      },
+      ']' => {
+        len = 1
+        return Token.CBracket
+      },
+      ',' => {
+        len = 1
+        return Token.Comma
+      },
+      '$' => {
+        len = 1
+        return Token.Dollar
+      },
+      '?' => {
+        len = 1
+        return Token.Question
+      },
+      '#' => {
+        len = 1
+        return Token.Pound
+      },
+      ':' => {
+        len = 1
+        return Token.Colon
+      },
+      ';' => {
+        len = 1
+        return Token.SColon
+      },
+      '\\' => {
+        len = 1
+        return Token.BSlash
+      },
+      '/' => {
+        // Comment, DivAs
+        len = 1
+        return Token.FSlash
+      },
+      '@' => {
+        len = 1
+        return Token.FSlash
+      },
+      '_' => {
+        len = 1
+        return Token.Underscore
+      },
+      '&' => {
+        // AndLog, AndAs
+        len = 1
+        return Token.Ampersand
+      },
+      '~' => {
+        // NotAs
+        len = 1
+        return Token.Tilde
+      },
+      '.' => {
+        // Range, Elipses
+        len = 1
+        return Token.Period
+      },
+      '^' => {
+        // XorLog
+        len = 1
+        return Token.Caret
+      },
+      '|' => {
+        // OrLog, OrAs, Split
+        len = 1
+        return Token.Bar
+      },
+      '-' => {
+        // SubAs, Yield
+        len = 1
+        return Token.Dash
+      },
+      '=' => {
+        // Equality, Arrow
+        len = 1
+        return Token.As
+      },
+      '<' => {
+        // LeftShift, LeftShiftAs, LtEq
+        len = 1
+        return Token.Lt
+      },
+      '>' => {
+        // GtEq, RightShift, RightShiftAs
+        len = 1
+        return Token.Gt
+      },
+      '!' => {
+        // NotEquality
+        len = 1
+        return Token.Exclam
+      },
+      '%' => {
+        // ModAs
+        len = 1
+        return Token.Percent
+      },
+      '+' => {
+        // AddAs, Concat
+        len = 1
+        return Token.Plus
+      },
+      '*' => {
+        // MulAs
+        len = 1
+        return Token.Asterisk
+      },
+      '\r' => {
+        if (buf.len > 1) {
+          if (buf[1] == '\n') {
+            len = 2
+            return Token.NewLine
+          }
+        }
+        len = 1
+        return TokenError.InvalidToken
+      },
+      '\n' => {
+        len = 1
+        return Token.NewLine
+      },
+      '\t' => {
+        len = skip_whitespace(buf)
+        return Token.Wsp
+      },
+      _ => {
+        return Token.InvalidToken
+      }
+    }
+  }
+  return TokenError.InvalidToken
+}
+
+const tokenize_chars = fn(buf: &[char], len: *u32) Token {
+  let token = Token.Symbol
+  len = word_len_check(buf)
+  const check = buf[0..len]
+  for (keywords) fn(word, idx) void {
+    if (word.len == len) {
+      if (word == check) {
+        token = idx as Token
+        break
+      }
+    }
+  }
+  return token
+}
+
+const word_len_check = fn(buf: &[char]) u32 {
+  let len = 0
+  while (buf.len != len) {
+    const c = buf[len]
+    if (c.isAlphaNumeric()) {
+      len += 1
+    } else if (c == '_' || c == '-') {
+      len += 1
+    } else { break }
+  }
+  return len
+}
+
+const skip_whitespace = fn(buf: &[char]) u32 {
+  let len = 0
+  while (buf.len != len) {
+    const c = buf[len]
+    if (c == ' ' || c == '\t' || c == '\r') {
+      len += 1
+    } else { break }
+  }
+  return len
+}
+
+const build_string = fn(buf: &[char], len: *u32, end: char) TokenError!Token {
+  len = 1
+  while (buf.len != len) {
+    const c = buf[len]
+    if (c == '\\') {
+      len += 1
+      if (buf.len == len + 1) {
+        return TokenError.UnexpectedEnd 
+      } 
+    } else if (c == end) {
+      len += 1
+      break
+    } else { len += 1 }
+  }
+  if (len == 1) {
+    return TokenError.UnexpectedEnd 
+  }
+  return Token.String
+}
