@@ -1,0 +1,10 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+typetable = { path="../typetable" }
+types = { path="../types" }
+object = { path="../object" }
+cranelift-codegen = "0"

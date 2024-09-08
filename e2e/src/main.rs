@@ -14,8 +14,8 @@ fn main() {
         "const z = 1\n
         pub const main = fn() usize {\n
             const m = 7\n
-            const x = 5\n
-            return x + m
+            const x = 4\n
+            return x + m + z
         }",
         Path::new("main.ty"),
     );
