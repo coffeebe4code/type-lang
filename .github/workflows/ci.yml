@@ -24,7 +24,7 @@ jobs:
           if ($LASTEXITCODE) { throw "Error" }
           ./target/release/ty obj test/main.ty
           if ($LASTEXITCODE) { throw "Error" }
-          ./target/release/ty link main -o .ty-cache/main.o
+          ./target/release/ty link main -o .ty/main.o
           if ($LASTEXITCODE) { throw "Error" }
           ./target/main
           if ($LASTEXITCODE) { throw "Error" }
@@ -42,7 +42,7 @@ jobs:
           cargo test
           ./target/release/e2e
           ./target/release/ty obj test/main.ty
-          ./target/release/ty link main -o .ty-cache/main.o
+          ./target/release/ty link main -o .ty/main.o
           ./target/main
 
   build-macos:
@@ -57,5 +57,5 @@ jobs:
           cargo test
           ./target/release/e2e
           ./target/release/ty obj test/main.ty
-          ./target/release/ty link main -o .ty-cache/main.o
+          ./target/release/ty link main -o .ty/main.o
           ./target/main
