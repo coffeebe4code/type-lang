@@ -19,10 +19,10 @@ fn main() {
         }",
         Path::new("main.ty"),
     );
-    let input = Path::new(".ty-cache/main.o").to_path_buf();
-    let output = Path::new(".ty-cache/main").to_path_buf();
+    let input = Path::new(".ty/main.o").to_path_buf();
+    let output = Path::new(".ty/main").to_path_buf();
     link(vec![&input], &output);
-    let output = Command::new(".ty-cache/main")
+    let output = Command::new(".ty/main")
         .args(&[""])
         .spawn()
         .expect("main to run")

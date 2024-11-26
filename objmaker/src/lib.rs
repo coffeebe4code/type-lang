@@ -31,13 +31,13 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     }
     let rc_thing = lint_res.first().unwrap().to_owned();
     let result = ir.begin(rc_thing);
-    if !Path::new(".ty-cache").is_dir() {
-        create_dir(".ty-cache").unwrap();
+    if !Path::new(".ty").is_dir() {
+        create_dir(".ty").unwrap();
     }
     let wo_extension = path.with_extension("");
     let filename = wo_extension.file_name().unwrap().to_str().unwrap();
     let mut output = PathBuf::new();
-    output.push(".ty-cache");
+    output.push(".ty");
     output.push(filename);
     output.set_extension("o");
     let mut om = new_obj_handler(filename);
@@ -62,13 +62,13 @@ pub fn from_file(input_path: &PathBuf) -> () {
     }
     let rc_thing = lint_res.first().unwrap().to_owned();
     let result = ir.begin(rc_thing);
-    if !Path::new(".ty-cache").is_dir() {
-        create_dir(".ty-cache").unwrap();
+    if !Path::new(".ty").is_dir() {
+        create_dir(".ty").unwrap();
     }
     let wo_extension = input_path.with_extension("");
     let filename = wo_extension.file_name().unwrap().to_str().unwrap();
     let mut output = PathBuf::new();
-    output.push(".ty-cache");
+    output.push(".ty");
     output.push(filename);
     output.set_extension("o");
     let mut om = new_obj_handler(filename);
