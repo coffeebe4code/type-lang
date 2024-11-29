@@ -26,16 +26,20 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
         }
         panic!("linter issues exist");
     }
-    if !Path::new(".ty-cache").is_dir() {
-        create_dir(".ty-cache").unwrap();
+    let rc_thing = lint_res.first().unwrap().to_owned();
+    let result = ir.begin(rc_thing);
+    if !Path::new(".ty").is_dir() {
+        create_dir(".ty").unwrap();
     }
     let wo_extension = path.with_extension("");
     let filename = wo_extension.file_name().unwrap().to_str().unwrap();
     let mut output = PathBuf::new();
-    output.push(".ty-cache");
+    output.push(".ty");
     output.push(filename);
     output.set_extension("o");
-    let mut om = ObjectSource::new(&output.to_string_lossy());
+    let object_source = ObjectSource::new(&output.to_string_lossy());
+    let object_source = object_source;
+    let mut om = object_source;
     let res = lint_res.get(0).unwrap().into_init();
     om.add_const_data(&res.left, res.right.into_data());
     let rc_thing = lint_res.get(1).unwrap().to_owned();

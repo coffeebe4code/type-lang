@@ -1,5 +1,7 @@
 use clap::value_parser;
 use clap::ArgMatches;
+use std::fs::create_dir;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
 
@@ -62,6 +64,10 @@ fn link_command(m: &ArgMatches) {
     let files: Vec<&PathBuf> = pre.unwrap().collect();
     let mut outname = PathBuf::new();
     outname.push("target");
+
+    if !Path::new("target").is_dir() {
+        create_dir("target").unwrap();
+    }
     outname.push(output.unwrap());
     linker::link(files, &outname);
 }
