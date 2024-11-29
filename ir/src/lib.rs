@@ -9,28 +9,29 @@ use cranelift_codegen::settings;
 use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::*;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use cranelift_module::{DataId, Module};
+use cranelift_object::ObjectModule;
 use perror::*;
-use std::rc::Rc;
 use symtable::*;
 use types::*;
-use typetable::*;
 
-pub struct IRFunc<'tt> {
+pub struct IRFunc<'gbl, 'md> {
     package: u32,
     fname: u32,
     variables: u32,
     scope: SymTable,
-    t_scope: &'tt TypeTable,
+    global: Option<&'gbl Vec<(DataId, String)>>,
+    obj_mod: Option<&'md mut ObjectModule>,
 }
 
-impl<'tt> IRFunc<'tt> {
-    pub fn new(package: u32, scope: SymTable, t_scope: &'tt TypeTable) -> Self {
+impl<'gbl, 'md> IRFunc<'gbl, 'md> {
+    pub fn new(package: u32, scope: SymTable) -> Self {
         IRFunc {
             package,
             fname: 0,
             variables: 0,
             scope,
-            t_scope,
+            global: None,
         }
     }
     pub fn handle_const_init(
@@ -96,10 +97,12 @@ impl<'tt> IRFunc<'tt> {
         builder.ins().return_(&[arg]);
         Ok(temp)
     }
-    pub fn handle_sym(&self, op: &SymbolAccess) -> ResultFir<Variable> {
-        Ok(Variable::from_u32(
-            *self.scope.table.get(&op.ident).unwrap(),
-        ))
+    pub fn handle_sym(&self, op: &SymbolAccess, builder: &mut FunctionBuilder) -> ResultFir<Variable> {
+        if let Some(val) = self.scope.table.get(&op.ident) {
+            return Ok(Variable::from_u32(*val));
+        }
+        let data = self.obj_mod.unwrap().declare_data_in_func(self.global.builder.
+        return Ok(Variable::from_u32(2));
     }
     pub fn handle_u64(&mut self, num: u64, builder: &mut FunctionBuilder) -> ResultFir<Variable> {
         let result = self.add_var();
@@ -166,13 +169,17 @@ impl<'tt> IRFunc<'tt> {
             _ => panic!("developer error unexpected expression {:?}", expr),
         }
     }
-    pub fn begin(&mut self, func_def: Rc<Box<TypeTree>>) -> Function {
+    pub fn begin(
+        &mut self,
+        func_def: &FunctionInitialize,
+        gbl: &'gbl Vec<(DataId, String)>,
+    ) -> Function {
+        self.global = Some(gbl);
         let mut ctx = FunctionBuilderContext::new();
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(self.package, self.fname);
-        let func_init = func_def.into_func_init();
         // todo:: types need to be worked out, params and returns defined
-        func_init
+        func_def
             .args
             .iter()
             .for_each(|_x| sig.params.push(AbiParam::new(I64)));
@@ -183,7 +190,7 @@ impl<'tt> IRFunc<'tt> {
         let root_block = builder.create_block();
         builder.append_block_params_for_function_params(root_block);
         builder.switch_to_block(root_block);
-        let _result = self.recurse(&func_init.block, &mut builder);
+        let _result = self.recurse(&func_def.block, &mut builder);
         builder.seal_block(root_block);
         builder.finalize();
         func
@@ -266,9 +273,10 @@ mod tests {
         let mut tt = vec![];
         let mut scp = vec![];
         let mut linter = LintSource::new("test", &mut scp, &mut tt);
+        let global: Vec<(DataId, String)> = vec![];
         let linter_result = linter.check_func_decl(&func_def).unwrap();
-        let mut fir = IRFunc::new(0, SymTable::new(), &linter.ttbls.get(0).unwrap());
-        let result = fir.begin(linter_result.0);
+        let mut fir = IRFunc::new(0, SymTable::new());
+        let result = fir.begin(&linter_result.0.into_func_init(), &global);
         /*
          * function u0:0() -> i64 system_v
          *  {

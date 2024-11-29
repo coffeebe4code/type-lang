@@ -16,3 +16,5 @@ linter = { path="../linter" }
 types = { path="../types" }
 cranelift-frontend = "0"
 cranelift-codegen = "0"
+cranelift-module = "0"
+cranelift-object = "0"

@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 typetable = { path="../typetable" }
+symtable = { path="../symtable" }
 types = { path="../types" }
 object = { path="../object" }
+ir = { path="../ir" }
 cranelift-codegen = "0"
+cranelift-module = "0"
