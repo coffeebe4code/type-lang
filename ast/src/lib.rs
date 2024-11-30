@@ -289,6 +289,7 @@ pub struct EnumDecl {
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
     pub declarators: Vec<Box<Expr>>,
+    pub sig: Option<Box<Expr>>,
     pub variant: Option<Box<Expr>>,
 }
 
@@ -298,6 +299,7 @@ impl EnumDecl {
         mutability: Lexeme,
         identifier: Box<Expr>,
         declarators: Vec<Box<Expr>>,
+        sig: Option<Box<Expr>>,
         variant: Option<Box<Expr>>,
     ) -> Self {
         EnumDecl {
@@ -305,6 +307,7 @@ impl EnumDecl {
             mutability,
             identifier,
             declarators,
+            sig,
             variant,
         }
     }
@@ -387,6 +390,23 @@ impl TraitDecl {
             args,
             block,
             sig,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CatchDecl {
+    pub args: Option<Vec<Box<Expr>>>,
+    pub ret_typ: Box<Expr>,
+    pub block: Box<Expr>,
+}
+
+impl CatchDecl {
+    pub fn new(args: Option<Vec<Box<Expr>>>, ret_typ: Box<Expr>, block: Box<Expr>) -> Self {
+        CatchDecl {
+            args,
+            ret_typ,
+            block,
         }
     }
 }
@@ -661,6 +681,7 @@ pub enum Expr {
     Symbol(Symbol),
     SymbolDecl(Symbol),
     AnonFuncDecl(AnonFuncDecl),
+    CatchDecl(CatchDecl),
     FuncDecl(FuncDecl),
     SelfDecl(SelfKeyword),
     TraitDecl(TraitDecl),

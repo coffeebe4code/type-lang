@@ -91,8 +91,8 @@ impl<'s> Parser<'s> {
     ) -> ResultExpr {
         let mut variants: Vec<Box<Expr>> = vec![];
         let oparen = self.lexer.collect_if(Token::OParen);
+        let enum_type = self.val_type();
         if oparen.is_some() {
-            let enum_type = self.val_type();
             let _ = self
                 .lexer
                 .collect_if(Token::CParen)
@@ -102,7 +102,7 @@ impl<'s> Parser<'s> {
             let x = self.ident().xconvert_to_sym_decl()?;
             variants.push(x);
         }
-        result_expr!(TagDecl, visibility, mutability, identifier, variants, sig)
+        result_expr!(EnumDecl, visibility, mutability, identifier, variants, sig, enum_type)
     }
 
     pub fn _struct(
@@ -666,9 +666,10 @@ impl<'s> Parser<'s> {
         let lexeme = self.lexer.collect_of_if(&[
             Token::Ampersand,
             Token::Asterisk,
-            Token::Exclam,
             Token::Dash,
             Token::Copy,
+            Token::Clone,
+            Token::Try,
         ]);
         if let Some(x) = lexeme {
             let expr = self.unary();
@@ -683,18 +684,24 @@ impl<'s> Parser<'s> {
         if let Some(x) = self.lexer.collect_of_if(&[
             Token::Question,
             Token::Period,
-            Token::Tilde,
+            Token::Try,
             Token::OBracket,
             Token::OParen,
             Token::OBrace,
+            Token::Catch,
         ]) {
             match x.token {
                 Token::Question => self.resolve_access(expr!(UndefBubble, prev)),
-                Token::Tilde => self.resolve_access(expr!(ErrBubble, prev)),
+                Token::Try => self.resolve_access(expr!(ErrBubble, prev)),
                 Token::Period => {
                     let ident = self
                         .ident()
                         .xconvert_to_result(&self, "expected identifier".to_string())?;
+
+                    self.resolve_access(expr!(PropAccess, prev, ident))
+                }
+                Token::Catch => {
+                    let catch = self.catch();
 
                     self.resolve_access(expr!(PropAccess, prev, ident))
                 }
@@ -756,6 +763,26 @@ impl<'s> Parser<'s> {
         } else {
             Ok(Some(prev))
         }
+    }
+    pub fn catch(&mut self) -> ResultExpr {
+        let _ = self
+            .lexer
+            .collect_if(Token::OParen)
+            .xexpect_token(&self, "expected one of '('".to_string())?;
+        let args = self.arg()?;
+        let ret_type = self
+            .sig_union()
+            .xexpect_expr(&self, "expected catch return type".to_string())?;
+        let _ = self
+            .lexer
+            .collect_if(Token::CParen)
+            .xexpect_token(&self, "expected one of ')'".to_string())?;
+
+        let bl = self.block()?;
+        if args.is_some() {
+            return result_expr!(CatchDecl, Some(vec![args.unwrap()]), ret_type, bl);
+        }
+        return result_expr!(CatchDecl, None, ret_type, bl);
     }
     pub fn access(&mut self) -> ResultOptExpr {
         let term = self.terminal()?;
