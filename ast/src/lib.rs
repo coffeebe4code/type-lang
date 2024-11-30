@@ -284,6 +284,33 @@ impl TagDecl {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct EnumDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub declarators: Vec<Box<Expr>>,
+    pub variant: Option<Box<Expr>>,
+}
+
+impl EnumDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        declarators: Vec<Box<Expr>>,
+        variant: Option<Box<Expr>>,
+    ) -> Self {
+        EnumDecl {
+            visibility,
+            mutability,
+            identifier,
+            declarators,
+            variant,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ErrorDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
@@ -640,6 +667,7 @@ pub enum Expr {
     StructDecl(StructDecl),
     ErrorDecl(ErrorDecl),
     TagDecl(TagDecl),
+    EnumDecl(EnumDecl),
     InnerDecl(InnerDecl),
     TopDecl(TopDecl),
     Reassignment(Reassignment),

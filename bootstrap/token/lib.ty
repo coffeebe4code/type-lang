@@ -2,7 +2,7 @@ pub type TokenError = error
   | InvalidToken
   | UnexpectedEnd
 
-pub type Token = tag
+pub type Token = enum(u16) {
   | Error
   | Defer
   | ErrDefer
@@ -77,6 +77,9 @@ pub type Token = tag
   | TypeOf
   | InstanceOf
   | RangeOf
+  | Enum
+  | Try
+  | Catch
   // end keywords
   | Split
   | Yield
@@ -215,6 +218,9 @@ const keywords: [[char]] = [
   "typeof",
   "instanceof",
   "rangeof",
+  "enum",
+  "try",
+  "catch",
   ]
 
 pub const get_next = fn(buf: &[char], len: *u32) TokenError!Token {

@@ -49,7 +49,7 @@ impl<'s> Parser<'s> {
             .xresult_or(|expr| result_expr!(Import, mutability, identifier, expr))
     }
 
-    pub fn tag(
+    pub fn _tag(
         &mut self,
         visibility: Option<Lexeme>,
         mutability: Lexeme,
@@ -80,6 +80,29 @@ impl<'s> Parser<'s> {
             .collect_if(Token::CBrace)
             .xexpect_token(&self, "expected '}'".to_string())?;
         result_expr!(ErrorDecl, visibility, mutability, identifier, sig)
+    }
+
+    pub fn _enum(
+        &mut self,
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        sig: Option<Box<Expr>>,
+    ) -> ResultExpr {
+        let mut variants: Vec<Box<Expr>> = vec![];
+        let oparen = self.lexer.collect_if(Token::OParen);
+        if oparen.is_some() {
+            let enum_type = self.val_type();
+            let _ = self
+                .lexer
+                .collect_if(Token::CParen)
+                .xexpect_token(&self, "expected ')'".to_string())?;
+        }
+        while let Some(_) = self.lexer.collect_if(Token::Bar) {
+            let x = self.ident().xconvert_to_sym_decl()?;
+            variants.push(x);
+        }
+        result_expr!(TagDecl, visibility, mutability, identifier, variants, sig)
     }
 
     pub fn _struct(
@@ -123,14 +146,16 @@ impl<'s> Parser<'s> {
             Token::Import,
             Token::Tag,
             Token::Error,
+            Token::Enum,
         ]) {
             match val.token {
                 Token::Struct => return self._struct(has_pub, mutability, identifier, sig),
                 Token::Func => return self._fn(has_pub, mutability, identifier, sig),
                 Token::Import => return self._import(mutability, identifier),
-                Token::Tag => return self.tag(has_pub, mutability, identifier, sig),
+                Token::Tag => return self._tag(has_pub, mutability, identifier, sig),
                 Token::Trait => return self._trait(has_pub, mutability, identifier, sig),
                 Token::Error => return self._error(has_pub, mutability, identifier, sig),
+                Token::Enum => return self._enum(has_pub, mutability, identifier, sig),
                 _ => panic!("type-lang error unreachable code hit"),
             }
         }
