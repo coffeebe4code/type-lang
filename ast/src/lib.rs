@@ -1,6 +1,18 @@
 use lexer::Lexeme;
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct While {
+    pub expr: Box<Expr>,
+    pub var_loop: Box<Expr>,
+}
+
+impl While {
+    pub fn new(expr: Box<Expr>, var_loop: Box<Expr>) -> Self {
+        While { expr, var_loop }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct For {
     pub expr: Box<Expr>,
     pub var_loop: Box<Expr>,
@@ -284,6 +296,36 @@ impl TagDecl {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct EnumDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub declarators: Vec<Box<Expr>>,
+    pub sig: Option<Box<Expr>>,
+    pub variant: Option<Box<Expr>>,
+}
+
+impl EnumDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        declarators: Vec<Box<Expr>>,
+        sig: Option<Box<Expr>>,
+        variant: Option<Box<Expr>>,
+    ) -> Self {
+        EnumDecl {
+            visibility,
+            mutability,
+            identifier,
+            declarators,
+            sig,
+            variant,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ErrorDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
@@ -360,6 +402,23 @@ impl TraitDecl {
             args,
             block,
             sig,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CatchDecl {
+    pub args: Option<Vec<Box<Expr>>>,
+    pub ret_typ: Box<Expr>,
+    pub block: Box<Expr>,
+}
+
+impl CatchDecl {
+    pub fn new(args: Option<Vec<Box<Expr>>>, ret_typ: Box<Expr>, block: Box<Expr>) -> Self {
+        CatchDecl {
+            args,
+            ret_typ,
+            block,
         }
     }
 }
@@ -617,6 +676,7 @@ pub enum Expr {
     ArrayDecl(ArrayDecl),
     Rest(Rest),
     For(For),
+    While(While),
     Match(Match),
     Arm(Arm),
     FileAll(FileAll),
@@ -634,12 +694,14 @@ pub enum Expr {
     Symbol(Symbol),
     SymbolDecl(Symbol),
     AnonFuncDecl(AnonFuncDecl),
+    CatchDecl(CatchDecl),
     FuncDecl(FuncDecl),
     SelfDecl(SelfKeyword),
     TraitDecl(TraitDecl),
     StructDecl(StructDecl),
     ErrorDecl(ErrorDecl),
     TagDecl(TagDecl),
+    EnumDecl(EnumDecl),
     InnerDecl(InnerDecl),
     TopDecl(TopDecl),
     Reassignment(Reassignment),

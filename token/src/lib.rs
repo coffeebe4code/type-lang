@@ -150,6 +150,12 @@ pub enum Token {
     InstanceOf,
     #[token("rangeof")]
     RangeOf,
+    #[token("enum")]
+    Enum,
+    #[token("try")]
+    Try,
+    #[token("catch")]
+    Catch,
 
     #[token("|>")]
     Split,

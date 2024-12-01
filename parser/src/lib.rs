@@ -49,7 +49,7 @@ impl<'s> Parser<'s> {
             .xresult_or(|expr| result_expr!(Import, mutability, identifier, expr))
     }
 
-    pub fn tag(
+    pub fn _tag(
         &mut self,
         visibility: Option<Lexeme>,
         mutability: Lexeme,
@@ -80,6 +80,29 @@ impl<'s> Parser<'s> {
             .collect_if(Token::CBrace)
             .xexpect_token(&self, "expected '}'".to_string())?;
         result_expr!(ErrorDecl, visibility, mutability, identifier, sig)
+    }
+
+    pub fn _enum(
+        &mut self,
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        sig: Option<Box<Expr>>,
+    ) -> ResultExpr {
+        let mut variants: Vec<Box<Expr>> = vec![];
+        let oparen = self.lexer.collect_if(Token::OParen);
+        let enum_type = self.val_type();
+        if oparen.is_some() {
+            let _ = self
+                .lexer
+                .collect_if(Token::CParen)
+                .xexpect_token(&self, "expected ')'".to_string())?;
+        }
+        while let Some(_) = self.lexer.collect_if(Token::Bar) {
+            let x = self.ident().xconvert_to_sym_decl()?;
+            variants.push(x);
+        }
+        result_expr!(EnumDecl, visibility, mutability, identifier, variants, sig, enum_type)
     }
 
     pub fn _struct(
@@ -123,14 +146,16 @@ impl<'s> Parser<'s> {
             Token::Import,
             Token::Tag,
             Token::Error,
+            Token::Enum,
         ]) {
             match val.token {
                 Token::Struct => return self._struct(has_pub, mutability, identifier, sig),
                 Token::Func => return self._fn(has_pub, mutability, identifier, sig),
                 Token::Import => return self._import(mutability, identifier),
-                Token::Tag => return self.tag(has_pub, mutability, identifier, sig),
+                Token::Tag => return self._tag(has_pub, mutability, identifier, sig),
                 Token::Trait => return self._trait(has_pub, mutability, identifier, sig),
                 Token::Error => return self._error(has_pub, mutability, identifier, sig),
+                Token::Enum => return self._enum(has_pub, mutability, identifier, sig),
                 _ => panic!("type-lang error unreachable code hit"),
             }
         }
@@ -427,6 +452,26 @@ impl<'s> Parser<'s> {
         let blk = self.block()?;
         return bubble_expr!(For, x, blk);
     }
+    pub fn _while(&mut self) -> ResultOptExpr {
+        let f = self.lexer.collect_if(Token::While);
+        if f.is_none() {
+            return Ok(None);
+        }
+        let _ = self
+            .lexer
+            .collect_if(Token::OParen)
+            .xexpect_token(&self, "expected '('".to_string())?;
+        let x = self.or()?;
+        let _ = self
+            .lexer
+            .collect_if(Token::CParen)
+            .xexpect_token(&self, "expected ')'".to_string())?;
+        if let Some(_fn) = self.anon_fn()? {
+            return bubble_expr!(While, x, _fn);
+        }
+        let blk = self.block()?;
+        return bubble_expr!(While, x, blk);
+    }
     pub fn _for(&mut self) -> ResultOptExpr {
         let f = self.lexer.collect_if(Token::For);
         if f.is_none() {
@@ -461,7 +506,10 @@ impl<'s> Parser<'s> {
                         Some(x) => exprs.push(x),
                         None => match self._if()? {
                             Some(x) => exprs.push(x),
-                            None => break,
+                            None => match self._while()? {
+                                Some(x) => exprs.push(x),
+                                None => break,
+                            },
                         },
                     },
                 },
@@ -641,9 +689,10 @@ impl<'s> Parser<'s> {
         let lexeme = self.lexer.collect_of_if(&[
             Token::Ampersand,
             Token::Asterisk,
-            Token::Exclam,
             Token::Dash,
             Token::Copy,
+            Token::Clone,
+            Token::Try,
         ]);
         if let Some(x) = lexeme {
             let expr = self.unary();
@@ -658,20 +707,24 @@ impl<'s> Parser<'s> {
         if let Some(x) = self.lexer.collect_of_if(&[
             Token::Question,
             Token::Period,
-            Token::Tilde,
+            Token::Try,
             Token::OBracket,
             Token::OParen,
             Token::OBrace,
+            Token::Catch,
         ]) {
             match x.token {
                 Token::Question => self.resolve_access(expr!(UndefBubble, prev)),
-                Token::Tilde => self.resolve_access(expr!(ErrBubble, prev)),
+                Token::Try => self.resolve_access(expr!(ErrBubble, prev)),
                 Token::Period => {
                     let ident = self
                         .ident()
                         .xconvert_to_result(&self, "expected identifier".to_string())?;
 
                     self.resolve_access(expr!(PropAccess, prev, ident))
+                }
+                Token::Catch => {
+                    return self.catch().xconvert_to_result_opt();
                 }
                 Token::OBracket => {
                     let expr = self.array_access()?;
@@ -731,6 +784,26 @@ impl<'s> Parser<'s> {
         } else {
             Ok(Some(prev))
         }
+    }
+    pub fn catch(&mut self) -> ResultExpr {
+        let _ = self
+            .lexer
+            .collect_if(Token::OParen)
+            .xexpect_token(&self, "expected one of '('".to_string())?;
+        let args = self.arg()?;
+        let ret_type = self
+            .sig_union()
+            .xexpect_expr(&self, "expected catch return type".to_string())?;
+        let _ = self
+            .lexer
+            .collect_if(Token::CParen)
+            .xexpect_token(&self, "expected one of ')'".to_string())?;
+
+        let bl = self.block()?;
+        if args.is_some() {
+            return result_expr!(CatchDecl, Some(vec![args.unwrap()]), ret_type, bl);
+        }
+        return result_expr!(CatchDecl, None, ret_type, bl);
     }
     pub fn access(&mut self) -> ResultOptExpr {
         let term = self.terminal()?;
