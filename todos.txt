@@ -1,8 +1,8 @@
 - data layout
 - scopes
-- add while loop
-- add for loop
 - Bar '|' ebnf doesn't match parser, update parser for every '|' syntax
-- check parser for implementing lambdas 'anon functions', on those that accept captures.
-  - arm, for, if, while 
 - "all function declarations must have types in arguments." this can be changed to support deducing types at some point
+- impl
+- destructuring
+- rework import
+- make types typey instead of values "function declarations"  tags, enums, etc.

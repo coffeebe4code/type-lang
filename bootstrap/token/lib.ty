@@ -2,7 +2,7 @@ pub type TokenError = error
   | InvalidToken
   | UnexpectedEnd
 
-pub type Token = enum(u16) {
+pub type Token = enum(u8) {
   | Error
   | Defer
   | ErrDefer

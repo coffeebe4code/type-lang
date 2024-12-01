@@ -452,6 +452,26 @@ impl<'s> Parser<'s> {
         let blk = self.block()?;
         return bubble_expr!(For, x, blk);
     }
+    pub fn _while(&mut self) -> ResultOptExpr {
+        let f = self.lexer.collect_if(Token::While);
+        if f.is_none() {
+            return Ok(None);
+        }
+        let _ = self
+            .lexer
+            .collect_if(Token::OParen)
+            .xexpect_token(&self, "expected '('".to_string())?;
+        let x = self.or()?;
+        let _ = self
+            .lexer
+            .collect_if(Token::CParen)
+            .xexpect_token(&self, "expected ')'".to_string())?;
+        if let Some(_fn) = self.anon_fn()? {
+            return bubble_expr!(While, x, _fn);
+        }
+        let blk = self.block()?;
+        return bubble_expr!(While, x, blk);
+    }
     pub fn _for(&mut self) -> ResultOptExpr {
         let f = self.lexer.collect_if(Token::For);
         if f.is_none() {
@@ -486,7 +506,10 @@ impl<'s> Parser<'s> {
                         Some(x) => exprs.push(x),
                         None => match self._if()? {
                             Some(x) => exprs.push(x),
-                            None => break,
+                            None => match self._while()? {
+                                Some(x) => exprs.push(x),
+                                None => break,
+                            },
                         },
                     },
                 },
@@ -701,9 +724,7 @@ impl<'s> Parser<'s> {
                     self.resolve_access(expr!(PropAccess, prev, ident))
                 }
                 Token::Catch => {
-                    let catch = self.catch();
-
-                    self.resolve_access(expr!(PropAccess, prev, ident))
+                    return self.catch().xconvert_to_result_opt();
                 }
                 Token::OBracket => {
                     let expr = self.array_access()?;

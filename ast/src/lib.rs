@@ -1,6 +1,18 @@
 use lexer::Lexeme;
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct While {
+    pub expr: Box<Expr>,
+    pub var_loop: Box<Expr>,
+}
+
+impl While {
+    pub fn new(expr: Box<Expr>, var_loop: Box<Expr>) -> Self {
+        While { expr, var_loop }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct For {
     pub expr: Box<Expr>,
     pub var_loop: Box<Expr>,
@@ -664,6 +676,7 @@ pub enum Expr {
     ArrayDecl(ArrayDecl),
     Rest(Rest),
     For(For),
+    While(While),
     Match(Match),
     Arm(Arm),
     FileAll(FileAll),

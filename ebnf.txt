@@ -36,7 +36,7 @@
 <high_bin> ::= <unary> (("*" | "/" | ".." | "%" | "as") <unary>)*
 <unary> ::= (("try" | "copy" | "clone" | "!" | "-" | "&" | "*") <unary>) | <access>
 <array_decl> ::= "[" (<or> ("," <or>)*)? "]"
-<access> ::= <terminal> ("?" | "!" | <struct_body> | <invoke> | <array_access> | <call> | <catch>)*
+<access> ::= <terminal> ("?" | <struct_body> | <invoke> | <array_access> | <call>)* <catch>?
 <catch> ::= "catch" "(" <arg>? ")" <block>
 <array_access> ::= "[" <expr> "]"
 <invoke> ::= "." <ident>
