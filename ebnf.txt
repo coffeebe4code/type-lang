@@ -41,7 +41,7 @@
 <array_access> ::= "[" <expr> "]"
 <invoke> ::= "." <ident>
 <call> ::= "(" (<or> ("," <or>)*)? ")"
-<struct_body> ::= "{" (<ident> ":" <ident>)* "}"
+<struct_body> ::= "{" (<ident> ":" <or> ("," <ident> ":" <or>))?  "}"
 <terminal> ::= "_" | "true " | "false " | "undefined " | "self " | "never " | <num> | <ident> | <chars> | <array_decl> | <anon_fn> | "(" <expr> ")"
 <anon_fn> ::= "fn " "(" <args>? ") " <block> 
 <ident> ::= ([a-z] | [A-Z]) ([A-Z] | [a-z] | [0-9] | "_")*

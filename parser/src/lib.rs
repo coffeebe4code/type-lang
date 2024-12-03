@@ -58,7 +58,7 @@ impl<'s> Parser<'s> {
     ) -> ResultExpr {
         let mut variants: Vec<Box<Expr>> = vec![];
         while let Some(_) = self.lexer.collect_if(Token::Bar) {
-            let x = self.ident().xconvert_to_sym_decl()?;
+            let x = self.ident().xconvert_to_decl()?;
             variants.push(x);
         }
         result_expr!(TagDecl, visibility, mutability, identifier, variants, sig)
@@ -99,7 +99,7 @@ impl<'s> Parser<'s> {
                 .xexpect_token(&self, "expected ')'".to_string())?;
         }
         while let Some(_) = self.lexer.collect_if(Token::Bar) {
-            let x = self.ident().xconvert_to_sym_decl()?;
+            let x = self.ident().xconvert_to_decl()?;
             variants.push(x);
         }
         result_expr!(EnumDecl, visibility, mutability, identifier, variants, sig, enum_type)
@@ -131,9 +131,9 @@ impl<'s> Parser<'s> {
             .collect_of_if(&[Token::Let, Token::Const, Token::Type, Token::Impl])
             .xexpect_token(&self, "expected mutability".to_string())?;
         let identifier = self
-            .ident()
-            .xexpect_expr(&self, "expected identifier".to_string())
-            .xconvert_to_sym_decl()?;
+            .destructure()
+            .xexpect_expr(&self, "expected identifier, or destructure".to_string())
+            .xconvert_to_decl()?;
         let sig = self.opt_signature()?;
         let _ = self
             .lexer
@@ -266,7 +266,7 @@ impl<'s> Parser<'s> {
         let sig = self
             .opt_signature()
             .xexpect_expr(&self, "expected signature".to_string())?;
-        return result_expr!(Declarator, id.xconvert_to_sym_decl().unwrap(), sig)
+        return result_expr!(Declarator, id.xconvert_to_decl().unwrap(), sig)
             .xconvert_to_result_opt();
     }
     pub fn args(&mut self) -> Result<Option<Vec<Box<Expr>>>> {
@@ -421,8 +421,9 @@ impl<'s> Parser<'s> {
         let mutability = self.lexer.collect_of_if(&[Token::Let, Token::Const]);
         if let Some(muta) = mutability {
             let identifier = self
-                .ident()
-                .xexpect_expr(&self, "expected an identifier".to_string())?;
+                .destructure()
+                .xexpect_expr(&self, "expected identifier, or destructure".to_string())
+                .xconvert_to_decl()?;
             let sig = self.opt_signature()?;
             let _ = self
                 .lexer
@@ -491,6 +492,26 @@ impl<'s> Parser<'s> {
         }
         let blk = self.block()?;
         return bubble_expr!(For, x, blk);
+    }
+    pub fn destructure(&mut self) -> ResultOptExpr {
+        let brace = self.lexer.collect_if(Token::OBrace);
+        if brace.is_some() {
+            let mut idents: Vec<Box<Expr>> = vec![];
+            loop {
+                match self.ident() {
+                    Some(x) => {
+                        idents.push(x);
+                    }
+                    None => break,
+                }
+            }
+            let _ = self
+                .lexer
+                .collect_if(Token::CBrace)
+                .xexpect_token(&self, "expected '}' or more identifiers".to_string())?;
+            return bubble_expr!(Destructure, idents);
+        }
+        return Ok(self.ident());
     }
     pub fn block(&mut self) -> ResultExpr {
         self.lexer
@@ -996,12 +1017,12 @@ trait ConvertToResult {
     fn xconvert_to_result(self, parser: &Parser, title: String) -> ResultExpr;
 }
 
-trait ConvertToSymbolDecl {
-    fn xconvert_to_sym_decl(self) -> ResultExpr;
+trait ConvertToDecl {
+    fn xconvert_to_decl(self) -> ResultExpr;
 }
 
-trait ConvertToSymbolDeclResult {
-    fn xconvert_to_sym_decl(self) -> ResultExpr;
+trait ConvertToDeclResult {
+    fn xconvert_to_decl(self) -> ResultExpr;
 }
 
 trait ConvertToResultOpt {
@@ -1077,13 +1098,16 @@ impl ExpectExpr for OptExpr {
     }
 }
 
-impl ConvertToSymbolDeclResult for ResultExpr {
-    fn xconvert_to_sym_decl(self) -> ResultExpr {
+impl ConvertToDeclResult for ResultExpr {
+    fn xconvert_to_decl(self) -> ResultExpr {
         match self {
             Err(x) => Err(x),
             Ok(val) => match *val {
                 Expr::Symbol(x) => {
                     return Ok(Box::new(Expr::SymbolDecl(x)));
+                }
+                Expr::Declarator(_) => {
+                    return Ok(val);
                 }
                 _ => panic!("type lang issue, expected into symbol"),
             },
@@ -1091,8 +1115,8 @@ impl ConvertToSymbolDeclResult for ResultExpr {
     }
 }
 
-impl ConvertToSymbolDecl for OptExpr {
-    fn xconvert_to_sym_decl(self) -> ResultExpr {
+impl ConvertToDecl for OptExpr {
+    fn xconvert_to_decl(self) -> ResultExpr {
         match self {
             None => panic!("type lang issue, expected a symbol"),
             Some(val) => match *val {
@@ -1310,14 +1334,11 @@ mod tests {
                         token: Token::Let,
                         span: 2..5,
                     },
-                    expr!(
-                        Symbol,
-                        Lexeme {
-                            slice: String::from("x"),
-                            token: Token::Symbol,
-                            span: 6..7
-                        }
-                    ),
+                    Box::new(Expr::SymbolDecl(Symbol::new(Lexeme {
+                        slice: String::from("x"),
+                        token: Token::Symbol,
+                        span: 6..7
+                    }))),
                     None,
                     expr!(
                         Number,
