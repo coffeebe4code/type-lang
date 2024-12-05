@@ -139,3 +139,6 @@ let t = {
 const mul2: fn(usize) usize = fn(a) usize { 
   return a * 2
 }
+
+// destructuring is supported
+const { a, b, c } = import "std.thing"

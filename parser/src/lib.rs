@@ -500,7 +500,8 @@ impl<'s> Parser<'s> {
             loop {
                 match self.ident() {
                     Some(x) => {
-                        idents.push(x);
+                        idents.push(Box::new(Expr::SymbolDecl(x.into_symbol())));
+                        let _ = self.lexer.collect_if(Token::Comma);
                     }
                     None => break,
                 }
@@ -1106,7 +1107,7 @@ impl ConvertToDeclResult for ResultExpr {
                 Expr::Symbol(x) => {
                     return Ok(Box::new(Expr::SymbolDecl(x)));
                 }
-                Expr::Declarator(_) => {
+                Expr::Destructure(_) => {
                     return Ok(val);
                 }
                 _ => panic!("type lang issue, expected into symbol"),
