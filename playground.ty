@@ -1,42 +1,40 @@
-type Motorcycle = struct {
+pub type Motorcycle = struct {
   name: [char],
   wheels: u8
 }
 
-type Car = struct {
+// Data has a type. can be manually declared with : <type>
+const x = 7;
+const y: usize = 7;
+
+// Types have types
+// this is usually redundant
+type Car: struct {[char],u8} = struct {
   name: [char],
   wheels: u8
 }
 
-// or make a props type
-type Movable: struct {wheels: u8} = trait { 
-  // linter will fail self without signature right now
-  fn set_wheels(self, wheels: u8) {
-    self.wheels = wheels
+// you can achieve polymorphism and generics with traits
+type Movable = trait { 
+  set_wheels: fn(self, wheels: u8) void,
+  drive: fn(self) void
+}
+
+// you can then implement those traits
+impl Car = trait(Movable) {
+  pub set_wheels = fn(self, wheels: u8) {
+    // do a thing!
   }
-  fn drive(self) {
-  }
 }
 
-impl Movable: Car = self
-impl Movable: Motorcycle = self
-
-let toyoba = Car {
-  name = "Toyoba"
-}
-toyoba.set_wheels(4)
-toyoba.drive()
-
-let bonda = Motorcycle {
-  name = "Bonda"
+// default implementations can be achieved
+const set_wheels_default = fn(self, wheels: u8) void {
+  self.wheels = wheels;
 }
 
-bonda.set_wheels(2)
-bonda.drive()
-
-const assert_wheels = fn(self: Movable) !void {
-  if (self.wheels == 0) {
-    return error {}
-  }
-  return 
+// default implementation
+impl Motorcycle = trait(Movable) {
+  pub set_wheels = set_wheels_default
 }
+
+

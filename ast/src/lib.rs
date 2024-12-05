@@ -25,6 +25,17 @@ impl For {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Destructure {
+    pub elements: Vec<Box<Expr>>,
+}
+
+impl Destructure {
+    pub fn new(elements: Vec<Box<Expr>>) -> Self {
+        Destructure { elements }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Match {
     pub expr: Box<Expr>,
     pub arms: Vec<Box<Expr>>,
@@ -676,6 +687,7 @@ pub enum Expr {
     ArrayDecl(ArrayDecl),
     Rest(Rest),
     For(For),
+    Destructure(Destructure),
     While(While),
     Match(Match),
     Arm(Arm),
