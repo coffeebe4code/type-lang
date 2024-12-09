@@ -28,7 +28,7 @@ impl Car = trait(Movable) {
 }
 
 // default implementations can be achieved
-const set_wheels_default = fn(self, wheels: u8) void {
+pub const set_wheels_default = fn(self: Movable, wheels: u8) void {
   self.wheels = wheels;
 }
 
@@ -37,4 +37,52 @@ impl Motorcycle = trait(Movable) {
   pub set_wheels = set_wheels_default
 }
 
+// macro/comptime
 
+type Newable = trait {
+  new: fn(var: any[]) self {}
+}
+
+const add_new = macro(def: ident, var: any[]) {
+  impl def = trait(Newable) {
+    pub new = fn(expander(var)) {
+      return def {
+        dec_expand(var)
+      }
+    }
+  }
+}
+
+const expander = macro(name: ident, sig: signature, var: any[]) {
+  name: sig, expander(var)
+}
+
+const dec_expand = macro(name: ident, var: any[]) {
+  name: name, dec_expand(var)
+}
+
+add_new(Motorcycle, name, [char], wheels, u8) 
+// this expands to.
+impl Motorcycle = trait(Newable) {
+  pub new = fn(name: [char], wheels: u8) {
+    return Motorcycle {
+      name: name,
+      wheels: wheels,
+    }
+  }
+}
+// these macro expressions are provided in the standard library
+// to implement, simply declare your structs type
+
+type MyThing = struct {
+  cool_string: [char]
+}
+// then call the compile time expansion macro
+add_new(MyThing, cool_string, [char])
+
+// comptime factorial
+const factorial_table = comptime(name: ident, calculate: usize) {
+  const name = for (x in 0..calculate) {
+    return 
+  }
+}

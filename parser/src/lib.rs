@@ -441,6 +441,7 @@ impl<'s> Parser<'s> {
         if i.is_none() {
             return Ok(None);
         }
+        let mut chain = Box::new(IfChain::new(
         let _ = self
             .lexer
             .collect_if(Token::OParen)
@@ -451,7 +452,7 @@ impl<'s> Parser<'s> {
             .collect_if(Token::CParen)
             .xexpect_token(&self, "expected ')'".to_string())?;
         let blk = self.block()?;
-        return bubble_expr!(For, x, blk);
+        return bubble_expr!(IfChain, x, blk);
     }
     pub fn _while(&mut self) -> ResultOptExpr {
         let f = self.lexer.collect_if(Token::While);

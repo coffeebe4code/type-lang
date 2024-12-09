@@ -25,6 +25,36 @@ impl For {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct IfChain {
+    pub if_expr: Box<Expr>,
+    pub if_body: Box<Expr>,
+    pub elseif_exprs: Vec<Box<Expr>>,
+    pub elseif_bodys: Vec<Box<Expr>>,
+    pub else_expr: Option<Box<Expr>>,
+    pub else_body: Option<Box<Expr>>,
+}
+
+impl IfChain {
+    pub fn new(
+        if_expr: Box<Expr>,
+        if_body: Box<Expr>,
+        elseif_exprs: Vec<Box<Expr>>,
+        elseif_bodys: Vec<Box<Expr>>,
+        else_expr: Option<Box<Expr>>,
+        else_body: Option<Box<Expr>>,
+    ) -> Self {
+        IfChain {
+            if_expr,
+            if_body,
+            elseif_exprs,
+            elseif_bodys,
+            else_expr,
+            else_body,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Destructure {
     pub elements: Vec<Box<Expr>>,
 }
@@ -688,6 +718,7 @@ pub enum Expr {
     Rest(Rest),
     For(For),
     Destructure(Destructure),
+    IfChain(IfChain),
     While(While),
     Match(Match),
     Arm(Arm),
