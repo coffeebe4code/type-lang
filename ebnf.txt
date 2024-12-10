@@ -11,7 +11,7 @@
 <fn> ::= "fn " "(" <args>? ") " <block>
 <struct> ::= "struct " "{ " <declarators>? "}"
 <error> ::= "error " ("| " <ident>)+
-<if> ::= "if " "(" <expr> ")" (<fn> | <block>) ("else if "(" <expr> ")" (<fn> | <block>))* ("else " ( <fn> | <block>))?
+<if> ::= "if " "(" <expr> ")" (<fn> | <block>)
 <for> ::= "for " "(" <expr> ")" (<fn> | <block>)
 <while> ::= "while " "(" <expr> ")" (<fn> | <block>)
 <match> ::= "match " "(" <expr> ")" "{ " <arm>+ "}" 
@@ -41,7 +41,7 @@
 <array_access> ::= "[" <expr> "]"
 <invoke> ::= "." <ident>
 <call> ::= "(" (<or> ("," <or>)*)? ")"
-<struct_body> ::= "{" (<ident> ":" <ident>)* "}"
+<struct_body> ::= "{" (<ident> ":" <or> ("," <ident> ":" <or>))?  "}"
 <terminal> ::= "_" | "true " | "false " | "undefined " | "self " | "never " | <num> | <ident> | <chars> | <array_decl> | <anon_fn> | "(" <expr> ")"
 <anon_fn> ::= "fn " "(" <args>? ") " <block> 
 <ident> ::= ([a-z] | [A-Z]) ([A-Z] | [a-z] | [0-9] | "_")*

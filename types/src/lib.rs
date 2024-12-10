@@ -65,6 +65,14 @@ pub struct ForOp {
 }
 
 #[derive(Debug)]
+pub struct IfOp {
+    pub in_expr: Rc<Box<TypeTree>>,
+    pub in_curried: Ty,
+    pub body: Rc<Box<TypeTree>>,
+    pub body_curried: Ty,
+}
+
+#[derive(Debug)]
 pub struct BinaryOp {
     pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
@@ -164,6 +172,7 @@ pub enum TypeTree {
     SigInfo(SigInfo),
     // flow
     For(ForOp),
+    If(IfOp),
     Invoke(Invoke),
     Match(MatchOp),
     Arm(BinaryOp),
@@ -240,6 +249,7 @@ impl TypeTree {
             TypeTree::SigInfo(x) => x.right.clone(),
             TypeTree::ErrorInfo(x) => x.curried.clone(),
             TypeTree::For(x) => x.body_curried.clone(),
+            TypeTree::If(x) => x.body_curried.clone(),
             TypeTree::Invoke(x) => x.curried.clone(),
             TypeTree::Match(x) => x.curried_arms.clone(),
             TypeTree::Arm(x) => x.curried.clone(),
@@ -339,6 +349,7 @@ impl TypeTree {
             TypeTree::SigInfo(_) => "type signature",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
+            TypeTree::If(_) => "if statement",
             TypeTree::Invoke(_) => "function invocation",
             TypeTree::Match(_) => "match",
             TypeTree::Arm(_) => "pattern match arm",

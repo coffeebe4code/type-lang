@@ -1,42 +1,158 @@
-type Motorcycle = struct {
+pub type Motorcycle = struct {
   name: [char],
   wheels: u8
 }
 
-type Car = struct {
+// Data has a type. can be manually declared with : <type>
+const x = 7;
+const y: usize = 7;
+
+// Types have types
+// this is usually redundant
+type Car: struct {[char],u8} = struct {
   name: [char],
   wheels: u8
 }
 
-// or make a props type
-type Movable: struct {wheels: u8} = trait { 
-  // linter will fail self without signature right now
-  fn set_wheels(self, wheels: u8) {
-    self.wheels = wheels
+// you can achieve polymorphism and generics with traits
+type Movable = trait { 
+  set_wheels: fn(self, wheels: u8) void,
+  drive: fn(self) void
+}
+
+// you can then implement those traits
+impl Car = trait(Movable) {
+  pub set_wheels = fn(self, wheels: u8) {
+    // do a thing!
   }
-  fn drive(self) {
+}
+
+// default implementations can be achieved
+pub const set_wheels_default = fn(self: Movable, wheels: u8) void {
+  self.wheels = wheels;
+}
+
+// default implementation
+impl Motorcycle = trait(Movable) {
+  pub set_wheels = set_wheels_default
+}
+
+// macro/comptime
+
+type Newable = trait {
+  new: fn(var: any[]) self {}
+}
+
+const add_new = macro(def: ident, var: any[]) {
+  impl def = trait(Newable) {
+    pub new = fn(expander(var)) {
+      return def {
+        dec_expand(var)
+      }
+    }
   }
 }
 
-impl Movable: Car = self
-impl Movable: Motorcycle = self
-
-let toyoba = Car {
-  name = "Toyoba"
-}
-toyoba.set_wheels(4)
-toyoba.drive()
-
-let bonda = Motorcycle {
-  name = "Bonda"
+const expander = macro(name: ident, sig: signature, var: any[]) {
+  name: sig, expander(var)
 }
 
-bonda.set_wheels(2)
-bonda.drive()
+const dec_expand = macro(name: ident, var: any[]) {
+  name: name, dec_expand(var)
+}
 
-const assert_wheels = fn(self: Movable) !void {
-  if (self.wheels == 0) {
-    return error {}
+add_new(Motorcycle, name, [char], wheels, u8) 
+// this expands to.
+impl Motorcycle = trait(Newable) {
+  pub new = fn(name: [char], wheels: u8) {
+    return Motorcycle {
+      name: name,
+      wheels: wheels,
+    }
   }
-  return 
 }
+// these macro expressions are provided in the standard library
+// to implement, simply declare your structs type
+
+type MyThing = struct {
+  cool_string: [char]
+}
+// then call the compile time expansion macro
+add_new(MyThing, cool_string, [char])
+
+// comptime factorial
+const factorial_table = comptime(name: ident, calculate: usize) {
+  const name = for (x in 0..calculate) {
+    return 
+  }
+}
+
+const count_things = fn(to_check: &[char]) f64 {
+  let count: f64 = 0
+  for (to_check) fn(x) void {
+    if (x == ' ' || x == '7') {
+      count += 1
+    } else {
+      print('hello')
+    }
+    // possible match syntax
+    // forces exhaustion rather than if else chains missing a case
+    match (x) {
+      ' ' || '7' => { count +=1 },
+      _ => { print('hello') },
+    }
+    match (x, y, z) {
+      'x', 'y', 'z' => { count +=1 },
+      _, 'y', 'z' => { print('hello') },
+    }
+  }
+  return count
+}
+
+type Kenobi = enum(u8) | Hello | There | General
+
+// support line/block/fn
+const thing = match (Kenobi.Hello) {
+  Kenobi.Hello => fn(m) usize {
+    return m as usize
+  },
+  Kenobi.There => { return 1 },
+  _ => return 2
+
+// truthy values allow capturing. 
+// the truthy table is quite simple. if it has a value that is not empty or undefined. it is truthy.
+
+const counter = fn() f64 {
+  let count: f64 = 0
+  let to_check = []
+  // to_check is an empty array. falsey
+  for (to_check) fn(x) void {
+    // unreachable!
+  }
+  if (to_check) fn(x) void {
+    // unreachable!
+    // because there is nothing in to_check, we can't capture the value. this makes truthy intuitive in type-lang
+
+  }
+  let my_str = ""
+  if (my_str) {
+    // unreachable!
+    // even when not capturing it follows the truthy rules, this block will never ran
+  }
+  let undef_example = undefined
+  if (undef_example) fn(x) void {
+    // unreachable!
+    // undefined is fine as a value, but we can never capture an undefined. undefined is never readable.
+  }
+  let actual = "captureable!"
+  for (actual) fn(x) void {
+    if (x.is_ascii()) {
+
+    }
+  }
+}
+
+const x: error!?usize = 7
+const y: ?usize = try x 
+const z: usize = y?
+

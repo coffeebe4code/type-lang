@@ -58,6 +58,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::Declarator(declarator) => self.check_declarator(&declarator),
             Expr::Match(_match) => self.check_match(&_match),
             Expr::For(_for) => self.check_for(&_for),
+            Expr::If(_if) => self.check_if(&_if),
             Expr::Invoke(invoke) => self.check_invoke(&invoke),
             Expr::PropAccess(prop) => self.check_prop_access(&prop),
             Expr::Arm(arm) => self.check_arm(&arm),
@@ -150,6 +151,19 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn check_undefined(&mut self) -> ResultTreeType {
         let typ = Ty::Undefined;
         ok_simple_tree!(UndefinedValue, typ)
+    }
+
+    pub fn check_if(&mut self, _if: &If) -> ResultTreeType {
+        let res = self.lint_recurse(&_if.expr)?;
+        let body = self.lint_recurse(&_if.body)?;
+        let if_op = IfOp {
+            in_expr: res.0,
+            in_curried: res.1,
+            body: body.0,
+            body_curried: body.1,
+        };
+        let cur = if_op.body_curried.clone();
+        ok_tree!(If, if_op, cur)
     }
 
     pub fn check_for(&mut self, _for: &For) -> ResultTreeType {
