@@ -25,31 +25,16 @@ impl For {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct IfChain {
-    pub if_expr: Box<Expr>,
-    pub if_body: Box<Expr>,
-    pub elseif_exprs: Vec<Box<Expr>>,
-    pub elseif_bodys: Vec<Box<Expr>>,
-    pub else_expr: Option<Box<Expr>>,
-    pub else_body: Option<Box<Expr>>,
+pub struct If {
+    pub expr: Box<Expr>,
+    pub body: Box<Expr>,
 }
 
-impl IfChain {
-    pub fn new(
-        if_expr: Box<Expr>,
-        if_body: Box<Expr>,
-        elseif_exprs: Vec<Box<Expr>>,
-        elseif_bodys: Vec<Box<Expr>>,
-        else_expr: Option<Box<Expr>>,
-        else_body: Option<Box<Expr>>,
-    ) -> Self {
-        IfChain {
-            if_expr,
-            if_body,
-            elseif_exprs,
-            elseif_bodys,
-            else_expr,
-            else_body,
+impl If {
+    pub fn new(if_expr: Box<Expr>, if_body: Box<Expr>) -> Self {
+        If {
+            expr: if_expr,
+            body: if_body,
         }
     }
 }
@@ -341,9 +326,9 @@ pub struct EnumDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
-    pub declarators: Vec<Box<Expr>>,
+    pub variants: Vec<Box<Expr>>,
     pub sig: Option<Box<Expr>>,
-    pub variant: Option<Box<Expr>>,
+    pub enum_type: Option<Box<Expr>>,
 }
 
 impl EnumDecl {
@@ -351,17 +336,17 @@ impl EnumDecl {
         visibility: Option<Lexeme>,
         mutability: Lexeme,
         identifier: Box<Expr>,
-        declarators: Vec<Box<Expr>>,
+        variants: Vec<Box<Expr>>,
         sig: Option<Box<Expr>>,
-        variant: Option<Box<Expr>>,
+        enum_type: Option<Box<Expr>>,
     ) -> Self {
         EnumDecl {
             visibility,
             mutability,
             identifier,
-            declarators,
+            variants,
             sig,
-            variant,
+            enum_type,
         }
     }
 }
@@ -371,6 +356,7 @@ pub struct ErrorDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
+    pub variants: Vec<Box<Expr>>,
     pub sig: Option<Box<Expr>>,
 }
 
@@ -379,12 +365,14 @@ impl ErrorDecl {
         visibility: Option<Lexeme>,
         mutability: Lexeme,
         identifier: Box<Expr>,
+        variants: Vec<Box<Expr>>,
         sig: Option<Box<Expr>>,
     ) -> Self {
         ErrorDecl {
             visibility,
             mutability,
             identifier,
+            variants,
             sig,
         }
     }
@@ -718,7 +706,7 @@ pub enum Expr {
     Rest(Rest),
     For(For),
     Destructure(Destructure),
-    IfChain(IfChain),
+    If(If),
     While(While),
     Match(Match),
     Arm(Arm),

@@ -86,3 +86,73 @@ const factorial_table = comptime(name: ident, calculate: usize) {
     return 
   }
 }
+
+const count_things = fn(to_check: &[char]) f64 {
+  let count: f64 = 0
+  for (to_check) fn(x) void {
+    if (x == ' ' || x == '7') {
+      count += 1
+    } else {
+      print('hello')
+    }
+    // possible match syntax
+    // forces exhaustion rather than if else chains missing a case
+    match (x) {
+      ' ' || '7' => { count +=1 },
+      _ => { print('hello') },
+    }
+    match (x, y, z) {
+      'x', 'y', 'z' => { count +=1 },
+      _, 'y', 'z' => { print('hello') },
+    }
+  }
+  return count
+}
+
+type Kenobi = enum(u8) | Hello | There | General
+
+// support line/block/fn
+const thing = match (Kenobi.Hello) {
+  Kenobi.Hello => fn(m) usize {
+    return m as usize
+  },
+  Kenobi.There => { return 1 },
+  _ => return 2
+
+// truthy values allow capturing. 
+// the truthy table is quite simple. if it has a value that is not empty or undefined. it is truthy.
+
+const counter = fn() f64 {
+  let count: f64 = 0
+  let to_check = []
+  // to_check is an empty array. falsey
+  for (to_check) fn(x) void {
+    // unreachable!
+  }
+  if (to_check) fn(x) void {
+    // unreachable!
+    // because there is nothing in to_check, we can't capture the value. this makes truthy intuitive in type-lang
+
+  }
+  let my_str = ""
+  if (my_str) {
+    // unreachable!
+    // even when not capturing it follows the truthy rules, this block will never ran
+  }
+  let undef_example = undefined
+  if (undef_example) fn(x) void {
+    // unreachable!
+    // undefined is fine as a value, but we can never capture an undefined. undefined is never readable.
+  }
+  let actual = "captureable!"
+  for (actual) fn(x) void {
+    if (x.is_ascii()) {
+
+    }
+  }
+}
+
+const x: error!?usize = 7
+const y: ?usize = try x 
+const z: usize = y?
+

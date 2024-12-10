@@ -33,7 +33,7 @@ const next_weekday = fn(d: Day) Day {
 const c = [0,1,2,3].map(fn(x: usize) usize { return x + 2 })
 
 // errors are first class citizens where control flow is designed to work well with errors.
-type InvalidWeekday = error {}
+type InvalidWeekday = error 
 
 const assert_weekday = fn(d: Day) InvalidWeekday!Day {
  return match (d) {

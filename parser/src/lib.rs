@@ -71,15 +71,12 @@ impl<'s> Parser<'s> {
         identifier: Box<Expr>,
         sig: Option<Box<Expr>>,
     ) -> ResultExpr {
-        let _ = self
-            .lexer
-            .collect_if(Token::OBrace)
-            .xexpect_token(&self, "expected '{'".to_string())?;
-        let _ = self
-            .lexer
-            .collect_if(Token::CBrace)
-            .xexpect_token(&self, "expected '}'".to_string())?;
-        result_expr!(ErrorDecl, visibility, mutability, identifier, sig)
+        let mut variants: Vec<Box<Expr>> = vec![];
+        while let Some(_) = self.lexer.collect_if(Token::Bar) {
+            let x = self.ident().xconvert_to_decl()?;
+            variants.push(x);
+        }
+        result_expr!(ErrorDecl, visibility, mutability, identifier, variants, sig)
     }
 
     pub fn _enum(
@@ -450,27 +447,11 @@ impl<'s> Parser<'s> {
             .lexer
             .collect_if(Token::CParen)
             .xexpect_token(&self, "expected ')'".to_string())?;
-        let mut _fn = self.anon_fn()?;
-        if _fn.is_none() {
-            _fn = Some(self.block()?);
+        if let Some(_fn) = self.anon_fn()? {
+            return bubble_expr!(If, x, _fn);
         }
-        let mut chain = Box::new(Expr::IfChain(IfChain::new(
-            x,
-            _fn.unwrap(),
-            vec![],
-            vec![],
-            None,
-            None,
-        )));
-        
-        while let Some(elseif) = self.lexer.collect_if(Token::Else) {
-            args.push(self.or()?);
-        }
-        let i = self.lexer.collect_if(Token::If);
-        if i.is_none() {
-            return Ok(None);
-        }
-        return Ok(Some(chain));
+        let blk = self.block()?;
+        return bubble_expr!(If, x, blk);
     }
     pub fn _while(&mut self) -> ResultOptExpr {
         let f = self.lexer.collect_if(Token::While);

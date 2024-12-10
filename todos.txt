@@ -3,4 +3,5 @@
 - Bar '|' ebnf doesn't match parser, update parser for every '|' syntax
 - "all function declarations must have types in arguments." this can be changed to support deducing types at some point
 - impl
-- make types typey instead of values "function declarations"  tags, enums, etc.
+- trait
+- modify match syntax to take place of else branches

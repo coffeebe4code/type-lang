@@ -11,7 +11,7 @@
 <fn> ::= "fn " "(" <args>? ") " <block>
 <struct> ::= "struct " "{ " <declarators>? "}"
 <error> ::= "error " ("| " <ident>)+
-<if> ::= "if " "(" <expr> ")" (<fn> | <block>) ("else if "(" <expr> ")" (<fn> | <block>))* ("else " ( <fn> | <block>))?
+<if> ::= "if " "(" <expr> ")" (<fn> | <block>)
 <for> ::= "for " "(" <expr> ")" (<fn> | <block>)
 <while> ::= "while " "(" <expr> ")" (<fn> | <block>)
 <match> ::= "match " "(" <expr> ")" "{ " <arm>+ "}" 
