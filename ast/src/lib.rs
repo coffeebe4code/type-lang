@@ -1,6 +1,18 @@
 use lexer::Lexeme;
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct While {
+    pub expr: Box<Expr>,
+    pub var_loop: Box<Expr>,
+}
+
+impl While {
+    pub fn new(expr: Box<Expr>, var_loop: Box<Expr>) -> Self {
+        While { expr, var_loop }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct For {
     pub expr: Box<Expr>,
     pub var_loop: Box<Expr>,
@@ -9,6 +21,32 @@ pub struct For {
 impl For {
     pub fn new(expr: Box<Expr>, var_loop: Box<Expr>) -> Self {
         For { expr, var_loop }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct If {
+    pub expr: Box<Expr>,
+    pub body: Box<Expr>,
+}
+
+impl If {
+    pub fn new(if_expr: Box<Expr>, if_body: Box<Expr>) -> Self {
+        If {
+            expr: if_expr,
+            body: if_body,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Destructure {
+    pub elements: Vec<Box<Expr>>,
+}
+
+impl Destructure {
+    pub fn new(elements: Vec<Box<Expr>>) -> Self {
+        Destructure { elements }
     }
 }
 
@@ -284,10 +322,41 @@ impl TagDecl {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct EnumDecl {
+    pub visibility: Option<Lexeme>,
+    pub mutability: Lexeme,
+    pub identifier: Box<Expr>,
+    pub variants: Vec<Box<Expr>>,
+    pub sig: Option<Box<Expr>>,
+    pub enum_type: Option<Box<Expr>>,
+}
+
+impl EnumDecl {
+    pub fn new(
+        visibility: Option<Lexeme>,
+        mutability: Lexeme,
+        identifier: Box<Expr>,
+        variants: Vec<Box<Expr>>,
+        sig: Option<Box<Expr>>,
+        enum_type: Option<Box<Expr>>,
+    ) -> Self {
+        EnumDecl {
+            visibility,
+            mutability,
+            identifier,
+            variants,
+            sig,
+            enum_type,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ErrorDecl {
     pub visibility: Option<Lexeme>,
     pub mutability: Lexeme,
     pub identifier: Box<Expr>,
+    pub variants: Vec<Box<Expr>>,
     pub sig: Option<Box<Expr>>,
 }
 
@@ -296,12 +365,14 @@ impl ErrorDecl {
         visibility: Option<Lexeme>,
         mutability: Lexeme,
         identifier: Box<Expr>,
+        variants: Vec<Box<Expr>>,
         sig: Option<Box<Expr>>,
     ) -> Self {
         ErrorDecl {
             visibility,
             mutability,
             identifier,
+            variants,
             sig,
         }
     }
@@ -360,6 +431,23 @@ impl TraitDecl {
             args,
             block,
             sig,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CatchDecl {
+    pub args: Option<Vec<Box<Expr>>>,
+    pub ret_typ: Box<Expr>,
+    pub block: Box<Expr>,
+}
+
+impl CatchDecl {
+    pub fn new(args: Option<Vec<Box<Expr>>>, ret_typ: Box<Expr>, block: Box<Expr>) -> Self {
+        CatchDecl {
+            args,
+            ret_typ,
+            block,
         }
     }
 }
@@ -617,6 +705,9 @@ pub enum Expr {
     ArrayDecl(ArrayDecl),
     Rest(Rest),
     For(For),
+    Destructure(Destructure),
+    If(If),
+    While(While),
     Match(Match),
     Arm(Arm),
     FileAll(FileAll),
@@ -634,12 +725,14 @@ pub enum Expr {
     Symbol(Symbol),
     SymbolDecl(Symbol),
     AnonFuncDecl(AnonFuncDecl),
+    CatchDecl(CatchDecl),
     FuncDecl(FuncDecl),
     SelfDecl(SelfKeyword),
     TraitDecl(TraitDecl),
     StructDecl(StructDecl),
     ErrorDecl(ErrorDecl),
     TagDecl(TagDecl),
+    EnumDecl(EnumDecl),
     InnerDecl(InnerDecl),
     TopDecl(TopDecl),
     Reassignment(Reassignment),
