@@ -1,0 +1,16 @@
+[package]
+name = "fir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ast = { path="../ast" }
+symtable = { path="../symtable" }
+typetable = { path="../typetable" }
+token = { path="../token" }
+perror = { path="../perror" }
+lexer = { path="../lexer" }
+linter = { path="../linter" }
+types = { path="../types" }
+cranelift-frontend = "0"
+cranelift-codegen = "0"

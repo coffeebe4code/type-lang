@@ -20,6 +20,6 @@ members = [
   "cachectx", 
   "typetable", 
   "scopetable"
-]
+, "fir"]
 resolver = "2"
 
