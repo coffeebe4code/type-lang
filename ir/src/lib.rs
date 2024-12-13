@@ -32,6 +32,7 @@ impl<'gbl, 'md> IRFunc<'gbl, 'md> {
             variables: 0,
             scope,
             global: None,
+            obj_mod: None,
         }
     }
     pub fn handle_const_init(
