@@ -19,7 +19,9 @@ members = [
   "types", 
   "cachectx", 
   "typetable", 
-  "scopetable"
-, "fir"]
+  "scopetable", 
+  "fir", 
+  "oir"
+]
 resolver = "2"
 

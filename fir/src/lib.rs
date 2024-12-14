@@ -14,18 +14,24 @@ use std::rc::Rc;
 use symtable::SymTable;
 use types::*;
 
-pub struct FIR {
-    scope: SymTable,
+pub struct Fir {
+    variables: u32,
+    sym: SymTable
 }
 
-impl FIR {
-    pub fn new(
+impl Fir {
+    pub fn new(variables: u32, sym: SymTable) -> Self {
+        Fir {
+            variables,
+            sym
+        }
+    }
+    pub fn run(
         &mut self,
         func_def: Rc<Box<TypeTree>>,
         ctx: &mut FunctionBuilderContext,
         namespace: u32,
         index: u32,
-        scope: SymTable,
     ) -> Function {
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(namespace, index);
@@ -57,7 +63,7 @@ impl FIR {
         // todo:: optimization: not all paths need declare var if value is only ever read. or something similar, this statement is in the same ballpark, but might not be totally correct
         let x = builder.use_var(temp);
 
-        self.scope.table.insert(op.left.clone(), temp.as_u32());
+        self.sym.table.insert(op.left.clone(), temp.as_u32());
         builder.def_var(temp, x);
         Ok(temp)
     }
@@ -111,7 +117,7 @@ impl FIR {
     }
     pub fn handle_sym_access(&self, op: &SymbolAccess) -> ResultFir<Variable> {
         Ok(Variable::from_u32(
-            *self.scope.table.get(&op.ident).unwrap(),
+            *self.sym.table.get(&op.ident).unwrap(),
         ))
     }
     pub fn handle_u64(&mut self, num: u64, builder: &mut FunctionBuilder) -> ResultFir<Variable> {

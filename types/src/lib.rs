@@ -320,6 +320,7 @@ impl TypeTree {
     pub fn into_func_init(&self) -> &FunctionInitialize {
         match self {
             TypeTree::FuncInit(x) => x,
+            TypeTree::AnonFuncInit(x) => x,
             _ => panic!("issue function not found"),
         }
     }

@@ -3,7 +3,7 @@
 <all> ::= (<top_decl>)*
 <top_decl> ::= "pub "? ("const " | "let " | "type " | "impl ") <ident> (":" <signature>)? " = " (<trait> | <fn> | <struct> | <tag> | <import> | <error> | <reassign> | <expr> | <enum>)
 <import> ::= "import " <chars>
-<trait> ::= "trait " "{ " (<top_decl)* " }"
+<trait> ::= "trait " "{ " (<top_decl>)* " }"
 <signature> ::= <val_type> | ("&" | "*")? ("[" <signature> "]" | <ident> ("." <ident>)* | <fn_type>)
 <fn_type> ::= "fn" "(" <type_args> ")" ("void" | <signature>)
 <type_args> ::= (<type_arg> ("," <type_arg>)*)?
