@@ -46,6 +46,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::Import(import) => self.check_import(&import),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
             Expr::Sig(sig) => self.check_sig(&sig),
+            Expr::ValueType(vt) => self.check_value_type(&vt),
             Expr::PropAssignments(props) => self.check_props_init(&props),
             Expr::PropAssignment(prop) => self.check_prop_init(&prop),
             Expr::StructDecl(decl) => self.check_struct_decl(&decl),
@@ -84,8 +85,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 ),
             },
             Expr::Number(num) => match num.val.token {
-                Token::Decimal => self.check_f64(num),
-                Token::Number => self.check_i64(num),
+                Token::Decimal => self.check_dec(num),
+                Token::Number => self.check_num(num),
                 _ => panic!("type-lang linter issue, number not implemented"),
             },
             Expr::TopDecl(top) => self.check_top_decl(&top),
@@ -211,7 +212,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_symbol_decl(&mut self, symbol: &Symbol) -> ResultTreeType {
-        let sym = SymbolAccess {
+        let sym = SymbolInit {
             ident: symbol.val.slice.clone(),
             curried: Ty::Unknown,
         };
@@ -279,17 +280,61 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         return Ok((full, curried));
     }
 
-    pub fn check_sig(&mut self, _sig: &Sig) -> ResultTreeType {
-        let sig_info = SigInfo {
-            left: Some(Ty::Error),
-            err: Some(Ty::Error),
-            undefined: Some(Ty::Error),
-            right: Ty::Error,
+    pub fn check_value_type(&mut self, _vt: &ValueType) -> ResultTreeType {
+        let mut curried = Ty::Unknown;
+        match _vt.val.token {
+            Token::U64 => curried = Ty::U64,
+            Token::USize => curried = Ty::USize,
+            Token::F64 => curried = Ty::F64,
+            _ => panic!("type lang issue, unmatched value type"),
         };
+        let copied = curried.clone();
+        let full = tree!(ValueType, copied);
+        return Ok((full, curried));
+    }
 
-        let curried = sig_info.right.clone();
-        let full = tree!(SigInfo, sig_info);
+    pub fn check_sig(&mut self, _sig: &Sig) -> ResultTreeType {
+        let mut sig_info = SigTypes {
+            left: Ty::Unknown,
+            err: Some(Ty::Unknown),
+            undefined: Some(Ty::Unknown),
+            right: Some(Ty::Unknown),
+        };
+        let mut c_right: Option<Ty> = None;
+        let mut c_left: Ty = Ty::Unknown;
+        let mut c_err: Option<Ty> = None;
+        let mut c_undefined: Option<Ty> = None;
+        let mut curried = Ty::Unknown;
 
+        if let Some(right) = &_sig.right_most_type {
+            c_right = match self.lint_recurse(&right) {
+                Err(_) => Some(Ty::Unknown),
+                Ok(v) => Some(v.1),
+            }
+        }
+        if let Some(left) = &_sig.left_most_type {
+            c_left = match self.lint_recurse(&left) {
+                Err(_) => Ty::Unknown,
+                Ok(v) => v.1,
+            }
+        }
+        if let Some(_) = &_sig.err {
+            c_err = Some(Ty::Error);
+        }
+        if let Some(_) = &_sig.undef {
+            c_undefined = Some(Ty::Undefined);
+        }
+        if c_right.is_some() || c_err.is_some() || c_undefined.is_some() {
+            sig_info.left = c_left;
+            sig_info.err = c_err;
+            sig_info.undefined = c_undefined;
+            sig_info.right = c_right;
+            let full = tree!(SigTypes, sig_info);
+
+            return Ok((full, curried));
+        }
+
+        let full = tree!(SingleType, c_left);
         return Ok((full, curried));
     }
 
@@ -333,16 +378,13 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         // assert left type == right type or elidable
 
         // need to ensure constness is checked on the property
-        let end = reassignment.left.get_curried().ensure_mut().or_else(|x| {
+        reassignment.left.get_curried().ensure_mut().or_else(|x| {
             Err(self.set_error(
                 format!("found {}", x),
-                "did you mean to make it mutable?".to_string(),
+                format!("{} is immutable, did you mean to declare with let?", x),
                 reas.left.into_symbol().val,
             ))
-        });
-        if let Err(err) = end {
-            return Err(err);
-        }
+        })?;
         let curried = reassignment.curried.clone();
         return ok_tree!(As, reassignment, curried);
     }
@@ -661,7 +703,10 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::SymbolDecl(x) => {
                 let slice = x.val.slice.clone();
                 let typ = self.lint_recurse(&arg.typ)?;
-                let a = NoOp { curried: typ.1 };
+                let a = SymbolInit {
+                    ident: slice.clone(),
+                    curried: typ.1,
+                };
 
                 let curried = a.curried.clone();
                 self.curr_self = Some(a.curried.clone());
@@ -844,17 +889,17 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         return ok_tree!(ReadBorrow, unop, curried);
     }
 
-    pub fn check_f64(&mut self, num: &Number) -> ResultTreeType {
+    pub fn check_dec(&mut self, num: &Number) -> ResultTreeType {
         let val = num.val.slice.parse::<f64>().unwrap();
         let typ = Ty::F64;
         return ok_tree!(F64, val, typ);
     }
 
     // todo:: convert this back to u64, need to check to see if it fits in i64 and return type
-    pub fn check_i64(&mut self, num: &Number) -> ResultTreeType {
-        let val = num.val.slice.parse::<i64>().unwrap();
-        let typ = Ty::I64;
-        return ok_tree!(I64, val, typ);
+    pub fn check_num(&mut self, num: &Number) -> ResultTreeType {
+        let val = num.val.slice.parse::<u64>().unwrap();
+        let typ = Ty::U64;
+        return ok_tree!(U64, val, typ);
     }
 
     pub fn lint_check(&mut self, start: &Expr) -> Vec<Rc<Box<TypeTree>>> {
@@ -960,5 +1005,20 @@ mod tests {
                 col: 5
             }
         );
+    }
+    #[test]
+    fn it_should_tree_good() {
+        const TEST_STR: &'static str = "const val = 7
+            const main = fn() void { return 7 + val }
+        ";
+        let lexer = TLexer::new(TEST_STR);
+        let mut parser = Parser::new(lexer);
+        let result = parser.all();
+        let mut tts = vec![];
+        let mut scps = vec![];
+        let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
+        let test = linter.lint_check(&result.unwrap());
+
+        assert!(test.len() == 5);
     }
 }

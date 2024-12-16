@@ -8,10 +8,15 @@ pub struct FileContainer {
 }
 
 #[derive(Debug)]
-pub struct SigInfo {
-    pub left: Option<Ty>,
+pub struct SigTypes {
+    pub left: Ty,
     pub err: Option<Ty>,
     pub undefined: Option<Ty>,
+    pub right: Option<Ty>,
+}
+
+#[derive(Debug)]
+pub struct SingleType {
     pub right: Ty,
 }
 
@@ -106,6 +111,14 @@ pub struct Initialization {
 }
 
 #[derive(Debug)]
+pub struct TopInitialization {
+    pub left: String,
+    pub right: Rc<Box<TypeTree>>,
+    pub curried: Ty,
+    pub vis: bool,
+}
+
+#[derive(Debug)]
 pub struct Reassignment {
     pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
@@ -115,6 +128,12 @@ pub struct Reassignment {
 #[derive(Debug)]
 pub struct PropAccess {
     pub prev: Rc<Box<TypeTree>>,
+    pub ident: String,
+    pub curried: Ty,
+}
+
+#[derive(Debug)]
+pub struct SymbolInit {
     pub ident: String,
     pub curried: Ty,
 }
@@ -169,7 +188,6 @@ pub enum TypeTree {
     DeclaratorInfo(DeclaratorInfo),
     TagInfo(TagInfo),
     ErrorInfo(ErrorInfo),
-    SigInfo(SigInfo),
     // flow
     For(ForOp),
     If(IfOp),
@@ -205,9 +223,9 @@ pub enum TypeTree {
     RestAccess(NoOp),
     SelfAccess(NoOp),
     // data types
-    ArgInit(NoOp),
+    ArgInit(SymbolInit),
     SelfInit(NoOp),
-    SymbolInit(SymbolAccess),
+    SymbolInit(SymbolInit),
     StructInit(StructInitialize),
     PropInit(Initialization),
     ArrayInit(ArrayInitialize),
@@ -238,6 +256,10 @@ pub enum TypeTree {
     U64(u64),
     U32(u32),
     F64(f64),
+    // typereferencing
+    SigTypes(SigTypes),
+    ValueType(Ty),
+    SingleType(Ty),
 }
 
 impl TypeTree {
@@ -246,7 +268,7 @@ impl TypeTree {
             TypeTree::DeclaratorInfo(x) => x.curried.clone(),
             TypeTree::StructInfo(x) => x.curried.clone(),
             TypeTree::TagInfo(x) => x.curried.clone(),
-            TypeTree::SigInfo(x) => x.right.clone(),
+            TypeTree::SigTypes(x) => x.left.clone(),
             TypeTree::ErrorInfo(x) => x.curried.clone(),
             TypeTree::For(x) => x.body_curried.clone(),
             TypeTree::If(x) => x.body_curried.clone(),
@@ -309,6 +331,8 @@ impl TypeTree {
             TypeTree::ArgInit(x) => x.curried.clone(),
             TypeTree::SelfInit(x) => x.curried.clone(),
             TypeTree::SymbolInit(x) => x.curried.clone(),
+            TypeTree::ValueType(x) => x.clone(),
+            TypeTree::SingleType(x) => x.clone(),
         }
     }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
@@ -347,7 +371,7 @@ impl TypeTree {
             TypeTree::StructInfo(_) => "struct declaration",
             TypeTree::DeclaratorInfo(_) => "property declaration",
             TypeTree::TagInfo(_) => "tag declaration",
-            TypeTree::SigInfo(_) => "type signature",
+            TypeTree::SigTypes(_) => "type signature",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
             TypeTree::If(_) => "if statement",
@@ -410,6 +434,8 @@ impl TypeTree {
             TypeTree::ArgInit(_) => "function argument",
             TypeTree::SelfInit(_) => "self as function argument",
             TypeTree::SymbolInit(_) => "symbol definition or initialization",
+            TypeTree::ValueType(_) => "a value type",
+            TypeTree::SingleType(_) => "a type",
         }
     }
 }
@@ -418,7 +444,9 @@ impl TypeTree {
 pub enum Ty {
     I64,
     I32,
+    ISize,
     U64,
+    USize,
     U32,
     F64,
     Unknown,
@@ -439,6 +467,7 @@ pub enum Ty {
     Tag(Vec<Ty>),
     Function(Vec<Ty>, Box<Ty>),
     Custom(String),
+    CustomError(String),
     Trait(String),
     TSelf,
     Array(Box<Ty>),
@@ -448,8 +477,10 @@ impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Ty::I64 => write!(f, "i64"),
+            Ty::ISize => write!(f, "isize"),
             Ty::I32 => write!(f, "i32"),
             Ty::U64 => write!(f, "u64"),
+            Ty::USize => write!(f, "usize"),
             Ty::U32 => write!(f, "u32"),
             Ty::F64 => write!(f, "f64"),
             Ty::Unknown => write!(f, "unknown"),
@@ -482,6 +513,7 @@ impl fmt::Display for Ty {
                 Ok(())
             }
             Ty::Error => write!(f, "error"),
+            Ty::CustomError(x) => write!(f, "error {}", x),
             Ty::Tag(x) => {
                 write!(f, "tag ").unwrap();
                 for a in x {
@@ -517,6 +549,8 @@ impl Ty {
             Ty::MutBorrow(_) => Ok(()),
             Ty::Void => Err(Ty::Void),
             Ty::Error => Ok(()),
+            Ty::Unknown => Ok(()),
+            Ty::Undefined => Ok(()),
             _ => panic!("type lang issue. type not able to be associated to const"),
         }
     }

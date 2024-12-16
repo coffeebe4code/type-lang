@@ -18,7 +18,7 @@ impl ScopeTable {
         &'sco self,
         symbol: String,
         ttbls: &'ttb Vec<TypeTable>,
-    ) -> Option<&Rc<Box<TypeTree>>> {
+    ) -> Option<&'sco Rc<Box<TypeTree>>> {
         let tbl = ttbls.get(self.self_scope as usize).unwrap();
         let sibling = tbl.table.get(&symbol);
         if sibling.is_some() {

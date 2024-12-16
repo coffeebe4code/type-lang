@@ -4,6 +4,8 @@ use cranelift_codegen::Context;
 use cranelift_module::DataId;
 use cranelift_module::{DataDescription, Linkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
+use types::Initialization;
+use types::TypeTree;
 
 pub struct Oir {
     pub obj_mod: ObjectModule,
@@ -24,40 +26,35 @@ impl Oir {
             data: DataDescription::new(),
         }
     }
-//    pub fn run(&mut self, top_def: Rc<Box<TypeTree>>) {
-//
-//
-//    }
-//    pub fn create_external_global_const_data(&mut self, name: &str, contents: Vec<u8>) -> DataId {
-//        self.data.define(contents.into_boxed_slice());
-//        let id = self
-//            .obj_mod
-//            .declare_data(name, Linkage::Export, false, false)
-//            .unwrap();
-//        self.obj_mod.define_data(id, &self.data).unwrap();
-//        return id;
-//    }
-//    pub fn create_data(&mut self, ) -> DataId {
-//        self.data.define(contents.into_boxed_slice());
-//        let id = self
-//            .obj_mod
-//            .declare_data(name, Linkage::Export, false, false)
-//            .unwrap();
-//        self.obj_mod.define_data(id, &self.data).unwrap();
-//        return id;
-//    }
-//    pub fn add_fn(&mut self, name: &str, func: Function) -> () {
-//        let func_id = self
-//            .obj_mod
-//            .declare_function(name, Linkage::Export, &func.signature)
-//            .unwrap();
-//
-//        let mut ctx = Context::for_function(func);
-//        self.obj_mod.define_function(func_id, &mut ctx).unwrap();
-//    }
-//    pub fn flush_self(self) -> Vec<u8> {
-//        let object_product = self.obj_mod.finish();
-//        let bytes = object_product.emit().unwrap();
-//        return bytes;
-//    }
+    pub fn recurse(&mut self, expr: &TypeTree) -> () {
+        match expr {
+            TypeTree::I64(x) => self.data.define(Box::from(x.clone().to_ne_bytes())),
+            _ => panic!("unexpected type tree in oir"),
+        }
+    }
+
+    pub fn const_init(&mut self, init: &Initialization) -> DataId {
+        println!("const init {}", init.right.whatami());
+        self.recurse(init.right.as_ref());
+        let id = self
+            .obj_mod
+            .declare_data(&init.left, Linkage::Export, false, false)
+            .unwrap();
+        self.obj_mod.define_data(id, &self.data).unwrap();
+        return id;
+    }
+    pub fn add_fn(&mut self, name: &str, func: Function) -> () {
+        let func_id = self
+            .obj_mod
+            .declare_function(name, Linkage::Export, &func.signature)
+            .unwrap();
+
+        let mut ctx = Context::for_function(func);
+        self.obj_mod.define_function(func_id, &mut ctx).unwrap();
+    }
+    pub fn flush_self(self) -> Vec<u8> {
+        let object_product = self.obj_mod.finish();
+        let bytes = object_product.emit().unwrap();
+        return bytes;
+    }
 }

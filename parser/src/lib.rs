@@ -324,19 +324,20 @@ impl<'s> Parser<'s> {
         }
         Ok(None)
     }
+
     pub fn sig_union(&mut self) -> ResultOptExpr {
-        let start = self.signature_no_colon();
+        let left = self.signature_no_colon();
         let err = self.lexer.collect_if(Token::Exclam);
         let undef = self.lexer.collect_if(Token::Question);
-        let fin = self.signature_no_colon();
-        if start.is_err() {
-            return start;
+        let right = self.signature_no_colon();
+        if left.is_err() {
+            return left;
         }
-        if fin.is_err() {
-            return fin;
+        if right.is_err() {
+            return right;
         }
-        match start? {
-            None => match fin? {
+        match left? {
+            None => match right? {
                 None => {
                     if err.is_none() {
                         return Err(self.make_error(
@@ -351,7 +352,7 @@ impl<'s> Parser<'s> {
                 }
             },
             Some(x) => {
-                return result_expr!(Sig, Some(x), err, undef, fin.unwrap())
+                return result_expr!(Sig, Some(x), err, undef, right.unwrap())
                     .xconvert_to_result_opt();
             }
         };
@@ -379,6 +380,9 @@ impl<'s> Parser<'s> {
                 );
             }
             return Ok(Some(fn_typ));
+        }
+        if muta.is_some() {
+            return Err(self.make_error("mutability token found but no type".to_string()));
         }
         Ok(None)
     }
