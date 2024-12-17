@@ -14,7 +14,7 @@ impl ScopeTable {
             self_scope,
         }
     }
-    pub fn get_tt_same_up<'sco, 'ttb: 'sco, 'sym>(
+    pub fn get_tt_same_up<'sco, 'ttb: 'sco>(
         &'sco self,
         symbol: String,
         ttbls: &'ttb Vec<TypeTable>,
