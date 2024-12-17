@@ -2,3 +2,4 @@
 - compiler
 - scopes are just 1 single global
 - work on linter, several issues there, write more tests
+  get more lint rules in place

@@ -15,7 +15,6 @@ pub struct LintSource<'buf, 'ttb, 'sco> {
     buffer: &'buf str,
     idx: usize,
     curr_scope: usize,
-    curr_self: Option<Ty>,
     pub scopes: &'sco mut Vec<ScopeTable>,
     pub ttbls: &'ttb mut Vec<TypeTable>,
     pub issues: Vec<LinterError>,
@@ -33,7 +32,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             buffer,
             idx: 0,
             curr_scope: 0,
-            curr_self: None,
             scopes,
             ttbls,
             issues: vec![],
@@ -145,6 +143,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             }
         });
 
+        // todo:: get the last one if ret, curry, if not void
+        if blk.exprs.last().is_some() {}
         let curried = blk.curried.clone();
         ok_tree!(Block, blk, curried)
     }
@@ -709,7 +709,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 };
 
                 let curried = a.curried.clone();
-                self.curr_self = Some(a.curried.clone());
                 let full: Rc<Box<TypeTree>> = tree!(ArgInit, a);
                 let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
 
@@ -1018,6 +1017,7 @@ mod tests {
         let mut scps = vec![];
         let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
         let test = linter.lint_check(&result.unwrap());
+        println!("{:?}", test);
 
         assert!(test.len() == 5);
     }
