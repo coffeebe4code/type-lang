@@ -105,14 +105,14 @@ pub struct Invoke {
 
 #[derive(Debug)]
 pub struct Initialization {
-    pub left: String,
+    pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
     pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct TopInitialization {
-    pub left: String,
+    pub left: Rc<Box<TypeTree>>,
     pub right: Rc<Box<TypeTree>>,
     pub curried: Ty,
     pub vis: bool,
@@ -153,7 +153,7 @@ pub struct ArrayAccess {
 
 #[derive(Debug)]
 pub struct StructInitialize {
-    pub idents: Vec<String>,
+    pub idents: Vec<Rc<Box<TypeTree>>>,
     pub vals: Vec<Rc<Box<TypeTree>>>,
     pub vals_curried: Vec<Ty>,
     pub curried: Ty,
@@ -232,7 +232,9 @@ pub enum TypeTree {
     FuncInit(FunctionInitialize),
     AnonFuncInit(FunctionInitialize),
     ConstInit(Initialization),
+    TopConstInit(TopInitialization),
     MutInit(Initialization),
+    TopMutInit(TopInitialization),
     StringInit(ArrayInitialize),
     // reassignments
     As(Reassignment),
@@ -307,6 +309,8 @@ impl TypeTree {
             TypeTree::AnonFuncInit(x) => x.block_curried.clone(),
             TypeTree::ConstInit(x) => x.curried.clone(),
             TypeTree::MutInit(x) => x.curried.clone(),
+            TypeTree::TopConstInit(x) => x.curried.clone(),
+            TypeTree::TopMutInit(x) => x.curried.clone(),
             TypeTree::StringInit(x) => x.curried.clone(),
             TypeTree::As(x) => x.curried.clone(),
             TypeTree::PlusAs(x) => x.curried.clone(),
@@ -346,6 +350,12 @@ impl TypeTree {
             TypeTree::FuncInit(x) => x,
             TypeTree::AnonFuncInit(x) => x,
             _ => panic!("issue function not found"),
+        }
+    }
+    pub fn into_symbol_init(&self) -> &SymbolInit {
+        match self {
+            TypeTree::SymbolInit(x) => x,
+            _ => panic!("issue symbol not found"),
         }
     }
     pub fn into_symbol_access(&self) -> &SymbolAccess {
@@ -410,6 +420,8 @@ impl TypeTree {
             TypeTree::AnonFuncInit(_) => "anonymous function initialization",
             TypeTree::ConstInit(_) => "constant initialization",
             TypeTree::MutInit(_) => "mutable initialization",
+            TypeTree::TopConstInit(_) => "constant initialization",
+            TypeTree::TopMutInit(_) => "mutable initialization",
             TypeTree::StringInit(_) => "string initialization",
             TypeTree::As(_) => "reassignment",
             TypeTree::PlusAs(_) => "addition reassignment",
@@ -442,6 +454,9 @@ impl TypeTree {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Ty {
+    Any,
+    Sized,
+    Scalar,
     I64,
     I32,
     ISize,
@@ -476,6 +491,9 @@ pub enum Ty {
 impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Ty::Any => write!(f, "any"),
+            Ty::Scalar => write!(f, "scalar"),
+            Ty::Sized => write!(f, "sized"),
             Ty::I64 => write!(f, "i64"),
             Ty::ISize => write!(f, "isize"),
             Ty::I32 => write!(f, "i32"),

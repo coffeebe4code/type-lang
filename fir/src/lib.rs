@@ -63,7 +63,7 @@ impl Fir {
         // todo:: optimization: not all paths need declare var if value is only ever read. or something similar, this statement is in the same ballpark, but might not be totally correct
         let x = builder.use_var(temp);
 
-        self.sym.table.insert(op.left.clone(), temp.as_u32());
+        self.sym.table.insert(op.left.into_symbol_init().ident.clone(), temp.as_u32());
         builder.def_var(temp, x);
         Ok(temp)
     }

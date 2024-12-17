@@ -38,7 +38,7 @@ impl Oir {
         self.recurse(init.right.as_ref());
         let id = self
             .obj_mod
-            .declare_data(&init.left, Linkage::Export, false, false)
+            .declare_data(&init.left.into_symbol_init().ident, Linkage::Export, false, false)
             .unwrap();
         self.obj_mod.define_data(id, &self.data).unwrap();
         return id;
