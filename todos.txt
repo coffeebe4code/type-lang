@@ -3,3 +3,4 @@
 - scopes are just 1 single global
 - work on linter, several issues there, write more tests
   get more lint rules in place
+- destructure could be `const x,y,z = thing()` but you lose the "structure" portion { x,y,z }

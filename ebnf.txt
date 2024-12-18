@@ -1,7 +1,7 @@
 // use this to test, and this must pass at all times
 // https://bnfplayground.pauliankline.com/
 <all> ::= (<top_decl>)*
-<top_decl> ::= "pub "? ("const " | "let " | "type " | "impl ") <ident> (":" <signature>)? " = " (<trait> | <fn> | <struct> | <tag> | <import> | <error> | <reassign> | <expr> | <enum>)
+<top_decl> ::= "pub "? ("const " | "let " | "type " | "impl ") <destructure> (":" <signature>)? " = " (<trait> | <fn> | <struct> | <tag> | <import> | <error> | <reassign> | <expr> | <enum>)
 <import> ::= "import " <chars>
 <trait> ::= "trait " "{ " (<top_decl>)* " }"
 <signature> ::= <val_type> | ("&" | "*")? ("[" <signature> "]" | <ident> ("." <ident>)* | <fn_type>)
@@ -20,9 +20,10 @@
 <enum> ::= "enum" "(" <val_type> ")" ("| " <ident> ("=" <expr>)?)+
 <declarators> ::= (<declarator>)*
 <declarator> ::= "pub "? <ident> (":" <signature>)?
+<destructure> ::= ("{ " <ident> ("," <ident>)* " }") | <ident>
 <args> ::= (<arg> ("," <arg>)*)?
 <arg> ::= ("self " (": " <signature>)?) | <ident> (":" <signature>)?
-<inner_decl> ::= ( "const " | "let ") <ident> (":" <signature>)? "= " <expr> 
+<inner_decl> ::= ( "const " | "let ") <destructure> (":" <signature>)? "= " <expr> 
 <reassign> ::= <access> ("= " <expr>)?
 <block> ::= "{ " (<inner_decl> | <for> | <while> | <if> | <reassign>)* (<return> | <break>)? "}"
 <return> ::= "return " <expr>? 

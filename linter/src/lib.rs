@@ -13,8 +13,8 @@ type ResultTreeType = Result<(Rc<Box<TypeTree>>, Ty), usize>;
 
 pub struct LintSource<'buf, 'ttb, 'sco> {
     buffer: &'buf str,
-    idx: usize,
-    curr_scope: usize,
+    idx: u32,
+    curr_scope: u32,
     pub scopes: &'sco mut Vec<ScopeTable>,
     pub ttbls: &'ttb mut Vec<TypeTable>,
     pub issues: Vec<LinterError>,
@@ -94,6 +94,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::FuncDecl(fun) => self.check_func_decl(&fun),
             Expr::RetOp(ret) => self.check_ret_op(&ret),
             Expr::ArgDef(arg) => self.check_arg_def(&arg),
+            Expr::ArrayType(arr) => self.check_array_type(&arr),
             _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
@@ -125,7 +126,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         };
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(slice, Rc::clone(&full));
         Ok((full, curried))
@@ -218,14 +219,15 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = sym.curried.clone();
         let full = tree!(SymbolInit, sym);
 
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(symbol.val.slice.clone(), Rc::clone(&full));
         return Ok((full, curried));
     }
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
+        println!("symbol {:?}", symbol);
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
             curried: tbl
@@ -272,7 +274,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = err_info.curried.clone();
         let full = tree!(ErrorInfo, err_info);
 
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(slice, Rc::clone(&full));
 
@@ -281,10 +283,14 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_value_type(&mut self, _vt: &ValueType) -> ResultTreeType {
         let mut curried = Ty::Unknown;
+        println!("_vt {:?}", _vt);
         match _vt.val.token {
             Token::U64 => curried = Ty::U64,
             Token::USize => curried = Ty::USize,
+            Token::ISize => curried = Ty::ISize,
             Token::F64 => curried = Ty::F64,
+            Token::U8 => curried = Ty::U8,
+            Token::Char => curried = Ty::Char,
             _ => panic!("type lang issue, unmatched value type"),
         };
         let copied = curried.clone();
@@ -338,12 +344,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_self_value(&mut self) -> ResultTreeType {
-        let curr_self = self
-            .curr_self
-            .as_ref()
-            .expect("expected self to be defined");
         let self_ref = NoOp {
-            curried: curr_self.clone(),
+            curried: Ty::Unknown,
         };
         let curried = self_ref.curried.clone();
         ok_tree!(SelfAccess, self_ref, curried)
@@ -413,7 +415,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             let curried = obj_info.curried.clone();
             let full = tree!(StructInfo, obj_info);
 
-            let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
             tbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, curried));
@@ -437,7 +439,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         };
         let curried = init.curried.clone();
         let full = tree!(PropInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
         tbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, curried));
     }
@@ -460,7 +462,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                         .vals_curried
                         .push(x.0.into_prop_init().curried.clone());
                 } else {
-                    struct_init.idents.push(Rc::new(Box::new(TypeTree::UnknownValue)));
+                    struct_init
+                        .idents
+                        .push(Rc::new(Box::new(TypeTree::UnknownValue)));
                     struct_init.vals_curried.push(Ty::Unknown);
                 }
             });
@@ -468,7 +472,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             let curried = struct_init.curried.clone();
             let full = tree!(StructInit, struct_init);
 
-            let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
             tbl.table
                 .insert(prev.0.into_symbol_access().ident.clone(), Rc::clone(&full));
@@ -508,7 +512,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = tag_info.curried.clone();
         let full = tree!(TagInfo, tag_info);
 
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(copy, Rc::clone(&full));
         return Ok((full, curried));
@@ -543,7 +547,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(slice, Rc::clone(&full));
         Ok((full, curried))
@@ -561,13 +565,13 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = init.curried.clone();
         if import.mutability.token == Token::Const {
             let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-            let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
             tbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, Ty::Const(Box::new(curried))));
         }
         let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, Ty::Mut(Box::new(curried))));
@@ -587,14 +591,14 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         if inner.mutability.token == Token::Const {
             init.curried = Ty::Const(Box::new(init.curried));
             let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-            let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
             tbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, Ty::Const(Box::new(curried))));
         }
         init.curried = Ty::Mut(Box::new(init.curried));
         let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, Ty::Mut(Box::new(curried))));
@@ -609,18 +613,18 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             left: decl.0,
             right: result.0,
             curried: result.1,
-            vis: td.visibility.is_some()
+            vis: td.visibility.is_some(),
         };
         let curried = init.curried.clone();
         if td.mutability.token == Token::Const {
             let full: Rc<Box<TypeTree>> = tree!(TopConstInit, init);
-            let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
             tbl.table.insert(slice, Rc::clone(&full));
             return Ok((full, Ty::Const(Box::new(curried))));
         }
         let full: Rc<Box<TypeTree>> = tree!(TopMutInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
         tbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, Ty::Mut(Box::new(curried))));
@@ -700,6 +704,18 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         return ok_tree!(Return, unop, curried);
     }
 
+    pub fn check_array_type(&mut self, arr: &ArrayType) -> ResultTreeType {
+        let result = self.lint_recurse(&arr.arr_of)?;
+        let curried = result.1.clone();
+        let arrtype = ArrType {
+            arr_of: result.0,
+            curried: result.1,
+        };
+        let full: Rc<Box<TypeTree>> = tree!(ArrayType, arrtype);
+
+        return Ok((full, curried));
+    }
+
     pub fn check_arg_def(&mut self, arg: &ArgDef) -> ResultTreeType {
         match arg.ident.as_ref() {
             Expr::SymbolDecl(x) => {
@@ -712,7 +728,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
                 let curried = a.curried.clone();
                 let full: Rc<Box<TypeTree>> = tree!(ArgInit, a);
-                let tbl = self.ttbls.get_mut(self.curr_scope).unwrap();
+                let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
                 tbl.table.insert(slice, Rc::clone(&full));
 
@@ -723,9 +739,11 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 let a = NoOp { curried: typ.1 };
 
                 let curried = a.curried.clone();
-                self.curr_self = Some(a.curried.clone());
+
+                let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
                 let full: Rc<Box<TypeTree>> = tree!(SelfAccess, a);
+                tbl.table.insert("self".to_string(), Rc::clone(&full));
 
                 return Ok((full, curried));
             }

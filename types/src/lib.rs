@@ -16,6 +16,12 @@ pub struct SigTypes {
 }
 
 #[derive(Debug)]
+pub struct ArrType {
+    pub arr_of: Rc<Box<TypeTree>>,
+    pub curried: Ty,
+}
+
+#[derive(Debug)]
 pub struct SingleType {
     pub right: Ty,
 }
@@ -261,6 +267,7 @@ pub enum TypeTree {
     // typereferencing
     SigTypes(SigTypes),
     ValueType(Ty),
+    ArrayType(ArrType),
     SingleType(Ty),
 }
 
@@ -337,6 +344,7 @@ impl TypeTree {
             TypeTree::SymbolInit(x) => x.curried.clone(),
             TypeTree::ValueType(x) => x.clone(),
             TypeTree::SingleType(x) => x.clone(),
+            TypeTree::ArrayType(x) => x.curried.clone(),
         }
     }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
@@ -448,6 +456,7 @@ impl TypeTree {
             TypeTree::SymbolInit(_) => "symbol definition or initialization",
             TypeTree::ValueType(_) => "a value type",
             TypeTree::SingleType(_) => "a type",
+            TypeTree::ArrayType(_) => "an array type",
         }
     }
 }
@@ -463,6 +472,7 @@ pub enum Ty {
     U64,
     USize,
     U32,
+    U8,
     F64,
     Unknown,
     Rest,
@@ -551,6 +561,7 @@ impl fmt::Display for Ty {
             Ty::Array(x) => write!(f, "[{}]", x),
             Ty::Trait(x) => write!(f, "trait {}", x),
             Ty::TSelf => write!(f, "self"),
+            Ty::U8 => write!(f, "u8"),
         }
     }
 }

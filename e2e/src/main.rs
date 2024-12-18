@@ -12,11 +12,10 @@ use std::process::Command;
 fn main() {
     println!("[run] simple exe");
     objmaker::from_buffer(
-        "const z = 3
-        pub const main = fn() usize { 
+        "pub const main = fn() usize { 
             const m = 7
-            const x = 2 
-            return x + m + z
+            const x = 5 
+            return x + m
         }",
         Path::new("main.ty"),
     );

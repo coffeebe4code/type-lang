@@ -18,6 +18,7 @@ impl ScopeTable {
         &'sco self,
         symbol: String,
         ttbls: &'ttb Vec<TypeTable>,
+        scopes: &'sco Vec<ScopeTable>,
     ) -> Option<&'sco Rc<Box<TypeTree>>> {
         let tbl = ttbls.get(self.self_scope as usize).unwrap();
         let sibling = tbl.table.get(&symbol);
@@ -29,6 +30,12 @@ impl ScopeTable {
             let parent = ptbl.table.get(&symbol);
             if parent.is_some() {
                 return parent;
+            }
+            if self.parent_scope != 0 && self.self_scope != 0 {
+                return scopes
+                    .get(self.parent_scope as usize)
+                    .unwrap()
+                    .get_tt_same_up(symbol, ttbls, scopes);
             }
         }
         None
