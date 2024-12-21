@@ -629,14 +629,15 @@ impl<'s> Parser<'s> {
             .lexer
             .collect_if(Token::Arrow)
             .xexpect_token(self, "expected '=>'".to_string())?;
-        if let Some(blk) = self.ident() {
+        if let Some(anon) = self.anon_fn()? {
+            return result_expr!(Arm, or, anon).xconvert_to_result_opt();
+        }
+        if let Some(blk) = self.block()? {
+            return result_expr!(Arm, or, blk);
+        }
+        if let Some(blk) = self.or() {
             return result_expr!(Arm, or, blk).xconvert_to_result_opt();
         }
-        let anon = self.anon_fn()?.xconvert_to_result(
-            self,
-            "expected identifier or anonymous function'".to_string(),
-        )?;
-        result_expr!(Arm, or, anon).xconvert_to_result_opt()
     }
 
     pub fn or(&mut self) -> ResultExpr {

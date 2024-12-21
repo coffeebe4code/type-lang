@@ -2,6 +2,7 @@ use std::rc::Rc;
 use types::*;
 use typetable::TypeTable;
 
+#[derive(Debug)]
 pub struct ScopeTable {
     pub parent_scope: u32,
     pub self_scope: u32,
@@ -16,18 +17,18 @@ impl ScopeTable {
     }
     pub fn get_tt_same_up<'sco, 'ttb: 'sco>(
         &'sco self,
-        symbol: String,
+        symbol: &String,
         ttbls: &'ttb Vec<TypeTable>,
         scopes: &'sco Vec<ScopeTable>,
     ) -> Option<&'sco Rc<Box<TypeTree>>> {
         let tbl = ttbls.get(self.self_scope as usize).unwrap();
-        let sibling = tbl.table.get(&symbol);
+        let sibling = tbl.table.get(symbol);
         if sibling.is_some() {
             return sibling;
         }
         if self.parent_scope != self.self_scope {
             let ptbl = ttbls.get(self.parent_scope as usize).unwrap();
-            let parent = ptbl.table.get(&symbol);
+            let parent = ptbl.table.get(symbol);
             if parent.is_some() {
                 return parent;
             }

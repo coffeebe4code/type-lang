@@ -15,7 +15,7 @@
 <for> ::= "for " "(" <expr> ")" (<fn> | <block>)
 <while> ::= "while " "(" <expr> ")" (<fn> | <block>)
 <match> ::= "match " "(" <expr> ")" "{ " <arm>+ "}" 
-<arm> ::= <expr> "=> " (<fn> | <block>)
+<arm> ::= <expr> "=> " (<fn> | <block> | <or>)
 <tag> ::= "tag " ("| " <ident> (":" <signature>)?)+
 <enum> ::= "enum" "(" <val_type> ")" ("| " <ident> ("=" <expr>)?)+
 <declarators> ::= (<declarator>)*

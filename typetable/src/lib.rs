@@ -3,6 +3,7 @@ use std::rc::Rc;
 use types::*;
 
 // the purpose of this table is to serve as a lookup for the types of identifiers
+#[derive(Debug)]
 pub struct TypeTable {
     pub table: BTreeMap<String, Rc<Box<TypeTree>>>,
 }

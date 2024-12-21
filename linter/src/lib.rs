@@ -21,6 +21,15 @@ pub struct LintSource<'buf, 'ttb, 'sco> {
 }
 
 impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
+    pub fn reinit(&mut self, new_buffer: &'buf str) -> () {
+        self.buffer = new_buffer;
+        self.idx = 0;
+        self.curr_scope = 0;
+        self.scopes.clear();
+        self.scopes.push(ScopeTable::new(0, 0));
+        self.ttbls.clear();
+        self.issues.clear();
+    }
     pub fn new(
         buffer: &'buf str,
         scopes: &'sco mut Vec<ScopeTable>,
@@ -102,6 +111,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn check_func_decl(&mut self, td: &FuncDecl) -> ResultTreeType {
         let mut largs = vec![];
         let mut largs_curried = vec![];
+        self.inc_scope_tracker();
         if let Some(args) = td.args.as_ref() {
             args.iter().for_each(|x| {
                 let res = self.lint_recurse(x);
@@ -124,6 +134,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             block: result.0,
             block_curried: result.1,
         };
+        self.dec_scope_tracker();
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
         let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
@@ -226,16 +237,15 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
+        let ss = self.scopes.get(self.curr_scope as usize).unwrap();
+        println!("here");
+        let tt = ss
+            .get_tt_same_up(&symbol.val.slice, self.ttbls, self.scopes)
+            .unwrap();
         println!("symbol {:?}", symbol);
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
-            curried: tbl
-                .table
-                .get(&symbol.val.slice)
-                .unwrap()
-                .get_curried()
-                .clone(),
+            curried: tt.get_curried(),
         };
         let curried = sym.curried.clone();
         return ok_tree!(SymbolAccess, sym, curried);
@@ -392,8 +402,10 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_struct_decl(&mut self, obj: &StructDecl) -> ResultTreeType {
         if let Some(x) = &obj.declarators {
+            self.inc_scope_tracker();
             let result: Vec<ResultTreeType> =
                 x.into_iter().map(|e| self.lint_recurse(&e)).collect();
+            self.dec_scope_tracker();
             let slice = obj.identifier.into_symbol().val.slice;
             let mut obj_info = StructInfo {
                 props: vec![],
@@ -486,11 +498,13 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
+        self.inc_scope_tracker();
         let result: Vec<ResultTreeType> = tag
             .declarators
             .iter()
             .map(|e| self.lint_recurse(&e))
             .collect();
+        self.dec_scope_tracker();
         let slice = tag.identifier.into_symbol().val.slice;
         let copy = slice.clone();
         let mut tag_info = TagInfo {
@@ -936,6 +950,20 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             _ => panic!("type-lang linter issue expected all at lint_check"),
         }
     }
+    fn inc_scope_tracker(&mut self) -> () {
+        self.ttbls.push(TypeTable::new());
+        let new_curr = self.ttbls.len() - 1;
+        self.scopes
+            .push(ScopeTable::new(self.curr_scope, new_curr as u32));
+        self.curr_scope = new_curr as u32;
+    }
+    fn dec_scope_tracker(&mut self) -> () {
+        self.curr_scope = self
+            .scopes
+            .get(self.curr_scope as usize)
+            .unwrap()
+            .parent_scope;
+    }
 
     fn set_error(&mut self, title: String, suggestion: String, lexeme: Lexeme) -> usize {
         let mut le = LinterError::new(title);
@@ -1037,9 +1065,8 @@ mod tests {
         let mut tts = vec![];
         let mut scps = vec![];
         let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
-        let test = linter.lint_check(&result.unwrap());
-        println!("{:?}", test);
+        let _ = linter.lint_check(&result.unwrap());
 
-        assert!(false);
+        assert!(linter.issues.len() == 0);
     }
 }
