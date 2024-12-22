@@ -10,3 +10,5 @@ fir = { path="../fir" }
 scopetable = { path="../scopetable" }
 typetable = { path="../typetable" }
 symtable = { path="../symtable" }
+cranelift-frontend = "0"
+cranelift-codegen = "0"

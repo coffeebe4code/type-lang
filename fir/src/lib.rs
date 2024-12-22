@@ -10,10 +10,10 @@ use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::*;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use perror::*;
-use std::rc::Rc;
 use symtable::SymTable;
 use types::*;
 
+// Function Intermediate Representation
 pub struct Fir {
     variables: u32,
     sym: SymTable,
@@ -29,16 +29,15 @@ impl Fir {
     }
     pub fn run(
         &mut self,
-        func_def: Rc<Box<TypeTree>>,
+        func_def: &FunctionInitialize,
         ctx: &mut FunctionBuilderContext,
         namespace: u32,
         index: u32,
     ) -> Function {
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(namespace, index);
-        let func_init = func_def.into_func_init();
         // todo:: types need to be worked out, params and returns defined
-        func_init
+        func_def
             .args
             .iter()
             .for_each(|_x| sig.params.push(AbiParam::new(I64)));
@@ -48,7 +47,7 @@ impl Fir {
         let root_block = builder.create_block();
         builder.append_block_params_for_function_params(root_block);
         builder.switch_to_block(root_block);
-        let _result = self.recurse(&func_init.block, &mut builder);
+        let _result = self.recurse(&func_def.block, &mut builder);
         builder.seal_block(root_block);
         builder.finalize();
         func

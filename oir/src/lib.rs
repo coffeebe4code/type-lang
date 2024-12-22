@@ -7,6 +7,7 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use types::Initialization;
 use types::TypeTree;
 
+// Object intermediate representation
 pub struct Oir {
     pub obj_mod: ObjectModule,
     pub data: DataDescription,
@@ -34,7 +35,7 @@ impl Oir {
     }
 
     pub fn const_init(&mut self, init: &Initialization) -> DataId {
-        println!("const init {}", init.right.whatami());
+        println!("const init {:?}", init);
         self.recurse(init.right.as_ref());
         let id = self
             .obj_mod
