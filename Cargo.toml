@@ -21,7 +21,8 @@ members = [
   "typetable", 
   "scopetable", 
   "fir", 
-  "oir"
-]
+  "oir", 
+  "scir",
+  ]
 resolver = "2"
 
