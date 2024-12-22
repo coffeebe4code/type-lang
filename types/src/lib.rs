@@ -42,10 +42,18 @@ pub struct TagInfo {
 }
 
 #[derive(Debug)]
+pub struct EnumInfo {
+    pub name: String,
+    pub props: Vec<Rc<Box<TypeTree>>>,
+    pub curried: Ty,
+}
+
+#[derive(Debug)]
 pub struct StructInfo {
     pub props: Vec<String>,
     pub types: Vec<Ty>,
     pub curried: Ty,
+    pub scope: u32,
 }
 
 #[derive(Debug)]
@@ -193,6 +201,7 @@ pub enum TypeTree {
     StructInfo(StructInfo),
     DeclaratorInfo(DeclaratorInfo),
     TagInfo(TagInfo),
+    EnumInfo(EnumInfo),
     ErrorInfo(ErrorInfo),
     // flow
     For(ForOp),
@@ -277,6 +286,7 @@ impl TypeTree {
             TypeTree::DeclaratorInfo(x) => x.curried.clone(),
             TypeTree::StructInfo(x) => x.curried.clone(),
             TypeTree::TagInfo(x) => x.curried.clone(),
+            TypeTree::EnumInfo(x) => x.curried.clone(),
             TypeTree::SigTypes(x) => x.left.clone(),
             TypeTree::ErrorInfo(x) => x.curried.clone(),
             TypeTree::For(x) => x.body_curried.clone(),
@@ -372,6 +382,12 @@ impl TypeTree {
             _ => panic!("issue symbol not found"),
         }
     }
+    pub fn into_child_scope(&self) -> u32 {
+        match self {
+            TypeTree::StructInfo(x) => x.scope,
+            _ => panic!("issue property not found"),
+        }
+    }
     pub fn into_prop_init(&self) -> &Initialization {
         match self {
             TypeTree::PropInit(x) => x,
@@ -389,6 +405,7 @@ impl TypeTree {
             TypeTree::StructInfo(_) => "struct declaration",
             TypeTree::DeclaratorInfo(_) => "property declaration",
             TypeTree::TagInfo(_) => "tag declaration",
+            TypeTree::EnumInfo(_) => "enum declaration",
             TypeTree::SigTypes(_) => "type signature",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
@@ -490,6 +507,7 @@ pub enum Ty {
     Struct(Vec<Ty>),
     Error,
     Tag(Vec<Ty>),
+    Enum(Box<Ty>),
     Function(Vec<Ty>, Box<Ty>),
     Custom(String),
     CustomError(String),
@@ -562,6 +580,7 @@ impl fmt::Display for Ty {
             Ty::Trait(x) => write!(f, "trait {}", x),
             Ty::TSelf => write!(f, "self"),
             Ty::U8 => write!(f, "u8"),
+            Ty::Enum(x) => write!(f, "enum({})", x),
         }
     }
 }

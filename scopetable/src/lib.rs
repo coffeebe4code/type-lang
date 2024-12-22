@@ -15,9 +15,35 @@ impl ScopeTable {
             self_scope,
         }
     }
+    pub fn get_scope_same_up<'sco, 'ttb: 'sco>(
+        &'sco self,
+        symbol: &str,
+        ttbls: &'ttb Vec<TypeTable>,
+        scopes: &'sco Vec<ScopeTable>,
+    ) -> Option<u32> {
+        let tbl = ttbls.get(self.self_scope as usize).unwrap();
+        let sibling = tbl.table.get(symbol);
+        if sibling.is_some() {
+            return Some(self.self_scope);
+        }
+        if self.parent_scope != self.self_scope {
+            let ptbl = ttbls.get(self.parent_scope as usize).unwrap();
+            let parent = ptbl.table.get(symbol);
+            if parent.is_some() {
+                return Some(self.parent_scope);
+            }
+            if self.parent_scope != 0 && self.self_scope != 0 {
+                return scopes
+                    .get(self.parent_scope as usize)
+                    .unwrap()
+                    .get_scope_same_up(symbol, ttbls, scopes);
+            }
+        }
+        return None;
+    }
     pub fn get_tt_same_up<'sco, 'ttb: 'sco>(
         &'sco self,
-        symbol: &String,
+        symbol: &str,
         ttbls: &'ttb Vec<TypeTable>,
         scopes: &'sco Vec<ScopeTable>,
     ) -> Option<&'sco Rc<Box<TypeTree>>> {

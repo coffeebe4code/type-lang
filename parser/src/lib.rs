@@ -593,19 +593,21 @@ impl<'s> Parser<'s> {
             let mut arms: Vec<Box<Expr>> = vec![];
             let first_arm = self.arm()?.xexpect_expr(
                 &self,
-                "expected match arm '<expr> => (<fn> | <block>)'".to_string(),
+                "expected match arm '<expr> => (<fn> | <block> | <or>)'".to_string(),
             )?;
             arms.push(first_arm);
             let second_arm = self.arm()?.xexpect_expr(
                 &self,
-                "expected at least 2 match arms '<expr> => (<fn> | <block>)'".to_string(),
+                "expected at least 2 match arms '<expr> => (<fn> | <block> | <or>)'".to_string(),
             )?;
             arms.push(second_arm);
             loop {
                 match self.arm() {
                     Ok(Some(x)) => arms.push(x),
                     Ok(None) => break,
-                    Err(e) => return Err(e),
+                    Err(e) => {
+                        return Err(e);
+                    }
                 }
             }
             let _ = self
@@ -632,12 +634,16 @@ impl<'s> Parser<'s> {
         if let Some(anon) = self.anon_fn()? {
             return result_expr!(Arm, or, anon).xconvert_to_result_opt();
         }
-        if let Some(blk) = self.block()? {
-            return result_expr!(Arm, or, blk);
-        }
-        if let Some(blk) = self.or() {
+        if self.lexer.peek().is_some_and(|l| l.token == Token::OBrace) {
+            let blk = self.block()?;
             return result_expr!(Arm, or, blk).xconvert_to_result_opt();
         }
+        let right = self.or().map_err(|err| {
+            return self.make_error( 
+            "expected a block expression, anonymous function capture, or a single line expression"
+                .to_string());
+        })?;
+        return result_expr!(Arm, or, right).xconvert_to_result_opt();
     }
 
     pub fn or(&mut self) -> ResultExpr {
@@ -778,7 +784,8 @@ impl<'s> Parser<'s> {
                     if let None = self.lexer.collect_if(Token::CBrace) {
                         let ident = self
                             .ident()
-                            .xexpect_expr(&self, "expected identifier".to_string())?;
+                            .xexpect_expr(&self, "expected identifier".to_string())
+                            .xconvert_to_decl()?;
                         let mut props: Vec<Box<Expr>> = vec![];
                         let _ = self
                             .lexer
@@ -789,7 +796,8 @@ impl<'s> Parser<'s> {
                         while let Some(_comma) = self.lexer.collect_if(Token::Comma) {
                             let id = self
                                 .ident()
-                                .xexpect_expr(&self, "expected identifier".to_string())?;
+                                .xexpect_expr(&self, "expected identifier".to_string())
+                                .xconvert_to_decl()?;
                             let _ = self
                                 .lexer
                                 .collect_if(Token::Colon)

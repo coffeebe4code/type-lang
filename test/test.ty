@@ -20,12 +20,12 @@ const next_weekday = fn(d: Day) Day {
  // tags can be matched on
  // return must be specified
  return match (d) {
-  monday => Day.tuesday
-  tuesday => Day.wednesday
-  wednesday => Day.thursday
-  thursday => Day.friday
+  Day.monday => Day.tuesday
+  Day.tuesday => Day.wednesday
+  Day.wednesday => Day.thursday
+  Day.thursday => Day.friday
   // rest operator specifies any remaining match arms
-  _ => monday
+  _ => Day.monday
  }
 }
 
@@ -37,8 +37,8 @@ type InvalidWeekday = error
 
 const assert_weekday = fn(d: Day) InvalidWeekday!Day {
  return match (d) {
-  saturday => InvalidWeekday
-  sunday => InvalidWeekday
+  Day.saturday => InvalidWeekday
+  Day.sunday => InvalidWeekday
   _ => d
  }
 }
@@ -118,6 +118,7 @@ const q = import "std.io"
 //   direction: u8
 // }
 
+// 3000 or so
 let r = Car { 
   wheels: 0,
   make: "toyoba",
@@ -140,5 +141,5 @@ const mul2: fn(usize) usize = fn(a) usize {
   return a * 2
 }
 
-// destructuring is supported
-const { a, b, c } = import "std.thing"
+// destructuring is supported, but not yet
+// const { a, b, c } = import "std.thing"

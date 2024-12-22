@@ -52,6 +52,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::InnerDecl(decl) => self.check_inner_decl(&decl),
             Expr::Import(import) => self.check_import(&import),
             Expr::TagDecl(decl) => self.check_tag_decl(&decl),
+            Expr::EnumDecl(decl) => self.check_enum_decl(&decl),
             Expr::Sig(sig) => self.check_sig(&sig),
             Expr::ValueType(vt) => self.check_value_type(&vt),
             Expr::PropAssignments(props) => self.check_props_init(&props),
@@ -214,17 +215,23 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_declarator(&mut self, decl: &Declarator) -> ResultTreeType {
+        let slice = decl.ident.into_symbol().val.slice.clone();
         let dec = DeclaratorInfo {
-            name: decl.ident.into_symbol().val.slice.clone(),
+            name: slice.clone(),
             curried: Ty::Undefined,
         };
         let curried = dec.curried.clone();
-        return ok_tree!(DeclaratorInfo, dec, curried);
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
+        let full = tree!(DeclaratorInfo, dec);
+
+        tbl.table.insert(slice, Rc::clone(&full));
+        return Ok((full, curried));
     }
 
     pub fn check_symbol_decl(&mut self, symbol: &Symbol) -> ResultTreeType {
+        let slice = symbol.val.slice.clone();
         let sym = SymbolInit {
-            ident: symbol.val.slice.clone(),
+            ident: slice.clone(),
             curried: Ty::Unknown,
         };
         let curried = sym.curried.clone();
@@ -232,17 +239,15 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
         let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
-        tbl.table.insert(symbol.val.slice.clone(), Rc::clone(&full));
+        tbl.table.insert(slice, Rc::clone(&full));
         return Ok((full, curried));
     }
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let ss = self.scopes.get(self.curr_scope as usize).unwrap();
-        println!("here");
         let tt = ss
             .get_tt_same_up(&symbol.val.slice, self.ttbls, self.scopes)
             .unwrap();
-        println!("symbol {:?}", symbol);
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
             curried: tt.get_curried(),
@@ -293,7 +298,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_value_type(&mut self, _vt: &ValueType) -> ResultTreeType {
         let mut curried = Ty::Unknown;
-        println!("_vt {:?}", _vt);
         match _vt.val.token {
             Token::U64 => curried = Ty::U64,
             Token::USize => curried = Ty::USize,
@@ -403,6 +407,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn check_struct_decl(&mut self, obj: &StructDecl) -> ResultTreeType {
         if let Some(x) = &obj.declarators {
             self.inc_scope_tracker();
+            let prop_scope = self.curr_scope;
             let result: Vec<ResultTreeType> =
                 x.into_iter().map(|e| self.lint_recurse(&e)).collect();
             self.dec_scope_tracker();
@@ -411,6 +416,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 props: vec![],
                 types: vec![],
                 curried: Ty::Custom(slice.clone()),
+                scope: prop_scope,
             };
             result.into_iter().for_each(|res| {
                 if let Ok(exp) = res {
@@ -458,6 +464,11 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_props_init(&mut self, props: &PropAssignments) -> ResultTreeType {
         let prev = self.lint_recurse(&props.prev)?;
+        let current_scope = self.curr_scope;
+        let scope = self.get_tt_by_symbol(&prev.0.into_symbol_access().ident);
+        let temp_scope = scope.into_child_scope();
+        self.curr_scope = temp_scope;
+
         if let Some(p) = &props.props {
             let result: Vec<ResultTreeType> =
                 p.into_iter().map(|e| self.lint_recurse(&e)).collect();
@@ -480,6 +491,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                     struct_init.vals_curried.push(Ty::Unknown);
                 }
             });
+            self.curr_scope = current_scope;
 
             let curried = struct_init.curried.clone();
             let full = tree!(StructInit, struct_init);
@@ -495,6 +507,38 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             format!("found empty {{}}, expected property"),
             props.prev.into_symbol().val,
         ))
+    }
+
+    pub fn check_enum_decl(&mut self, _enum: &EnumDecl) -> ResultTreeType {
+        self.inc_scope_tracker();
+        let result: Vec<ResultTreeType> = _enum
+            .variants
+            .iter()
+            .map(|e| self.lint_recurse(&e))
+            .collect();
+        self.dec_scope_tracker();
+        let slice = _enum.identifier.into_symbol().val.slice;
+        let copy = slice.clone();
+        let mut e_info = EnumInfo {
+            name: slice,
+            props: vec![],
+            curried: Ty::Enum(Box::new(Ty::U8)),
+        };
+        result.into_iter().for_each(|res| {
+            if let Ok(exp) = res {
+                e_info.props.push(exp.0);
+                return;
+            }
+            e_info.props.push(simple_tree!(UnknownValue));
+        });
+
+        let curried = e_info.curried.clone();
+        let full = tree!(EnumInfo, e_info);
+
+        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
+
+        tbl.table.insert(copy, Rc::clone(&full));
+        return Ok((full, curried));
     }
 
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
@@ -963,6 +1007,11 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             .get(self.curr_scope as usize)
             .unwrap()
             .parent_scope;
+    }
+
+    fn get_tt_by_symbol(&mut self, sym: &str) -> &Rc<Box<TypeTree>> {
+        let scope = self.scopes.get(self.curr_scope as usize).unwrap();
+        return scope.get_tt_same_up(sym, self.ttbls, self.scopes).unwrap();
     }
 
     fn set_error(&mut self, title: String, suggestion: String, lexeme: Lexeme) -> usize {
