@@ -14,15 +14,16 @@ members = [
   "ir",
   "e2e",
   "tyvm",
-  "linter", 
+  "linter",
   "codelocation",
-  "types", 
-  "cachectx", 
-  "typetable", 
-  "scopetable", 
-  "fir", 
-  "oir", 
+  "types",
+  "cachectx",
+  "typetable",
+  "scopetable",
+  "fir",
+  "oir",
   "scir",
+  "datatable",
   ]
 resolver = "2"
 

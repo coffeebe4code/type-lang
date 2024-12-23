@@ -42,7 +42,8 @@ impl Scir {
         for item in &top_res {
             match item.as_ref().as_ref() {
                 TypeTree::ConstInit(ci) => {
-                    self.oir.const_init(&ci);
+                    let id = self.oir.const_init(&ci);
+
                 }
                 TypeTree::FuncInit(fi) => {
                     let _fn = self.make_fir(fi);
