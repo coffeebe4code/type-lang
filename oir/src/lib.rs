@@ -4,6 +4,7 @@ use cranelift_codegen::Context;
 use cranelift_module::DataId;
 use cranelift_module::{DataDescription, Linkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
+use datatable::DataTable;
 use types::Initialization;
 use types::TypeTree;
 
@@ -34,20 +35,16 @@ impl Oir {
         }
     }
 
-    pub fn const_init(&mut self, init: &Initialization) -> DataId {
+    pub fn const_init(&mut self, init: &Initialization, dt: &mut DataTable) -> () {
         println!("const init {:?}", init);
+        let slice = &init.left.into_symbol_init().ident;
         self.recurse(init.right.as_ref());
         let id = self
             .obj_mod
-            .declare_data(
-                &init.left.into_symbol_init().ident,
-                Linkage::Export,
-                false,
-                false,
-            )
+            .declare_data(slice, Linkage::Export, false, false)
             .unwrap();
         self.obj_mod.define_data(id, &self.data).unwrap();
-        return id;
+        dt.table.insert(slice.to_string(), id);
     }
     pub fn add_fn(&mut self, name: &str, func: Function) -> () {
         let func_id = self

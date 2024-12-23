@@ -1,10 +1,10 @@
-use std::rc::Rc;
-
 use cranelift_codegen::ir::Function;
 use cranelift_frontend::FunctionBuilderContext;
+use datatable::DataTable;
 use fir::Fir;
 use oir::Oir;
 use scopetable::ScopeTable;
+use std::rc::Rc;
 use symtable::SymTable;
 use types::{FunctionInitialize, TypeTree};
 use typetable::TypeTable;
@@ -12,6 +12,7 @@ use typetable::TypeTable;
 pub struct Scir {
     pub oir: Oir,
     pub fir: Fir,
+    pub dtable: DataTable,
     pub scopes: Vec<ScopeTable>,
     pub type_tables: Vec<TypeTable>,
     pub namespace: u32,
@@ -30,6 +31,7 @@ impl Scir {
         Scir {
             oir: Oir::new(name),
             fir: Fir::new(0, SymTable::new()),
+            dtable: DataTable::new(),
             scopes,
             type_tables,
             namespace: 0,
@@ -42,8 +44,7 @@ impl Scir {
         for item in &top_res {
             match item.as_ref().as_ref() {
                 TypeTree::ConstInit(ci) => {
-                    let id = self.oir.const_init(&ci);
-
+                    self.oir.const_init(&ci, &mut self.dtable);
                 }
                 TypeTree::FuncInit(fi) => {
                     let _fn = self.make_fir(fi);
@@ -55,7 +56,15 @@ impl Scir {
     }
     fn make_fir(&mut self, fi: &FunctionInitialize) -> Function {
         self.fir.refresh();
-        let _fn = self.fir.run(fi, &mut self.fbc, self.namespace, self.index);
+        let _fn = self.fir.run(
+            fi,
+            &mut self.fbc,
+            self.namespace,
+            self.index,
+            &self.dtable,
+            &self.scopes,
+            &self.type_tables,
+        );
         self.index += 1;
         return _fn;
     }

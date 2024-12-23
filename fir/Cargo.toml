@@ -6,7 +6,9 @@ edition = "2021"
 [dependencies]
 ast = { path="../ast" }
 symtable = { path="../symtable" }
+datatable = { path="../datatable" }
 typetable = { path="../typetable" }
+scopetable = { path="../scopetable" }
 token = { path="../token" }
 perror = { path="../perror" }
 lexer = { path="../lexer" }

@@ -10,5 +10,6 @@ fir = { path="../fir" }
 scopetable = { path="../scopetable" }
 typetable = { path="../typetable" }
 symtable = { path="../symtable" }
+datatable = { path="../datatable" }
 cranelift-frontend = "0"
 cranelift-codegen = "0"

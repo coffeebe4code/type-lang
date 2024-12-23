@@ -9,9 +9,12 @@ use cranelift_codegen::settings;
 use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::*;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use datatable::DataTable;
 use perror::*;
+use scopetable::ScopeTable;
 use symtable::SymTable;
 use types::*;
+use typetable::TypeTable;
 
 // Function Intermediate Representation
 pub struct Fir {
@@ -33,6 +36,9 @@ impl Fir {
         ctx: &mut FunctionBuilderContext,
         namespace: u32,
         index: u32,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
     ) -> Function {
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(namespace, index);
@@ -47,6 +53,7 @@ impl Fir {
         let root_block = builder.create_block();
         builder.append_block_params_for_function_params(root_block);
         builder.switch_to_block(root_block);
+        // todo:: add tables
         let _result = self.recurse(&func_def.block, &mut builder);
         builder.seal_block(root_block);
         builder.finalize();
