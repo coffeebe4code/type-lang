@@ -4,7 +4,6 @@ use linter::LintSource;
 use parser::Parser;
 use std::fs::File;
 use std::io::Read;
-use typetable::TypeTable;
 
 use std::path::Path;
 use std::process::Command;
@@ -12,8 +11,8 @@ use std::process::Command;
 fn main() {
     println!("[run] simple exe");
     objmaker::from_buffer(
-        "pub const main = fn() usize { 
-            const m = 7
+        "const m = 7
+        pub const main = fn() usize { 
             const x = 5 
             return x + m
         }",

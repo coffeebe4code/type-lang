@@ -43,7 +43,7 @@ impl Scir {
     pub fn loopf(&mut self, top_res: Vec<Rc<Box<TypeTree>>>) -> () {
         for item in &top_res {
             match item.as_ref().as_ref() {
-                TypeTree::ConstInit(ci) => {
+                TypeTree::TopConstInit(ci) => {
                     self.oir.const_init(&ci, &mut self.dtable);
                 }
                 TypeTree::FuncInit(fi) => {

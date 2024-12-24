@@ -1,11 +1,10 @@
 use cranelift_codegen::ir::Function;
 use cranelift_codegen::settings::*;
 use cranelift_codegen::Context;
-use cranelift_module::DataId;
 use cranelift_module::{DataDescription, Linkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use datatable::DataTable;
-use types::Initialization;
+use types::TopInitialization;
 use types::TypeTree;
 
 // Object intermediate representation
@@ -31,12 +30,12 @@ impl Oir {
     pub fn recurse(&mut self, expr: &TypeTree) -> () {
         match expr {
             TypeTree::I64(x) => self.data.define(Box::from(x.clone().to_ne_bytes())),
+            TypeTree::U64(x) => self.data.define(Box::from(x.clone().to_ne_bytes())),
             _ => panic!("unexpected type tree in oir"),
         }
     }
 
-    pub fn const_init(&mut self, init: &Initialization, dt: &mut DataTable) -> () {
-        println!("const init {:?}", init);
+    pub fn const_init(&mut self, init: &TopInitialization, dt: &mut DataTable) -> () {
         let slice = &init.left.into_symbol_init().ident;
         self.recurse(init.right.as_ref());
         let id = self
