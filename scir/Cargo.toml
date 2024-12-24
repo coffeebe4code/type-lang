@@ -1,0 +1,15 @@
+[package]
+name = "scir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+types = { path="../types" }
+oir = { path="../oir" }
+fir = { path="../fir" }
+scopetable = { path="../scopetable" }
+typetable = { path="../typetable" }
+symtable = { path="../symtable" }
+datatable = { path="../datatable" }
+cranelift-frontend = "0"
+cranelift-codegen = "0"

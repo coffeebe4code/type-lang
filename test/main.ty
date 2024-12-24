@@ -1,3 +1,7 @@
+const m = 5
+const x = 7
+
 pub const main = fn() usize {
-  return 0 - 0
+  const z = x - m
+  return 2 - z
 }

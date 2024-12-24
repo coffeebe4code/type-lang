@@ -324,19 +324,20 @@ impl<'s> Parser<'s> {
         }
         Ok(None)
     }
+
     pub fn sig_union(&mut self) -> ResultOptExpr {
-        let start = self.signature_no_colon();
+        let left = self.signature_no_colon();
         let err = self.lexer.collect_if(Token::Exclam);
         let undef = self.lexer.collect_if(Token::Question);
-        let fin = self.signature_no_colon();
-        if start.is_err() {
-            return start;
+        let right = self.signature_no_colon();
+        if left.is_err() {
+            return left;
         }
-        if fin.is_err() {
-            return fin;
+        if right.is_err() {
+            return right;
         }
-        match start? {
-            None => match fin? {
+        match left? {
+            None => match right? {
                 None => {
                     if err.is_none() {
                         return Err(self.make_error(
@@ -351,7 +352,7 @@ impl<'s> Parser<'s> {
                 }
             },
             Some(x) => {
-                return result_expr!(Sig, Some(x), err, undef, fin.unwrap())
+                return result_expr!(Sig, Some(x), err, undef, right.unwrap())
                     .xconvert_to_result_opt();
             }
         };
@@ -379,6 +380,9 @@ impl<'s> Parser<'s> {
                 );
             }
             return Ok(Some(fn_typ));
+        }
+        if muta.is_some() {
+            return Err(self.make_error("mutability token found but no type".to_string()));
         }
         Ok(None)
     }
@@ -589,19 +593,21 @@ impl<'s> Parser<'s> {
             let mut arms: Vec<Box<Expr>> = vec![];
             let first_arm = self.arm()?.xexpect_expr(
                 &self,
-                "expected match arm '<expr> => (<fn> | <block>)'".to_string(),
+                "expected match arm '<expr> => (<fn> | <block> | <or>)'".to_string(),
             )?;
             arms.push(first_arm);
             let second_arm = self.arm()?.xexpect_expr(
                 &self,
-                "expected at least 2 match arms '<expr> => (<fn> | <block>)'".to_string(),
+                "expected at least 2 match arms '<expr> => (<fn> | <block> | <or>)'".to_string(),
             )?;
             arms.push(second_arm);
             loop {
                 match self.arm() {
                     Ok(Some(x)) => arms.push(x),
                     Ok(None) => break,
-                    Err(e) => return Err(e),
+                    Err(e) => {
+                        return Err(e);
+                    }
                 }
             }
             let _ = self
@@ -625,14 +631,19 @@ impl<'s> Parser<'s> {
             .lexer
             .collect_if(Token::Arrow)
             .xexpect_token(self, "expected '=>'".to_string())?;
-        if let Some(blk) = self.ident() {
+        if let Some(anon) = self.anon_fn()? {
+            return result_expr!(Arm, or, anon).xconvert_to_result_opt();
+        }
+        if self.lexer.peek().is_some_and(|l| l.token == Token::OBrace) {
+            let blk = self.block()?;
             return result_expr!(Arm, or, blk).xconvert_to_result_opt();
         }
-        let anon = self.anon_fn()?.xconvert_to_result(
-            self,
-            "expected identifier or anonymous function'".to_string(),
-        )?;
-        result_expr!(Arm, or, anon).xconvert_to_result_opt()
+        let right = self.or().map_err(|err| {
+            return self.make_error( 
+            "expected a block expression, anonymous function capture, or a single line expression"
+                .to_string());
+        })?;
+        return result_expr!(Arm, or, right).xconvert_to_result_opt();
     }
 
     pub fn or(&mut self) -> ResultExpr {
@@ -773,7 +784,8 @@ impl<'s> Parser<'s> {
                     if let None = self.lexer.collect_if(Token::CBrace) {
                         let ident = self
                             .ident()
-                            .xexpect_expr(&self, "expected identifier".to_string())?;
+                            .xexpect_expr(&self, "expected identifier".to_string())
+                            .xconvert_to_decl()?;
                         let mut props: Vec<Box<Expr>> = vec![];
                         let _ = self
                             .lexer
@@ -784,7 +796,8 @@ impl<'s> Parser<'s> {
                         while let Some(_comma) = self.lexer.collect_if(Token::Comma) {
                             let id = self
                                 .ident()
-                                .xexpect_expr(&self, "expected identifier".to_string())?;
+                                .xexpect_expr(&self, "expected identifier".to_string())
+                                .xconvert_to_decl()?;
                             let _ = self
                                 .lexer
                                 .collect_if(Token::Colon)

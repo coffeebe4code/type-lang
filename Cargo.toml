@@ -11,15 +11,17 @@ members = [
   "ast",
   "project",
   "ty",
-  "ir",
   "e2e",
   "tyvm",
-  "linter", 
+  "linter",
   "codelocation",
-  "types", 
-  "cachectx", 
-  "typetable", 
-  "scopetable"
-]
+  "types",
+  "typetable",
+  "scopetable",
+  "fir",
+  "oir",
+  "scir",
+  "datatable",
+  ]
 resolver = "2"
 

@@ -1,7 +1,6 @@
 - data layout
-- scopes
-- Bar '|' ebnf doesn't match parser, update parser for every '|' syntax
-- "all function declarations must have types in arguments." this can be changed to support deducing types at some point
-- impl
-- trait
-- modify match syntax to take place of else branches
+- compiler
+- scopes are just 1 single global
+- work on linter, several issues there, write more tests
+  get more lint rules in place
+- destructure could be `const x,y,z = thing()` but you lose the "structure" portion { x,y,z }

@@ -1,0 +1,13 @@
+[package]
+name = "oir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cranelift-codegen = "0"
+cranelift-native = "0"
+cranelift-object = "0"
+cranelift-module = "0"
+types = { path="../types" }
+datatable = { path="../datatable" }
+
