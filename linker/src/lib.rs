@@ -10,6 +10,7 @@ pub fn link(obj_file: Vec<&PathBuf>, output: &PathBuf) -> () {
             .arg(format!("{}{}{}", "/out:", output.to_str().unwrap(), ".exe"))
             .args(obj_file)
             .arg("/entry:main")
+            .arg("/NOLOGO")
             .status()
             .unwrap();
     } else {
