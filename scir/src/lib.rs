@@ -64,6 +64,7 @@ impl Scir {
             &self.dtable,
             &self.scopes,
             &self.type_tables,
+            &mut self.oir,
         );
         self.index += 1;
         return _fn;

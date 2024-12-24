@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 ast = { path="../ast" }
+oir = { path="../oir" }
 symtable = { path="../symtable" }
 datatable = { path="../datatable" }
 typetable = { path="../typetable" }
@@ -16,3 +17,4 @@ linter = { path="../linter" }
 types = { path="../types" }
 cranelift-frontend = "0"
 cranelift-codegen = "0"
+cranelift-module = "0"

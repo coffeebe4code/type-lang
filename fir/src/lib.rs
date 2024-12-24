@@ -1,15 +1,19 @@
 use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::entities::FuncRef;
 use cranelift_codegen::ir::function::DisplayFunction;
+use cranelift_codegen::ir::immediates::Offset32;
 use cranelift_codegen::ir::types::*;
 use cranelift_codegen::ir::AbiParam;
+use cranelift_codegen::ir::MemFlags;
 use cranelift_codegen::ir::{Function, InstBuilder, Signature, UserFuncName, Value};
 use cranelift_codegen::isa::CallConv;
 use cranelift_codegen::settings;
 use cranelift_codegen::verifier::verify_function;
 use cranelift_frontend::*;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use cranelift_module::Module;
 use datatable::DataTable;
+use oir::Oir;
 use perror::*;
 use scopetable::ScopeTable;
 use symtable::SymTable;
@@ -39,6 +43,7 @@ impl Fir {
         dtbl: &DataTable,
         scopes: &Vec<ScopeTable>,
         type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> Function {
         let mut sig = Signature::new(CallConv::SystemV);
         let name = UserFuncName::user(namespace, index);
@@ -53,8 +58,14 @@ impl Fir {
         let root_block = builder.create_block();
         builder.append_block_params_for_function_params(root_block);
         builder.switch_to_block(root_block);
-        // todo:: add tables
-        let _result = self.recurse(&func_def.block, &mut builder);
+        let _result = self.recurse(
+            &func_def.block,
+            &mut builder,
+            dtbl,
+            scopes,
+            type_tables,
+            oir,
+        );
         builder.seal_block(root_block);
         builder.finalize();
         func
@@ -63,10 +74,16 @@ impl Fir {
         &mut self,
         op: &Initialization,
         builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
         builder.declare_var(result, I64);
-        let temp = self.recurse(&op.right, builder).unwrap();
+        let temp = self
+            .recurse(&op.right, builder, dtbl, scopes, type_tables, oir)
+            .unwrap();
         // todo:: optimization: not all paths need declare var if value is only ever read. or something similar, this statement is in the same ballpark, but might not be totally correct
         let x = builder.use_var(temp);
 
@@ -80,12 +97,18 @@ impl Fir {
         &mut self,
         op: &Invoke,
         builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> ResultFir<Variable> {
         let args: Vec<Value> = op
             .args
             .iter()
             .map(|x| {
-                let result = self.recurse(&x, builder).unwrap();
+                let result = self
+                    .recurse(&x, builder, dtbl, scopes, type_tables, oir)
+                    .unwrap();
                 return builder.use_var(result).clone();
             })
             .collect::<Vec<Value>>();
@@ -100,12 +123,18 @@ impl Fir {
         &mut self,
         op: &Block,
         builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> ResultFir<Variable> {
         let temp: Vec<Variable> = op
             .exprs
             .iter()
             .map(|x| {
-                return self.recurse(&x, builder).unwrap();
+                return self
+                    .recurse(&x, builder, dtbl, scopes, type_tables, oir)
+                    .unwrap();
             })
             .collect();
         Ok(*temp.last().unwrap())
@@ -118,14 +147,39 @@ impl Fir {
         &mut self,
         op: &UnaryOp,
         builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> ResultFir<Variable> {
-        let temp = self.recurse(&op.val, builder).unwrap();
+        let temp = self
+            .recurse(&op.val, builder, dtbl, scopes, type_tables, oir)
+            .unwrap();
         let arg = builder.use_var(temp);
         builder.ins().return_(&[arg]);
         Ok(temp)
     }
-    pub fn handle_sym_access(&self, op: &SymbolAccess) -> ResultFir<Variable> {
-        Ok(Variable::from_u32(*self.sym.table.get(&op.ident).unwrap()))
+    pub fn handle_sym_access(
+        &self,
+        op: &SymbolAccess,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
+        builder: &mut FunctionBuilder,
+    ) -> ResultFir<Variable> {
+        let sym = self.sym.table.get(&op.ident);
+        if let Some(s) = sym {
+            return Ok(Variable::from_u32(*s));
+        }
+        let id = dtbl.table.get(&op.ident).unwrap();
+        let gv = oir.obj_mod.declare_data_in_func(*id, builder.func);
+        let val = builder.ins().global_value(I64, gv);
+        let loaded = builder
+            .ins()
+            .load(I64, MemFlags::new(), val, Offset32::new(0));
+
+        return Ok(loaded);
     }
     pub fn handle_u64(&mut self, num: u64, builder: &mut FunctionBuilder) -> ResultFir<Variable> {
         let result = self.add_var();
@@ -147,11 +201,19 @@ impl Fir {
         &mut self,
         num: &BinaryOp,
         builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
         builder.declare_var(result, I64);
-        let left = self.recurse(&num.left, builder).unwrap();
-        let right = self.recurse(&num.right, builder).unwrap();
+        let left = self
+            .recurse(&num.left, builder, dtbl, scopes, type_tables, oir)
+            .unwrap();
+        let right = self
+            .recurse(&num.right, builder, dtbl, scopes, type_tables, oir)
+            .unwrap();
         let arg1 = builder.use_var(left);
         let arg2 = builder.use_var(right);
         let temp = builder.ins().isub(arg1, arg2);
@@ -162,11 +224,19 @@ impl Fir {
         &mut self,
         num: &BinaryOp,
         builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
         builder.declare_var(result, I64);
-        let left = self.recurse(&num.left, builder).unwrap();
-        let right = self.recurse(&num.right, builder).unwrap();
+        let left = self
+            .recurse(&num.left, builder, dtbl, scopes, type_tables, oir)
+            .unwrap();
+        let right = self
+            .recurse(&num.right, builder, dtbl, scopes, type_tables, oir)
+            .unwrap();
         let arg1 = builder.use_var(left);
         let arg2 = builder.use_var(right);
         let temp = builder.ins().iadd(arg1, arg2);
@@ -177,16 +247,26 @@ impl Fir {
         &mut self,
         expr: &TypeTree,
         builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
     ) -> ResultFir<Variable> {
         match expr {
-            TypeTree::Block(op) => self.handle_block(&op, builder),
-            TypeTree::Invoke(op) => self.handle_invoke(&op, builder),
-            TypeTree::Plus(op) => self.handle_plus(&op, builder),
-            TypeTree::Minus(op) => self.handle_minus(&op, builder),
-            TypeTree::Return(op) => self.handle_ret(&op, builder),
+            TypeTree::Block(op) => self.handle_block(&op, builder, dtbl, scopes, type_tables, oir),
+            TypeTree::Invoke(op) => {
+                self.handle_invoke(&op, builder, dtbl, scopes, type_tables, oir)
+            }
+            TypeTree::Plus(op) => self.handle_plus(&op, builder, dtbl, scopes, type_tables, oir),
+            TypeTree::Minus(op) => self.handle_minus(&op, builder, dtbl, scopes, type_tables, oir),
+            TypeTree::Return(op) => self.handle_ret(&op, builder, dtbl, scopes, type_tables, oir),
             TypeTree::ReturnVoid(_) => self.handle_ret_void(builder),
-            TypeTree::ConstInit(op) => self.handle_const_init(&op, builder),
-            TypeTree::SymbolAccess(op) => self.handle_sym_access(&op),
+            TypeTree::ConstInit(op) => {
+                self.handle_const_init(&op, builder, dtbl, scopes, type_tables, oir)
+            }
+            TypeTree::SymbolAccess(op) => {
+                self.handle_sym_access(&op, dtbl, scopes, type_tables, oir, builder)
+            }
             TypeTree::U64(op) => self.handle_u64(*op, builder),
             TypeTree::I64(op) => self.handle_i64(*op, builder),
             _ => panic!("developer error unexpected expression {:?}", expr),
