@@ -14,6 +14,5 @@ lexer = { path = "../lexer" }
 linter = { path = "../linter" }
 token = { path = "../token" }
 parser = { path = "../parser" }
-ir = { path = "../ir" }
 object = { path = "../object" }
 scir = { path = "../scir" }
