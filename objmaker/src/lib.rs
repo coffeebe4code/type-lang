@@ -5,6 +5,7 @@ use object::build_std_fn;
 use object::flush_obj;
 use object::new_obj_handler;
 use parser::Parser;
+use scir::Scir;
 use std::fs::create_dir;
 use std::fs::write;
 use std::fs::File;
@@ -22,15 +23,12 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     let mut scopes = vec![];
     let mut linter = LintSource::new(path.to_str().unwrap(), &mut scopes, &mut type_tables);
     let lint_res = linter.lint_check(&ast_parsed);
-    let mut ir = IRSource::new(0, SymTable::new(), linter.ttbls.get(0).unwrap());
     if linter.issues.len() > 0 {
         for x in linter.issues {
             println!("{}", x);
         }
         panic!("linter issues exist");
     }
-    let rc_thing = lint_res.first().unwrap().to_owned();
-    let result = ir.begin(rc_thing);
     if !Path::new(".ty").is_dir() {
         create_dir(".ty").unwrap();
     }
@@ -40,9 +38,9 @@ pub fn from_buffer(contents: &str, path: &Path) -> () {
     output.push(".ty");
     output.push(filename);
     output.set_extension("o");
-    let mut om = new_obj_handler(filename);
-    build_std_fn(&mut om, result, filename);
-    write(output, flush_obj(om)).unwrap();
+    let mut scir = Scir::new(filename, scopes, type_tables);
+    scir.loopf(lint_res);
+    write(output, scir.flush_self()).unwrap();
 }
 
 pub fn from_file(input_path: &PathBuf) -> () {

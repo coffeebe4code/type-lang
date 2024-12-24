@@ -160,7 +160,7 @@ impl Fir {
         Ok(temp)
     }
     pub fn handle_sym_access(
-        &self,
+        &mut self,
         op: &SymbolAccess,
         dtbl: &DataTable,
         scopes: &Vec<ScopeTable>,
@@ -175,11 +175,13 @@ impl Fir {
         let id = dtbl.table.get(&op.ident).unwrap();
         let gv = oir.obj_mod.declare_data_in_func(*id, builder.func);
         let val = builder.ins().global_value(I64, gv);
+        let result = self.add_var();
+        builder.declare_var(result, I64);
         let loaded = builder
             .ins()
             .load(I64, MemFlags::new(), val, Offset32::new(0));
-
-        return Ok(loaded);
+        builder.def_var(result, loaded);
+        Ok(result)
     }
     pub fn handle_u64(&mut self, num: u64, builder: &mut FunctionBuilder) -> ResultFir<Variable> {
         let result = self.add_var();
