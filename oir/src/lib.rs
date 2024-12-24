@@ -15,7 +15,8 @@ pub struct Oir {
 
 impl Oir {
     pub fn new(obj_name: &str) -> Oir {
-        let settings = builder();
+        let mut settings = builder();
+        let _ = settings.set("is_pic", "true");
         let flags = Flags::new(settings);
         let isa_builder = cranelift_native::builder().unwrap();
         let isa = isa_builder.finish(flags).unwrap();

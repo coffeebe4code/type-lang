@@ -177,9 +177,8 @@ impl Fir {
         let val = builder.ins().global_value(I64, gv);
         let result = self.add_var();
         builder.declare_var(result, I64);
-        let loaded = builder
-            .ins()
-            .load(I64, MemFlags::new(), val, Offset32::new(0));
+        let mem = MemFlags::new();
+        let loaded = builder.ins().load(I64, mem, val, Offset32::new(0));
         builder.def_var(result, loaded);
         Ok(result)
     }
