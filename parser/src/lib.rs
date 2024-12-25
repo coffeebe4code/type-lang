@@ -523,7 +523,7 @@ impl<'s> Parser<'s> {
             .collect_if(Token::OBrace)
             .xexpect_token(&self, "expected '{'".to_string())?;
         let mut exprs: Vec<Box<Expr>> = vec![];
-        loop {
+        'l: loop {
             match self.inner_decl()? {
                 Some(x) => exprs.push(x),
                 None => match self.reassign()? {
@@ -534,7 +534,10 @@ impl<'s> Parser<'s> {
                             Some(x) => exprs.push(x),
                             None => match self._while()? {
                                 Some(x) => exprs.push(x),
-                                None => break,
+                                None => match self._match()? {
+                                    Some(x) => exprs.push(x),
+                                    None => break 'l,
+                                },
                             },
                         },
                     },
@@ -601,14 +604,8 @@ impl<'s> Parser<'s> {
                 "expected at least 2 match arms '<expr> => (<fn> | <block> | <or>)'".to_string(),
             )?;
             arms.push(second_arm);
-            loop {
-                match self.arm() {
-                    Ok(Some(x)) => arms.push(x),
-                    Ok(None) => break,
-                    Err(e) => {
-                        return Err(e);
-                    }
-                }
+            while let Some(a) = self.arm()? {
+                arms.push(a);
             }
             let _ = self
                 .lexer
@@ -648,7 +645,7 @@ impl<'s> Parser<'s> {
 
     pub fn or(&mut self) -> ResultExpr {
         self.and().xresult_or(|mut left| {
-            while let Some(bin) = self.lexer.collect_if(Token::Bar) {
+            while let Some(bin) = self.lexer.collect_if(Token::OrLog) {
                 left = self
                     .and()
                     .xresult_or(|right| result_expr!(BinOp, left, bin, right))?
@@ -658,7 +655,7 @@ impl<'s> Parser<'s> {
     }
     pub fn and(&mut self) -> ResultExpr {
         self.equality().xresult_or(|mut left| {
-            while let Some(bin) = self.lexer.collect_if(Token::Ampersand) {
+            while let Some(bin) = self.lexer.collect_if(Token::AndLog) {
                 left = self
                     .equality()
                     .xresult_or(|right| result_expr!(BinOp, left, bin, right))?

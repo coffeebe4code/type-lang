@@ -267,9 +267,9 @@ pub enum Token {
     #[token("&=")]
     AndAs,
 
-    #[regex(r#"'([^'\\]|\\t|\\u|\\n|\\')*'"#)]
-    #[regex(r#"`([^`\\]|\\t|\\u|\\n|\\`)*`"#)]
-    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
+    #[regex(r#"["]([^"\\\n]|\\.|\\\n)*["]"#)]
+    #[regex(r#"[']([^'\\\n]|\\.|\\\n)*[']"#)]
+    #[regex(r#"[`]([^`\\\n]|\\.|\\\n)*[`]"#)]
     Chars,
 
     #[regex("[1-9][0-9]*\\.[0-9]+|0\\.[0-9]+|0|[1-9][0-9]*")]
@@ -358,5 +358,9 @@ mod tests {
     fn it_tokenizes_chars() {
         let mut lexer1 = Token::lexer(r#""hello""#);
         assert_eq!(lexer1.next(), Some(Ok(Token::Chars)));
+        let mut lexer2 = Token::lexer(r#"'\\'"#);
+        assert_eq!(lexer2.next(), Some(Ok(Token::Chars)));
+        let mut lexer3 = Token::lexer(r#"'unterminated string"#);
+        assert_eq!(lexer3.next(), Some(Err(())));
     }
 }

@@ -300,12 +300,13 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let mut curried = Ty::Unknown;
         match _vt.val.token {
             Token::U64 => curried = Ty::U64,
+            Token::U32 => curried = Ty::U32,
             Token::USize => curried = Ty::USize,
             Token::ISize => curried = Ty::ISize,
             Token::F64 => curried = Ty::F64,
             Token::U8 => curried = Ty::U8,
             Token::Char => curried = Ty::Char,
-            _ => panic!("type lang issue, unmatched value type"),
+            _ => panic!("type lang issue, unmatched value type: {:?}", _vt.val),
         };
         let copied = curried.clone();
         let full = tree!(ValueType, copied);
