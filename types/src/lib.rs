@@ -2,12 +2,6 @@ use core::fmt;
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub struct FileContainer {
-    pub top_items: Vec<Rc<Box<TypeTree>>>,
-    pub curried: Vec<Ty>,
-}
-
-#[derive(Debug)]
 pub struct SigTypes {
     pub left: Ty,
     pub err: Option<Ty>,
@@ -81,6 +75,14 @@ pub struct ForOp {
     pub in_curried: Ty,
     pub body: Rc<Box<TypeTree>>,
     pub body_curried: Ty,
+}
+
+#[derive(Debug)]
+pub struct WhileOp {
+    pub expr: Rc<Box<TypeTree>>,
+    pub expr_curried: Ty,
+    pub var_loop: Rc<Box<TypeTree>>,
+    pub var_curried: Ty,
 }
 
 #[derive(Debug)]
@@ -209,6 +211,7 @@ pub enum TypeTree {
     Invoke(Invoke),
     Match(MatchOp),
     Arm(BinaryOp),
+    While(WhileOp),
     Block(Block),
     Return(UnaryOp),
     ReturnVoid(NoOp),
@@ -217,12 +220,16 @@ pub enum TypeTree {
     BreakVoid(NoOp),
     // binops
     Plus(BinaryOp),
+    NotEq(BinaryOp),
+    Eq(BinaryOp),
+    OrLog(BinaryOp),
     Minus(BinaryOp),
     Divide(BinaryOp),
     Multiply(BinaryOp),
     Modulo(BinaryOp),
     Range(BinaryOp),
     CastAs(BinaryOp),
+    Gt(BinaryOp),
     BubbleUndef(BinaryOp),
     BubbleError(BinaryOp),
     // unops
@@ -234,6 +241,7 @@ pub enum TypeTree {
     Not(UnaryOp),
     // values
     PropAccess(PropAccess),
+    ArrayAccess(ArrayAccess),
     SymbolAccess(SymbolAccess),
     RestAccess(NoOp),
     SelfAccess(NoOp),
@@ -290,6 +298,7 @@ impl TypeTree {
             TypeTree::SigTypes(x) => x.left.clone(),
             TypeTree::ErrorInfo(x) => x.curried.clone(),
             TypeTree::For(x) => x.body_curried.clone(),
+            TypeTree::While(x) => x.var_curried.clone(),
             TypeTree::If(x) => x.body_curried.clone(),
             TypeTree::Invoke(x) => x.curried.clone(),
             TypeTree::Match(x) => x.curried_arms.clone(),
@@ -316,6 +325,7 @@ impl TypeTree {
             TypeTree::Negate(x) => x.curried.clone(),
             TypeTree::Not(x) => x.curried.clone(),
             TypeTree::PropAccess(x) => x.curried.clone(),
+            TypeTree::ArrayAccess(x) => x.curried.clone(),
             TypeTree::SymbolAccess(x) => x.curried.clone(),
             TypeTree::RestAccess(x) => x.curried.clone(),
             TypeTree::SelfAccess(x) => x.curried.clone(),
@@ -355,6 +365,10 @@ impl TypeTree {
             TypeTree::ValueType(x) => x.clone(),
             TypeTree::SingleType(x) => x.clone(),
             TypeTree::ArrayType(x) => x.curried.clone(),
+            TypeTree::NotEq(x) => x.curried.clone(),
+            TypeTree::Eq(x) => x.curried.clone(),
+            TypeTree::OrLog(x) => x.curried.clone(),
+            TypeTree::Gt(x) => x.curried.clone(),
         }
     }
     pub fn into_declarator(&self) -> &DeclaratorInfo {
@@ -409,6 +423,7 @@ impl TypeTree {
             TypeTree::SigTypes(_) => "type signature",
             TypeTree::ErrorInfo(_) => "error declaration",
             TypeTree::For(_) => "for loop",
+            TypeTree::While(_) => "while loop",
             TypeTree::If(_) => "if statement",
             TypeTree::Invoke(_) => "function invocation",
             TypeTree::Match(_) => "match",
@@ -427,7 +442,7 @@ impl TypeTree {
             TypeTree::Range(_) => "range",
             TypeTree::CastAs(_) => "cast",
             TypeTree::BubbleUndef(_) => "undefinded bubble",
-            TypeTree::BubbleError(_) => "error bubble",
+            TypeTree::BubbleError(_) => "try error bubble",
             TypeTree::ReadBorrow(_) => "read borrow",
             TypeTree::MutBorrow(_) => "mutable borrow",
             TypeTree::Copy(_) => "unsized copy",
@@ -435,6 +450,7 @@ impl TypeTree {
             TypeTree::Negate(_) => "negation",
             TypeTree::Not(_) => "boolean negatation",
             TypeTree::PropAccess(_) => "property access",
+            TypeTree::ArrayAccess(_) => "array index access",
             TypeTree::SymbolAccess(_) => "symbol reference",
             TypeTree::RestAccess(_) => "rest access",
             TypeTree::SelfAccess(_) => "self reference",
@@ -474,6 +490,10 @@ impl TypeTree {
             TypeTree::ValueType(_) => "a value type",
             TypeTree::SingleType(_) => "a type",
             TypeTree::ArrayType(_) => "an array type",
+            TypeTree::NotEq(_) => "not equality check",
+            TypeTree::Eq(_) => "equality check",
+            TypeTree::OrLog(_) => "or logical check",
+            TypeTree::Gt(_) => "greater than logical check",
         }
     }
 }

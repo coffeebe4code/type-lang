@@ -11,7 +11,9 @@
 <fn> ::= "fn " "(" <args>? ") " <block>
 <struct> ::= "struct " "{ " <declarators>? "}"
 <error> ::= "error " ("| " <ident>)+
-<if> ::= "if " "(" <expr> ")" (<fn> | <block>)
+<if> ::= "if " "(" <or> ")" (<fn> | <block>) <else_if>* <else>?
+<else_if> ::= "else " "if " "(" <or> ")" (<fn> | <block>)
+<else> ::= "else " (<fn> | <block>)
 <for> ::= "for " "(" <expr> ")" (<fn> | <block>)
 <while> ::= "while " "(" <expr> ")" (<fn> | <block>)
 <match> ::= "match " "(" <expr> ")" "{ " <arm>+ "}" 
@@ -25,7 +27,7 @@
 <arg> ::= ("self " (": " <signature>)?) | <ident> (":" <signature>)?
 <inner_decl> ::= ( "const " | "let ") <destructure> (":" <signature>)? "= " <expr> 
 <reassign> ::= <access> ("= " <expr>)?
-<block> ::= "{ " (<inner_decl> | <for> | <while> | <if> | <reassign>)* (<return> | <break>)? "}"
+<block> ::= "{ " (<inner_decl> | <for> | <while> | <if> | <reassign> | <match>)* (<return> | <break>)? "}"
 <return> ::= "return " <expr>? 
 <break> ::= "break " <expr>? 
 <expr> ::= <block> | <match> | <or>

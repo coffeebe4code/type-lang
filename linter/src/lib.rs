@@ -73,6 +73,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::Arm(arm) => self.check_arm(&arm),
             Expr::Rest(_) => self.check_rest(),
             Expr::UndefinedValue(_) => self.check_undefined(),
+            Expr::While(wh) => self.check_while(wh),
             Expr::UnOp(un) => match un.op.token {
                 Token::Dash => self.check_negate(un),
                 Token::Exclam => self.check_not(un),
@@ -87,6 +88,11 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 Token::Dash => self.check_minus(&bin),
                 Token::Equality => self.check_equality(&bin),
                 Token::Asterisk => self.check_mul(&bin),
+                Token::NotEquality => self.check_not_eq(&bin),
+                Token::OrLog => self.check_or_log(&bin),
+                Token::Range => self.check_range(&bin),
+                Token::CastAs => self.check_cast(&bin),
+                Token::Gt => self.check_gt(&bin),
                 _ => panic!(
                     "type-lang linter issue, binary op not implemented {:?}",
                     bin
@@ -105,6 +111,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::RetOp(ret) => self.check_ret_op(&ret),
             Expr::ArgDef(arg) => self.check_arg_def(&arg),
             Expr::ArrayType(arr) => self.check_array_type(&arr),
+            Expr::ArrayAccess(arr) => self.check_array_access(&arr),
             _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
@@ -157,8 +164,13 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         });
 
         // todo:: get the last one if ret, curry, if not void
-        let curried = blk.exprs.last().unwrap().get_curried().clone();
-        ok_tree!(Block, blk, curried)
+        let last = blk.exprs.last();
+        if let Some(l) = last {
+            let curried = l.get_curried().clone();
+            return ok_tree!(Block, blk, curried);
+        }
+        let curried = Ty::Void;
+        return ok_tree!(Block, blk, curried);
     }
 
     pub fn check_undefined(&mut self) -> ResultTreeType {
@@ -300,12 +312,13 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let mut curried = Ty::Unknown;
         match _vt.val.token {
             Token::U64 => curried = Ty::U64,
+            Token::U32 => curried = Ty::U32,
             Token::USize => curried = Ty::USize,
             Token::ISize => curried = Ty::ISize,
             Token::F64 => curried = Ty::F64,
             Token::U8 => curried = Ty::U8,
             Token::Char => curried = Ty::Char,
-            _ => panic!("type lang issue, unmatched value type"),
+            _ => panic!("type lang issue, unmatched value type: {:?}", _vt.val),
         };
         let copied = curried.clone();
         let full = tree!(ValueType, copied);
@@ -762,6 +775,20 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         return ok_tree!(Return, unop, curried);
     }
 
+    pub fn check_array_access(&mut self, arr: &ast::ArrayAccess) -> ResultTreeType {
+        let prev = self.lint_recurse(&arr.prev)?;
+        let inner = self.lint_recurse(&arr.inner)?;
+        let curried = prev.1.clone();
+        let arrtype = types::ArrayAccess {
+            prev: prev.0,
+            inner: inner.0,
+            curried: prev.1,
+        };
+        let full: Rc<Box<TypeTree>> = tree!(ArrayAccess, arrtype);
+
+        return Ok((full, curried));
+    }
+
     pub fn check_array_type(&mut self, arr: &ArrayType) -> ResultTreeType {
         let result = self.lint_recurse(&arr.arr_of)?;
         let curried = result.1.clone();
@@ -807,6 +834,66 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             }
             _ => panic!("unexpected expression in arg_def"),
         }
+    }
+
+    pub fn check_gt(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: Ty::Bool,
+        };
+        let curried = binop.curried.clone();
+        return ok_tree!(Gt, binop, curried);
+    }
+
+    pub fn check_cast(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: Ty::Bool,
+        };
+        let curried = binop.curried.clone();
+        return ok_tree!(CastAs, binop, curried);
+    }
+
+    pub fn check_range(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: Ty::Bool,
+        };
+        let curried = binop.curried.clone();
+        return ok_tree!(Range, binop, curried);
+    }
+
+    pub fn check_or_log(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: Ty::Bool,
+        };
+        let curried = binop.curried.clone();
+        return ok_tree!(OrLog, binop, curried);
+    }
+
+    pub fn check_not_eq(&mut self, bin: &BinOp) -> ResultTreeType {
+        let left = self.lint_recurse(&bin.left)?;
+        let right = self.lint_recurse(&bin.right)?;
+        let binop = BinaryOp {
+            left: left.0,
+            right: right.0,
+            curried: Ty::Bool,
+        };
+        let curried = binop.curried.clone();
+        return ok_tree!(NotEq, binop, curried);
     }
 
     pub fn check_not(&mut self, un: &UnOp) -> ResultTreeType {
@@ -882,7 +969,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         };
         let curried = binop.curried.clone();
 
-        ok_tree!(Plus, binop, curried)
+        ok_tree!(Eq, binop, curried)
     }
 
     pub fn check_minus(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -929,6 +1016,20 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = binop.curried.clone();
 
         return ok_tree!(Arm, binop, curried);
+    }
+
+    pub fn check_while(&mut self, wh: &While) -> ResultTreeType {
+        let expr = self.lint_recurse(&wh.expr)?;
+        let var = self.lint_recurse(&wh.var_loop)?;
+        let while_op = WhileOp {
+            expr: expr.0,
+            expr_curried: expr.1,
+            var_loop: var.0,
+            var_curried: var.1,
+        };
+        let curried = while_op.var_curried.clone();
+
+        return ok_tree!(While, while_op, curried);
     }
 
     pub fn check_borrow_mut(&mut self, un: &UnOp) -> ResultTreeType {

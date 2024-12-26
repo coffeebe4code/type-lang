@@ -37,6 +37,9 @@ impl<'s> TLexer<'s> {
         if self.current.is_none() {
             match self.lexer.next() {
                 Some(val) => {
+                    if val.is_err() {
+                        return None;
+                    }
                     self.current = Some(Lexeme {
                         token: val.unwrap(),
                         span: self.lexer.span(),
