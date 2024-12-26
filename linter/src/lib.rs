@@ -105,6 +105,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::RetOp(ret) => self.check_ret_op(&ret),
             Expr::ArgDef(arg) => self.check_arg_def(&arg),
             Expr::ArrayType(arr) => self.check_array_type(&arr),
+            Expr::ArrayAccess(arr) => self.check_array_access(&arr),
             _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
@@ -245,6 +246,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let ss = self.scopes.get(self.curr_scope as usize).unwrap();
+        println!("symbol = {:?}", symbol);
         let tt = ss
             .get_tt_same_up(&symbol.val.slice, self.ttbls, self.scopes)
             .unwrap();
@@ -761,6 +763,20 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
         let curried = unop.curried.clone();
         return ok_tree!(Return, unop, curried);
+    }
+
+    pub fn check_array_access(&mut self, arr: &ast::ArrayAccess) -> ResultTreeType {
+        let prev = self.lint_recurse(&arr.prev)?;
+        let inner = self.lint_recurse(&arr.inner)?;
+        let curried = prev.1.clone();
+        let arrtype = types::ArrayAccess {
+            prev: prev.0,
+            inner: inner.0,
+            curried: prev.1,
+        };
+        let full: Rc<Box<TypeTree>> = tree!(ArrayAccess, arrtype);
+
+        return Ok((full, curried));
     }
 
     pub fn check_array_type(&mut self, arr: &ArrayType) -> ResultTreeType {

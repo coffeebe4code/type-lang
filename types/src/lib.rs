@@ -234,6 +234,7 @@ pub enum TypeTree {
     Not(UnaryOp),
     // values
     PropAccess(PropAccess),
+    ArrayAccess(ArrayAccess),
     SymbolAccess(SymbolAccess),
     RestAccess(NoOp),
     SelfAccess(NoOp),
@@ -316,6 +317,7 @@ impl TypeTree {
             TypeTree::Negate(x) => x.curried.clone(),
             TypeTree::Not(x) => x.curried.clone(),
             TypeTree::PropAccess(x) => x.curried.clone(),
+            TypeTree::ArrayAccess(x) => x.curried.clone(),
             TypeTree::SymbolAccess(x) => x.curried.clone(),
             TypeTree::RestAccess(x) => x.curried.clone(),
             TypeTree::SelfAccess(x) => x.curried.clone(),
@@ -435,6 +437,7 @@ impl TypeTree {
             TypeTree::Negate(_) => "negation",
             TypeTree::Not(_) => "boolean negatation",
             TypeTree::PropAccess(_) => "property access",
+            TypeTree::ArrayAccess(_) => "array index access",
             TypeTree::SymbolAccess(_) => "symbol reference",
             TypeTree::RestAccess(_) => "rest access",
             TypeTree::SelfAccess(_) => "self reference",

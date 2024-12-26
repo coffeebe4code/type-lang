@@ -223,6 +223,69 @@ const keywords: [[char]] = [
   "catch"
   ]
 
+const word_len_check = fn(buf: &[char]) u32 {
+  let len = 0
+  while (buf.len != len) {
+    const c = buf[len]
+    match (c) {
+      c.isAlphaNumeric() => { len += 1 }
+      (c == '_' || c == '-') => { len += 1 }
+      _ => { break }
+    }
+  }
+  return len
+}
+
+const tokenize_chars = fn(buf: &[char], len: *u32) Token {
+  let token = Token.Symbol
+  len = word_len_check(buf)
+  const check = buf[0..len]
+  for (keywords) fn(word: [char], idx: u32) void {
+    if (word.len == len) {
+      if (word == check) {
+        token = idx as Token
+        break
+      }
+    }
+  }
+  return token
+}
+
+const skip_whitespace = fn(buf: &[char]) u32 {
+  let len = 0
+  while (buf.len != len) {
+    const c = buf[len]
+    match (c) {
+      c == ' ' || c == '\t' || c == '\r' => { len += 1 }
+      _ => { break }
+    }
+  }
+  return len
+}
+
+const build_string = fn(buf: &[char], len: *u32, end: char) TokenError!Token {
+  len = 1
+  while (buf.len != len) {
+    const c = buf[len]
+    match (c) {
+      c == '\\' => {
+        len += 1
+        if (buf.len == len + 1) {
+          return TokenError.UnexpectedEnd 
+        } 
+      }
+      c == end => {
+        len += 1
+        break
+      } 
+      _ => { len += 1 }
+    }
+  }
+  if (len == 1) {
+    return TokenError.UnexpectedEnd 
+  }
+  return Token.String
+}
 pub const get_next = fn(buf: &[char], len: *u32) TokenError!Token {
   len = 0
   const c = buf[0]
@@ -398,68 +461,4 @@ pub const get_next = fn(buf: &[char], len: *u32) TokenError!Token {
       }
     }
   }
-}
-
-const tokenize_chars = fn(buf: &[char], len: *u32) Token {
-  let token = Token.Symbol
-  len = word_len_check(buf)
-  const check = buf[0..len]
-  for (keywords) fn(word: [char], idx: u32) void {
-    if (word.len == len) {
-      if (word == check) {
-        token = idx as Token
-        break
-      }
-    }
-  }
-  return token
-}
-
-const word_len_check = fn(buf: &[char]) u32 {
-  let len = 0
-  while (buf.len != len) {
-    const c = buf[len]
-    match (c) {
-      c.isAlphaNumeric() => { len += 1 }
-      (c == '_' || c == '-') => { len += 1 }
-      _ => { break }
-    }
-  }
-  return len
-}
-
-const skip_whitespace = fn(buf: &[char]) u32 {
-  let len = 0
-  while (buf.len != len) {
-    const c = buf[len]
-    match (c) {
-      c == ' ' || c == '\t' || c == '\r' => { len += 1 }
-      _ => { break }
-    }
-  }
-  return len
-}
-
-const build_string = fn(buf: &[char], len: *u32, end: char) TokenError!Token {
-  len = 1
-  while (buf.len != len) {
-    const c = buf[len]
-    match (c) {
-      c == '\\' => {
-        len += 1
-        if (buf.len == len + 1) {
-          return TokenError.UnexpectedEnd 
-        } 
-      }
-      c == end => {
-        len += 1
-        break
-      } 
-      _ => { len += 1 }
-    }
-  }
-  if (len == 1) {
-    return TokenError.UnexpectedEnd 
-  }
-  return Token.String
 }
