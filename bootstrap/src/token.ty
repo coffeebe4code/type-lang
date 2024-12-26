@@ -236,6 +236,22 @@ const word_len_check = fn(buf: &[char]) u32 {
   return len
 }
 
+// todo:: make this tokenize numbers
+const tokenize_num = fn(buf: &[char], len: *u32) Token {
+  let token = Token.Symbol
+  len = word_len_check(buf)
+  const check = buf[0..len]
+  for (keywords) fn(word: [char], idx: u32) void {
+    if (word.len == len) {
+      if (word == check) {
+        token = idx as Token
+        break
+      }
+    }
+  }
+  return token
+}
+
 const tokenize_chars = fn(buf: &[char], len: *u32) Token {
   let token = Token.Symbol
   len = word_len_check(buf)
