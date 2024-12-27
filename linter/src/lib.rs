@@ -77,6 +77,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::UnOp(un) => match un.op.token {
                 Token::Dash => self.check_negate(un),
                 Token::Exclam => self.check_not(un),
+                Token::Try => self.check_try(un),
                 Token::Ampersand => self.check_borrow_ro(un),
                 Token::Asterisk => self.check_borrow_mut(un),
                 Token::Copy => self.check_copy(un),
@@ -112,6 +113,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             Expr::ArgDef(arg) => self.check_arg_def(&arg),
             Expr::ArrayType(arr) => self.check_array_type(&arr),
             Expr::ArrayAccess(arr) => self.check_array_access(&arr),
+            Expr::UndefBubble(u) => self.check_undefined_bubble(&u),
             _ => panic!("type-lang linter issue, expr not implemented {:?}", to_cmp),
         }
     }
@@ -257,6 +259,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let ss = self.scopes.get(self.curr_scope as usize).unwrap();
+        println!("check symbol = {:?}", symbol);
         let tt = ss
             .get_tt_same_up(&symbol.val.slice, self.ttbls, self.scopes)
             .unwrap();
@@ -459,6 +462,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_prop_init(&mut self, prop: &PropAssignment) -> ResultTreeType {
+        println!("prop init = {:?}", prop);
         let result = self.lint_recurse(&prop.val)?;
         let decl = self.lint_recurse(&prop.ident)?;
         let slice = decl.0.into_symbol_init().ident.clone();
@@ -477,6 +481,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_props_init(&mut self, props: &PropAssignments) -> ResultTreeType {
         let prev = self.lint_recurse(&props.prev)?;
+        println!("prev = {:?}", prev);
         let current_scope = self.curr_scope;
         let scope = self.get_tt_by_symbol(&prev.0.into_symbol_access().ident);
         let temp_scope = scope.into_child_scope();
@@ -485,6 +490,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         if let Some(p) = &props.props {
             let result: Vec<ResultTreeType> =
                 p.into_iter().map(|e| self.lint_recurse(&e)).collect();
+            println!("RESULT = {:?}", result);
             let mut struct_init = StructInitialize {
                 idents: vec![],
                 vals: vec![],
@@ -750,16 +756,22 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         return ok_tree!(Copy, unop, curried);
     }
 
-    pub fn check_clone(&mut self, un: &UnOp) -> ResultTreeType {
-        let result = self.lint_recurse(&un.val)?;
-        let mut unop = UnaryOp {
+    pub fn check_undefined_bubble(&mut self, un: &UndefBubble) -> ResultTreeType {
+        let result = self.lint_recurse(&un.prev)?;
+        let unop = UnaryOp {
             val: result.0,
             curried: result.1,
         };
-        match unop.val.as_ref().as_ref() {
-            TypeTree::BoolValue(_) => unop.curried = Ty::Bool,
-            _ => panic!("clone check failed"),
-        }
+        let curried = unop.curried.clone();
+        return ok_tree!(BubbleUndef, unop, curried);
+    }
+
+    pub fn check_clone(&mut self, un: &UnOp) -> ResultTreeType {
+        let result = self.lint_recurse(&un.val)?;
+        let unop = UnaryOp {
+            val: result.0,
+            curried: result.1,
+        };
         let curried = unop.curried.clone();
         return ok_tree!(Clone, unop, curried);
     }
@@ -894,6 +906,16 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         };
         let curried = binop.curried.clone();
         return ok_tree!(NotEq, binop, curried);
+    }
+
+    pub fn check_try(&mut self, un: &UnOp) -> ResultTreeType {
+        let result = self.lint_recurse(&un.val)?;
+        let unop = UnaryOp {
+            val: result.0,
+            curried: result.1,
+        };
+        let curried = unop.curried.clone();
+        return ok_tree!(BubbleError, unop, curried);
     }
 
     pub fn check_not(&mut self, un: &UnOp) -> ResultTreeType {

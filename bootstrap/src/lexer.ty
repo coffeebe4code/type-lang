@@ -1,0 +1,47 @@
+const Token = import "token.Token"
+pub const TokenError = import "token.TokenError"
+const get_next = import "token.get_next"
+
+pub type Lexeme = struct {
+  token: Token,
+  slice: [char],
+  start: u32,
+  end: u32
+}
+
+pub type Lexer = struct {
+  current: ?Lexeme,
+  buffer: &[char],
+  idx: u32,
+}
+
+pub const new = fn(buffer: &[char]) Lexer {
+  return Lexer {
+    buffer: buffer,
+    current : undefined,
+    idx: 0
+  }
+}
+
+pub const peek = fn(self: *Lexer) TokenError!?Lexeme {
+  if (self.current) {
+    return clone self.current
+  }
+  let len = 0
+  let end = self.buf.len()
+  let result = try get_next(self.buf[self.idx..end], *len)?
+  self.current = Lexeme {
+    token: result,
+    slice: clone self.buf[self.idx..len],
+    start: self.idx,
+    end: len
+  }
+  self.idx += len
+  return clone self.current
+}
+
+pub const collect = fn(self: *Lexer) Lexeme {
+  let temp = clone self.current.unwrap()
+  self.current = undefined
+  return temp
+}

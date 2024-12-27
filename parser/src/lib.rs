@@ -745,7 +745,6 @@ impl<'s> Parser<'s> {
         ]) {
             match x.token {
                 Token::Question => self.resolve_access(expr!(UndefBubble, prev)),
-                Token::Try => self.resolve_access(expr!(ErrBubble, prev)),
                 Token::Period => {
                     let ident = self
                         .ident()
