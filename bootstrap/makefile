@@ -1,5 +1,5 @@
-#.ty/token.o:
-#	ty obj src/token.ty
+.ty/token.o:
+	ty obj src/token.ty
 
 ../target/release/librepr.rlib: ../repr/src/lib.rs
 	cd .. && cargo build -p repr --release
