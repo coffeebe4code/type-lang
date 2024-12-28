@@ -45,17 +45,27 @@ impl Fir {
         type_tables: &Vec<TypeTable>,
         oir: &mut Oir,
     ) -> Function {
-        let mut sig = Signature::new(CallConv::SystemV);
+        let sig = Signature::new(CallConv::Cold);
         let name = UserFuncName::user(namespace, index);
         // todo:: types need to be worked out, params and returns defined
-        func_def
-            .args
-            .iter()
-            .for_each(|_x| sig.params.push(AbiParam::new(I64)));
-        sig.returns.push(AbiParam::new(I64));
         let mut func = Function::with_name_signature(name, sig);
         let mut builder = FunctionBuilder::new(&mut func, ctx);
         let root_block = builder.create_block();
+        func_def.args.iter().for_each(|x| {
+            let z = self
+                .recurse(
+                    x.as_ref().as_ref(),
+                    &mut builder,
+                    dtbl,
+                    scopes,
+                    type_tables,
+                    oir,
+                )
+                .unwrap();
+            builder.func.signature.params.push(AbiParam::new(I64));
+            //let res = builder.block_params(root_block)[z.as_u32() as usize];
+        });
+        builder.func.signature.returns.push(AbiParam::new(I64));
         builder.append_block_params_for_function_params(root_block);
         builder.switch_to_block(root_block);
         let _result = self.recurse(
@@ -69,6 +79,19 @@ impl Fir {
         builder.seal_block(root_block);
         builder.finalize();
         func
+    }
+    pub fn handle_arg_init(
+        &mut self,
+        op: &SymbolInit,
+        builder: &mut FunctionBuilder,
+        dtbl: &DataTable,
+        scopes: &Vec<ScopeTable>,
+        type_tables: &Vec<TypeTable>,
+        oir: &mut Oir,
+    ) -> ResultFir<Variable> {
+        let result = self.add_var();
+        self.sym.table.insert(op.ident.clone(), result.as_u32());
+        Ok(result)
     }
     pub fn handle_const_init(
         &mut self,
@@ -264,6 +287,9 @@ impl Fir {
             TypeTree::ReturnVoid(_) => self.handle_ret_void(builder),
             TypeTree::ConstInit(op) => {
                 self.handle_const_init(&op, builder, dtbl, scopes, type_tables, oir)
+            }
+            TypeTree::ArgInit(op) => {
+                self.handle_arg_init(&op, builder, dtbl, scopes, type_tables, oir)
             }
             TypeTree::SymbolAccess(op) => {
                 self.handle_sym_access(&op, dtbl, scopes, type_tables, oir, builder)

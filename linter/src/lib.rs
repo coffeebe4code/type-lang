@@ -1227,7 +1227,21 @@ mod tests {
         );
     }
     #[test]
-    fn it_should_handle_basic_types() {
+    fn it_should_handle_func_args() {
+        const TEST_STR: &'static str = "const add = fn(x: u64, y: u64) u64 { return x + y }
+        ";
+        let lexer = TLexer::new(TEST_STR);
+        let mut parser = Parser::new(lexer);
+        let result = parser.all();
+        let mut tts = vec![];
+        let mut scps = vec![];
+        let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
+        let _ = linter.lint_check(&result.unwrap());
+
+        assert!(linter.issues.len() == 0);
+    }
+    #[test]
+    fn it_should_handle_global_data() {
         const TEST_STR: &'static str = "const val: usize = 2
             const main = fn() void { return 7 + val }
         ";
