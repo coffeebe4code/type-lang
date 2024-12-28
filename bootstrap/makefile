@@ -1,3 +1,6 @@
+SRCS := $(src/%.ty)
+OBJS := $(patsubst src/%.ty,.ty/%.o,$(SRCS))
+
 .ty/lexer.o:
 	ty obj src/lexer.ty
 
