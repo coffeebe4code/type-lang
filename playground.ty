@@ -4,8 +4,8 @@ pub type Motorcycle = struct {
 }
 
 // Data has a type. can be manually declared with : <type>
-const x = 7;
-const y: usize = 7;
+const x = 7
+const y: usize = 7
 
 // Types have types
 // this is usually redundant
@@ -29,7 +29,7 @@ impl Car = trait(Movable) {
 
 // default implementations can be achieved
 pub const set_wheels_default = fn(self: Movable, wheels: u8) void {
-  self.wheels = wheels;
+  self.wheels = wheels
 }
 
 // default implementation

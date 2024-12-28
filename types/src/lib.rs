@@ -390,6 +390,12 @@ impl TypeTree {
             _ => panic!("issue symbol not found"),
         }
     }
+    pub fn into_mut_symbol_init(&mut self) -> &mut SymbolInit {
+        match self {
+            TypeTree::SymbolInit(x) => x,
+            _ => panic!("issue symbol not found"),
+        }
+    }
     pub fn into_symbol_access(&self) -> &SymbolAccess {
         match self {
             TypeTree::SymbolAccess(x) => x,

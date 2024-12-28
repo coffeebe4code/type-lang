@@ -11,6 +11,7 @@ use typetable::*;
 
 type ResultTreeType = Result<(Rc<Box<TypeTree>>, Ty), usize>;
 
+#[derive(Debug)]
 pub struct LintSource<'buf, 'ttb, 'sco> {
     buffer: &'buf str,
     idx: u32,
@@ -122,7 +123,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         self.inc_scope_tracker();
         if let Some(args) = td.args.as_ref() {
             args.iter().for_each(|x| {
-                let res = self.lint_recurse(x);
+                let res = self.check_arg_def(&x.into_arg_def());
                 if let Ok(a) = res {
                     largs.push(a.0);
                     largs_curried.push(a.1);
@@ -337,24 +338,39 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let mut c_err: Option<Ty> = None;
         let mut c_undefined: Option<Ty> = None;
         let mut curried = Ty::Unknown;
+        let mut tag = vec![];
 
         if let Some(right) = &_sig.right_most_type {
             c_right = match self.lint_recurse(&right) {
-                Err(_) => Some(Ty::Unknown),
-                Ok(v) => Some(v.1),
+                Err(_) => {
+                    tag.push(Ty::Unknown);
+                    Some(Ty::Unknown)
+                }
+                Ok(v) => {
+                    tag.push(v.1.clone());
+                    Some(v.1)
+                }
             }
         }
         if let Some(left) = &_sig.left_most_type {
             c_left = match self.lint_recurse(&left) {
-                Err(_) => Ty::Unknown,
-                Ok(v) => v.1,
+                Err(_) => {
+                    tag.push(Ty::Unknown);
+                    Ty::Unknown
+                }
+                Ok(v) => {
+                    tag.push(v.1.clone());
+                    v.1
+                }
             }
         }
         if let Some(_) = &_sig.err {
             c_err = Some(Ty::Error);
+            tag.push(Ty::Error);
         }
         if let Some(_) = &_sig.undef {
             c_undefined = Some(Ty::Undefined);
+            tag.push(Ty::Undefined);
         }
         if c_right.is_some() || c_err.is_some() || c_undefined.is_some() {
             sig_info.left = c_left;
@@ -362,12 +378,14 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             sig_info.undefined = c_undefined;
             sig_info.right = c_right;
             let full = tree!(SigTypes, sig_info);
+            curried = Ty::Tag(tag);
 
             return Ok((full, curried));
         }
 
-        let full = tree!(SingleType, c_left);
-        return Ok((full, curried));
+        curried = c_left.clone();
+        let full = tree!(SingleType, curried);
+        return Ok((full, c_left));
     }
 
     pub fn check_self_value(&mut self) -> ResultTreeType {
@@ -827,7 +845,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
                 let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
-                let full: Rc<Box<TypeTree>> = tree!(SelfAccess, a);
+                let full: Rc<Box<TypeTree>> = tree!(SelfInit, a);
                 tbl.table.insert("self".to_string(), Rc::clone(&full));
 
                 return Ok((full, curried));
@@ -1215,8 +1233,28 @@ mod tests {
         let mut scps = vec![];
         let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
         let _ = linter.lint_check(&result.unwrap());
+        println!("linter = {:#?}", linter);
 
-        assert!(linter.issues.len() == 0);
+        assert!(linter.issues.len() == 1);
+    }
+    #[test]
+    fn it_should_handle_sigs() {
+        const TEST_STR: &'static str = "
+        const val: Serror!?usize = 2
+        const val2: !?usize = 3
+        const val3: ?usize = 4
+        const val4: usize = 5
+        ";
+        let lexer = TLexer::new(TEST_STR);
+        let mut parser = Parser::new(lexer);
+        let result = parser.all();
+        let mut tts = vec![];
+        let mut scps = vec![];
+        let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
+        let _ = linter.lint_check(&result.unwrap());
+        println!("linter = {:#?}", linter);
+
+        assert!(linter.issues.len() == 1);
     }
     #[test]
     fn it_should_handle_global_data() {
