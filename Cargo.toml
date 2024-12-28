@@ -21,7 +21,7 @@ members = [
   "fir",
   "oir",
   "scir",
-  "datatable",
+  "datatable", "repr",
   ]
 resolver = "2"
 
