@@ -230,9 +230,9 @@ pub enum TypeTree {
     Range(BinaryOp),
     CastAs(BinaryOp),
     Gt(BinaryOp),
-    BubbleUndef(BinaryOp),
-    BubbleError(BinaryOp),
     // unops
+    BubbleUndef(UnaryOp),
+    BubbleError(UnaryOp),
     ReadBorrow(UnaryOp),
     MutBorrow(UnaryOp),
     Copy(UnaryOp),
