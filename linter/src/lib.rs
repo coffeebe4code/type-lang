@@ -259,7 +259,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let ss = self.scopes.get(self.curr_scope as usize).unwrap();
-        println!("check symbol = {:?}", symbol);
         let tt = ss
             .get_tt_same_up(&symbol.val.slice, self.ttbls, self.scopes)
             .unwrap();
@@ -462,7 +461,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_prop_init(&mut self, prop: &PropAssignment) -> ResultTreeType {
-        println!("prop init = {:?}", prop);
         let result = self.lint_recurse(&prop.val)?;
         let decl = self.lint_recurse(&prop.ident)?;
         let slice = decl.0.into_symbol_init().ident.clone();
@@ -481,7 +479,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_props_init(&mut self, props: &PropAssignments) -> ResultTreeType {
         let prev = self.lint_recurse(&props.prev)?;
-        println!("prev = {:?}", prev);
         let current_scope = self.curr_scope;
         let scope = self.get_tt_by_symbol(&prev.0.into_symbol_access().ident);
         let temp_scope = scope.into_child_scope();
@@ -490,7 +487,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         if let Some(p) = &props.props {
             let result: Vec<ResultTreeType> =
                 p.into_iter().map(|e| self.lint_recurse(&e)).collect();
-            println!("RESULT = {:?}", result);
             let mut struct_init = StructInitialize {
                 idents: vec![],
                 vals: vec![],

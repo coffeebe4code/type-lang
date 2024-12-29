@@ -1,11 +1,13 @@
-SRCS := $(src/%.ty)
+SRCS := $(wildcard src/*.ty)
 OBJS := $(patsubst src/%.ty,.ty/%.o,$(SRCS))
 
-.ty/lexer.o:
-	ty obj src/lexer.ty
+all: $(OBJS)
+	echo $(OBJS)
+	echo $(SRCS)
+	touch .ty/all
 
-.ty/token.o:
-	ty obj src/token.ty
+$(OBJS): $(SRCS)
+	ty obj $<
 
 .PHONY: clean
 clean:
