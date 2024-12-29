@@ -302,10 +302,11 @@ const build_string = fn(buf: &[char], len: *u32, end: char) TokenError!Token {
   }
   return Token.String
 }
-pub const get_next = fn(buf: &[char], len: *u32) TokenError!Token {
+
+pub const get_next = fn(buf: &[char], len: *u32) TokenError!?Token {
   len = 0
   const c = buf[0]
-  return match (c) {
+  return match (c?) {
     c.isAlphabetic() => tokenize_chars(buf, len)
     c.isDigit() => tokenize_num(buf, len)
     _ => {
