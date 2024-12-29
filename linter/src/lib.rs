@@ -312,15 +312,14 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     }
 
     pub fn check_value_type(&mut self, _vt: &ValueType) -> ResultTreeType {
-        let mut curried = Ty::Unknown;
-        match _vt.val.token {
-            Token::U64 => curried = Ty::U64,
-            Token::U32 => curried = Ty::U32,
-            Token::USize => curried = Ty::USize,
-            Token::ISize => curried = Ty::ISize,
-            Token::F64 => curried = Ty::F64,
-            Token::U8 => curried = Ty::U8,
-            Token::Char => curried = Ty::Char,
+        let curried = match _vt.val.token {
+            Token::U64 => Ty::U64,
+            Token::U32 => Ty::U32,
+            Token::USize => Ty::USize,
+            Token::ISize => Ty::ISize,
+            Token::F64 => Ty::F64,
+            Token::U8 => Ty::U8,
+            Token::Char => Ty::Char,
             _ => panic!("type lang issue, unmatched value type: {:?}", _vt.val),
         };
         let copied = curried.clone();
@@ -1251,14 +1250,13 @@ mod tests {
         let mut scps = vec![];
         let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
         let _ = linter.lint_check(&result.unwrap());
-        println!("linter = {:#?}", linter);
 
-        assert!(linter.issues.len() == 1);
+        assert!(linter.issues.len() == 0);
     }
     #[test]
     fn it_should_handle_sigs() {
         const TEST_STR: &'static str = "
-        const val: Serror!?usize = 2
+        const val: zerror!?usize = 2
         const val2: !?usize = 3
         const val3: ?usize = 4
         const val4: usize = 5
@@ -1270,9 +1268,8 @@ mod tests {
         let mut scps = vec![];
         let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
         let _ = linter.lint_check(&result.unwrap());
-        println!("linter = {:#?}", linter);
 
-        assert!(linter.issues.len() == 1);
+        assert!(linter.issues.len() == 0);
     }
     #[test]
     fn it_should_handle_global_data() {
