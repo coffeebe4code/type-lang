@@ -4,12 +4,13 @@ use lexer::*;
 use perror::LinterError;
 use perror::LinterErrorPoint;
 use scopetable::ScopeTable;
-use std::rc::Rc;
 use token::Token;
 use types::*;
 use typetable::*;
 
-type ResultTreeType = Result<(Rc<Box<TypeTree>>, Ty), usize>;
+type TypeTreeIndex = u32;
+
+type ResultTreeType = Result<(Box<TypeTree>, Ty), usize>;
 
 #[derive(Debug)]
 pub struct LintSource<'buf, 'ttb, 'sco> {
@@ -17,7 +18,7 @@ pub struct LintSource<'buf, 'ttb, 'sco> {
     idx: u32,
     curr_scope: u32,
     pub scopes: &'sco mut Vec<ScopeTable>,
-    pub ttbls: &'ttb mut Vec<TypeTable>,
+    pub ttbls: &'ttb mut Vec<Box<TypeTree>>,
     pub issues: Vec<LinterError>,
 }
 
@@ -34,9 +35,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn new(
         buffer: &'buf str,
         scopes: &'sco mut Vec<ScopeTable>,
-        ttbls: &'ttb mut Vec<TypeTable>,
+        ttbls: &'ttb mut Vec<Box<TypeTree>>,
     ) -> Self {
-        ttbls.push(TypeTable::new());
         scopes.push(ScopeTable::new(0, 0));
         LintSource {
             buffer,
@@ -148,9 +148,10 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         self.dec_scope_tracker();
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
+        self.ttbls.push(full);
+        let tbl = self.scopes.get_mut(self.curr_scope as usize).unwrap();
 
-        tbl.table.insert(slice, Rc::clone(&full));
+        tbl.this_tree.insert(slice, self.get_tt_index());
         Ok((full, curried))
     }
 
@@ -261,7 +262,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn check_symbol_ref(&mut self, symbol: &Symbol) -> ResultTreeType {
         let ss = self.scopes.get(self.curr_scope as usize).unwrap();
         let tt = ss
-            .get_tt_same_up(&symbol.val.slice, self.ttbls, self.scopes)
+            .get_ttindex_same_up(&symbol.val.slice, self.scopes)
             .unwrap();
         let sym = SymbolAccess {
             ident: symbol.val.slice.clone(),
@@ -1148,6 +1149,10 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     fn get_tt_by_symbol(&mut self, sym: &str) -> &Rc<Box<TypeTree>> {
         let scope = self.scopes.get(self.curr_scope as usize).unwrap();
         return scope.get_tt_same_up(sym, self.ttbls, self.scopes).unwrap();
+    }
+
+    fn get_tt_index(&self) -> u32 {
+        (self.ttbls.len() - 1) as u32
     }
 
     fn set_error(&mut self, title: String, suggestion: String, lexeme: Lexeme) -> usize {
