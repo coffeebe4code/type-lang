@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
-
-type TypeTreeIndex = u32;
+use types::TypeTreeIndex;
 
 #[derive(Debug)]
 pub struct ScopeTable {
@@ -17,7 +16,7 @@ impl ScopeTable {
             this_scope,
         }
     }
-    pub fn get_ttindex_same_up(&self, symbol: &str, scopes: &Vec<ScopeTable>) -> Option<u32> {
+    pub fn get_tt_idx_same_up(&self, symbol: &str, scopes: &Vec<ScopeTable>) -> Option<u32> {
         let sibling = self.this_tree.get(symbol);
         if let Some(sib) = sibling {
             return Some(*sib);
