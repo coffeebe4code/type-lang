@@ -463,18 +463,18 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 curried: Ty::Custom(slice.clone()),
                 scope: prop_scope,
             };
-            result.into_iter().for_each(|res: Result<(u32, Ty), usize>| {
-                if let Ok(exp) = res {
-                    let decl = self.ttbls.get(exp.0 as usize).unwrap().into_declarator();
-                    obj_info.props.push(decl.name.clone());
-                    obj_info.types.push(exp.1);
-                    return;
-                }
-                obj_info
-                    .props
-                    .push("unknown".to_string());
-                obj_info.types.push(Ty::Unknown);
-            });
+            result
+                .into_iter()
+                .for_each(|res: Result<(u32, Ty), usize>| {
+                    if let Ok(exp) = res {
+                        let decl = self.ttbls.get(exp.0 as usize).unwrap().into_declarator();
+                        obj_info.props.push(decl.name.clone());
+                        obj_info.types.push(exp.1);
+                        return;
+                    }
+                    obj_info.props.push("unknown".to_string());
+                    obj_info.types.push(Ty::Unknown);
+                });
 
             let curried = obj_info.curried.clone();
             let full = tree!(StructInfo, obj_info);
@@ -492,7 +492,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn check_prop_init(&mut self, prop: &PropAssignment) -> ResultTreeType {
         let result = self.lint_recurse(&prop.val)?;
         let decl = self.lint_recurse(&prop.ident)?;
-        let slice = prop.ident.into_symbol().val.slice.clone();
 
         let init = Initialization {
             left: decl.0,
@@ -501,16 +500,16 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         };
         let curried = init.curried.clone();
         let full = tree!(PropInit, init);
-        let idx = self.push_tt_symbol_idx(full, obj.identifier.into_symbol().val.slice);
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-        tbl.table.insert(slice, Rc::clone(&full));
-        return Ok((full, curried));
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_props_init(&mut self, props: &PropAssignments) -> ResultTreeType {
         let prev = self.lint_recurse(&props.prev)?;
+        let prev_tt = self.ttbls.get(prev.0 as usize).unwrap();
         let current_scope = self.curr_scope;
-        let scope = self.get_tt_by_symbol(&prev.0.into_symbol_access().ident);
+        let slice = prev_tt.into_symbol_access().ident;
+        let scope = self.get_tt_by_symbol(slice);
         let temp_scope = scope.into_child_scope();
         self.curr_scope = temp_scope;
 
@@ -521,18 +520,16 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 idents: vec![],
                 vals: vec![],
                 vals_curried: vec![],
-                curried: prev.0.into_symbol_access().curried.clone(),
+                curried: prev_tt.into_symbol_access().curried.clone(),
             };
             result.into_iter().for_each(|res| {
                 if let Ok(x) = res {
-                    struct_init.idents.push(x.0.into_prop_init().left.clone());
-                    struct_init
-                        .vals_curried
-                        .push(x.0.into_prop_init().curried.clone());
+                    let temp = self.ttbls.get(x.0 as usize).unwrap();
+                    struct_init.idents.push(x.0);
+                    struct_init.vals_curried.push(x.1);
                 } else {
-                    struct_init
-                        .idents
-                        .push(Rc::new(Box::new(TypeTree::UnknownValue)));
+                    let idx = self.push_tt_idx(TypeTree::UnknownValue);
+                    struct_init.idents.push(idx);
                     struct_init.vals_curried.push(Ty::Unknown);
                 }
             });
@@ -541,11 +538,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             let curried = struct_init.curried.clone();
             let full = tree!(StructInit, struct_init);
 
-            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
+            let idx = self.push_tt_symbol_idx(full, slice);
 
-            tbl.table
-                .insert(prev.0.into_symbol_access().ident.clone(), Rc::clone(&full));
-            return Ok((full, curried));
+            return Ok((idx, curried));
         }
         Err(self.set_error(
             "expected at least one property".to_string(),
@@ -563,9 +558,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             .collect();
         self.dec_scope_tracker();
         let slice = _enum.identifier.into_symbol().val.slice;
-        let copy = slice.clone();
         let mut e_info = EnumInfo {
-            name: slice,
+            name: slice.clone(),
             props: vec![],
             curried: Ty::Enum(Box::new(Ty::U8)),
         };
@@ -574,16 +568,15 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 e_info.props.push(exp.0);
                 return;
             }
-            e_info.props.push(simple_tree!(UnknownValue));
+            let idx = self.push_tt_idx(TypeTree::UnknownValue);
+            e_info.props.push(idx);
         });
 
         let curried = e_info.curried.clone();
         let full = tree!(EnumInfo, e_info);
 
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-        tbl.table.insert(copy, Rc::clone(&full));
-        return Ok((full, curried));
+        let idx = self.push_tt_symbol_idx(full, slice);
+        return Ok((idx, curried));
     }
 
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
@@ -595,12 +588,11 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             .collect();
         self.dec_scope_tracker();
         let slice = tag.identifier.into_symbol().val.slice;
-        let copy = slice.clone();
         let mut tag_info = TagInfo {
-            name: slice,
+            name: slice.clone(),
             props: vec![],
             types: vec![],
-            curried: Ty::Custom(copy.clone()),
+            curried: Ty::Custom(slice.clone()),
         };
         result.into_iter().for_each(|res| {
             if let Ok(exp) = res {
@@ -608,17 +600,15 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 tag_info.types.push(exp.1);
                 return;
             }
-            tag_info.props.push(simple_tree!(UnknownValue));
+            let idx = self.push_tt_idx(TypeTree::UnknownValue);
+            tag_info.props.push(idx);
             tag_info.types.push(Ty::Unknown);
         });
 
         let curried = tag_info.curried.clone();
         let full = tree!(TagInfo, tag_info);
-
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-        tbl.table.insert(copy, Rc::clone(&full));
-        return Ok((full, curried));
+        let idx = self.push_tt_symbol_idx(full, slice);
+        return Ok((idx, curried));
     }
 
     pub fn check_anon_func(&mut self, anon: &AnonFuncDecl) -> ResultTreeType {
@@ -632,7 +622,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                     largs_curried.push(a.1);
                     return;
                 }
-                largs.push(simple_tree!(UnknownValue));
+                let idx = self.push_tt_idx(TypeTree::UnknownValue);
+                largs.push(idx);
                 largs_curried.push(Ty::Unknown);
             });
         }
@@ -652,8 +643,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
         let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
 
-        tbl.table.insert(slice, Rc::clone(&full));
-        Ok((full, curried))
+        let idx = self.push_tt_symbol_idx(full, slice);
+        return Ok((idx, curried));
     }
 
     pub fn check_import(&mut self, import: &Import) -> ResultTreeType {
