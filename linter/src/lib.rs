@@ -385,23 +385,14 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             sig_info.right = c_right;
             let full = tree!(SigTypes, sig_info);
             curried = Ty::Tag(tag);
-<<<<<<< HEAD
             let idx = self.push_tt_idx(full);
             return Ok((idx, curried));
-=======
-
-            return Ok((full, curried));
->>>>>>> main
         }
 
         curried = c_left.clone();
         let full = tree!(SingleType, curried);
-<<<<<<< HEAD
         let idx = self.push_tt_idx(full);
         return Ok((idx, c_left));
-=======
-        return Ok((full, c_left));
->>>>>>> main
     }
 
     pub fn check_self_value(&mut self) -> ResultTreeType {
@@ -852,19 +843,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 let a = NoOp { curried: typ.1 };
 
                 let curried = a.curried.clone();
-<<<<<<< HEAD
                 let full = tree!(SelfInit, a);
                 let idx = self.push_tt_symbol_idx(full, "self".to_string());
                 return Ok((idx, curried));
-=======
-
-                let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-                let full: Rc<Box<TypeTree>> = tree!(SelfInit, a);
-                tbl.table.insert("self".to_string(), Rc::clone(&full));
-
-                return Ok((full, curried));
->>>>>>> main
             }
             _ => panic!("unexpected expression in arg_def"),
         }
