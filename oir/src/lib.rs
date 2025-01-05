@@ -6,6 +6,7 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use datatable::DataTable;
 use types::TopInitialization;
 use types::TypeTree;
+use types::TypeTreeIndex;
 
 // Object intermediate representation
 pub struct Oir {
@@ -28,7 +29,8 @@ impl Oir {
             data: DataDescription::new(),
         }
     }
-    pub fn recurse(&mut self, expr: &TypeTree) -> () {
+    pub fn recurse(&mut self, idx: TypeTreeIndex, types: &Vec<TypeTree>) -> () {
+        let expr = types.get(idx as usize).unwrap();
         match expr {
             TypeTree::I64(x) => self.data.define(Box::from(x.clone().to_ne_bytes())),
             TypeTree::U64(x) => self.data.define(Box::from(x.clone().to_ne_bytes())),
@@ -36,9 +38,18 @@ impl Oir {
         }
     }
 
-    pub fn const_init(&mut self, init: &TopInitialization, dt: &mut DataTable) -> () {
-        let slice = &init.left.into_symbol_init().ident;
-        self.recurse(init.right.as_ref());
+    pub fn const_init(
+        &mut self,
+        init: &TopInitialization,
+        dt: &mut DataTable,
+        types: &Vec<TypeTree>,
+    ) -> () {
+        let slice = &types
+            .get(init.left as usize)
+            .unwrap()
+            .into_symbol_init()
+            .ident;
+        self.recurse(init.right, types);
         let id = self
             .obj_mod
             .declare_data(slice, Linkage::Export, false, false)

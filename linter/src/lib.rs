@@ -6,7 +6,6 @@ use perror::LinterErrorPoint;
 use scopetable::ScopeTable;
 use token::Token;
 use types::*;
-use typetable::*;
 
 type ResultTreeType = Result<(TypeTreeIndex, Ty), usize>;
 
@@ -506,16 +505,16 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_props_init(&mut self, props: &PropAssignments) -> ResultTreeType {
         let prev = self.lint_recurse(&props.prev)?;
-        let prev_tt = self.ttbls.get(prev.0 as usize).unwrap();
         let current_scope = self.curr_scope;
-        let slice = prev_tt.into_symbol_access().ident;
-        let scope = self.get_tt_by_symbol(slice);
+        let slice = props.prev.into_symbol().val.slice;
+        let scope = self.get_tt_by_symbol(&slice);
         let temp_scope = scope.into_child_scope();
         self.curr_scope = temp_scope;
 
         if let Some(p) = &props.props {
             let result: Vec<ResultTreeType> =
                 p.into_iter().map(|e| self.lint_recurse(&e)).collect();
+            let prev_tt = self.ttbls.get(prev.0 as usize).unwrap();
             let mut struct_init = StructInitialize {
                 idents: vec![],
                 vals: vec![],
@@ -524,7 +523,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             };
             result.into_iter().for_each(|res| {
                 if let Ok(x) = res {
-                    let temp = self.ttbls.get(x.0 as usize).unwrap();
                     struct_init.idents.push(x.0);
                     struct_init.vals_curried.push(x.1);
                 } else {
@@ -641,8 +639,6 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = init.block_curried.clone();
         let full = tree!(FuncInit, init);
 
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
         let idx = self.push_tt_symbol_idx(full, slice);
         return Ok((idx, curried));
     }
@@ -650,31 +646,29 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn check_import(&mut self, import: &Import) -> ResultTreeType {
         let result = self.lint_recurse(&import.expr)?;
         let decl = self.lint_recurse(&import.identifier)?;
-        let slice = decl.0.into_symbol_init().ident.clone();
-        let init = Initialization {
+        let slice = &import.identifier.into_symbol().val.slice;
+        let mut init = Initialization {
             left: decl.0,
             right: result.0,
             curried: result.1,
         };
         let curried = init.curried.clone();
         if import.mutability.token == Token::Const {
-            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-            tbl.table.insert(slice, Rc::clone(&full));
-            return Ok((full, Ty::Const(Box::new(curried))));
+            init.curried = Ty::Const(Box::new(init.curried));
+            let full = tree!(ConstInit, init);
+            let idx = self.push_tt_symbol_idx(full, slice.to_string());
+            return Ok((idx, Ty::Const(Box::new(curried))));
         }
-        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-        tbl.table.insert(slice, Rc::clone(&full));
-        return Ok((full, Ty::Mut(Box::new(curried))));
+        init.curried = Ty::Mut(Box::new(init.curried));
+        let full = tree!(MutInit, init);
+        let idx = self.push_tt_symbol_idx(full, slice.to_string());
+        return Ok((idx, Ty::Const(Box::new(curried))));
     }
 
     pub fn check_inner_decl(&mut self, inner: &InnerDecl) -> ResultTreeType {
         let result = self.lint_recurse(&inner.expr)?;
         let decl = self.lint_recurse(&inner.identifier)?;
-        let slice = decl.0.into_symbol_init().ident.clone();
+        let slice = inner.identifier.into_symbol().val.slice;
 
         let mut init = Initialization {
             left: decl.0,
@@ -684,26 +678,22 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let curried = init.curried.clone();
         if inner.mutability.token == Token::Const {
             init.curried = Ty::Const(Box::new(init.curried));
-            let full: Rc<Box<TypeTree>> = tree!(ConstInit, init);
-            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-            tbl.table.insert(slice, Rc::clone(&full));
-            return Ok((full, Ty::Const(Box::new(curried))));
+            let full = tree!(ConstInit, init);
+            let idx = self.push_tt_symbol_idx(full, slice.to_string());
+            return Ok((idx, Ty::Const(Box::new(curried))));
         }
         init.curried = Ty::Mut(Box::new(init.curried));
-        let full: Rc<Box<TypeTree>> = tree!(MutInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-        tbl.table.insert(slice, Rc::clone(&full));
-        return Ok((full, Ty::Mut(Box::new(curried))));
+        let full = tree!(MutInit, init);
+        let idx = self.push_tt_symbol_idx(full, slice.to_string());
+        return Ok((idx, Ty::Const(Box::new(curried))));
     }
 
     pub fn check_top_decl(&mut self, td: &TopDecl) -> ResultTreeType {
         let result = self.lint_recurse(&td.expr)?;
         let decl = self.lint_recurse(&td.identifier)?;
-        let slice = decl.0.into_symbol_init().ident.clone();
+        let slice = td.identifier.into_symbol().val.slice;
 
-        let init = TopInitialization {
+        let mut init = TopInitialization {
             left: decl.0,
             right: result.0,
             curried: result.1,
@@ -711,17 +701,15 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         };
         let curried = init.curried.clone();
         if td.mutability.token == Token::Const {
-            let full: Rc<Box<TypeTree>> = tree!(TopConstInit, init);
-            let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-            tbl.table.insert(slice, Rc::clone(&full));
-            return Ok((full, Ty::Const(Box::new(curried))));
+            init.curried = Ty::Const(Box::new(init.curried));
+            let full = tree!(TopConstInit, init);
+            let idx = self.push_tt_symbol_idx(full, slice.to_string());
+            return Ok((idx, Ty::Const(Box::new(curried))));
         }
-        let full: Rc<Box<TypeTree>> = tree!(TopMutInit, init);
-        let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-        tbl.table.insert(slice, Rc::clone(&full));
-        return Ok((full, Ty::Mut(Box::new(curried))));
+        init.curried = Ty::Mut(Box::new(init.curried));
+        let full = tree!(TopMutInit, init);
+        let idx = self.push_tt_symbol_idx(full, slice.to_string());
+        return Ok((idx, Ty::Const(Box::new(curried))));
     }
 
     pub fn check_negate(&mut self, un: &UnOp) -> ResultTreeType {
@@ -730,7 +718,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             val: result.0,
             curried: result.1,
         };
-        match unop.val.as_ref().as_ref() {
+        let tt = self.ttbls.get(unop.val as usize).unwrap();
+        match tt {
             TypeTree::F64(_) => unop.curried = Ty::F64,
             TypeTree::U64(_) => unop.curried = Ty::I64,
             TypeTree::U32(_) => unop.curried = Ty::I32,
@@ -747,30 +736,28 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             _ => {
                 return Err(self.set_error(
                     "invalid negation".to_string(),
-                    format!(
-                        "found type {}, expected negatable value",
-                        unop.val.whatami()
-                    ),
+                    format!("found type {}, expected negatable value", tt.whatami()),
                     un.op.clone(),
                 ));
             }
         }
         let curried = unop.curried.clone();
-        return ok_tree!(Negate, unop, curried);
+
+        let full = tree!(Negate, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_copy(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
-        let mut unop = UnaryOp {
+        let unop = UnaryOp {
             val: result.0,
             curried: result.1,
         };
-        match unop.val.as_ref().as_ref() {
-            TypeTree::BoolValue(_) => unop.curried = Ty::Bool,
-            _ => panic!("copy checked failed"),
-        }
         let curried = unop.curried.clone();
-        return ok_tree!(Copy, unop, curried);
+        let full = tree!(Copy, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_undefined_bubble(&mut self, un: &UndefBubble) -> ResultTreeType {
@@ -780,7 +767,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: result.1,
         };
         let curried = unop.curried.clone();
-        return ok_tree!(BubbleUndef, unop, curried);
+        let full = tree!(BubbleUndef, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_clone(&mut self, un: &UnOp) -> ResultTreeType {
@@ -790,7 +779,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: result.1,
         };
         let curried = unop.curried.clone();
-        return ok_tree!(Clone, unop, curried);
+        let full = tree!(Clone, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_ret_op(&mut self, ret: &RetOp) -> ResultTreeType {
@@ -799,9 +790,10 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             val: result.0,
             curried: result.1,
         };
-
         let curried = unop.curried.clone();
-        return ok_tree!(Return, unop, curried);
+        let full = tree!(Return, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_array_access(&mut self, arr: &ast::ArrayAccess) -> ResultTreeType {
@@ -813,9 +805,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             inner: inner.0,
             curried: prev.1,
         };
-        let full: Rc<Box<TypeTree>> = tree!(ArrayAccess, arrtype);
-
-        return Ok((full, curried));
+        let full = tree!(ArrayAccess, arrtype);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_array_type(&mut self, arr: &ArrayType) -> ResultTreeType {
@@ -825,9 +817,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             arr_of: result.0,
             curried: result.1,
         };
-        let full: Rc<Box<TypeTree>> = tree!(ArrayType, arrtype);
-
-        return Ok((full, curried));
+        let full = tree!(ArrayType, arrtype);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_arg_def(&mut self, arg: &ArgDef) -> ResultTreeType {
@@ -839,27 +831,19 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                     ident: slice.clone(),
                     curried: typ.1,
                 };
-
                 let curried = a.curried.clone();
-                let full: Rc<Box<TypeTree>> = tree!(ArgInit, a);
-                let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-                tbl.table.insert(slice, Rc::clone(&full));
-
-                return Ok((full, curried));
+                let full = tree!(ArgInit, a);
+                let idx = self.push_tt_symbol_idx(full, slice.to_string());
+                return Ok((idx, curried));
             }
             Expr::SelfDecl(_) => {
                 let typ = self.lint_recurse(&arg.typ)?;
                 let a = NoOp { curried: typ.1 };
 
                 let curried = a.curried.clone();
-
-                let tbl = self.ttbls.get_mut(self.curr_scope as usize).unwrap();
-
-                let full: Rc<Box<TypeTree>> = tree!(SelfInit, a);
-                tbl.table.insert("self".to_string(), Rc::clone(&full));
-
-                return Ok((full, curried));
+                let full = tree!(SelfInit, a);
+                let idx = self.push_tt_symbol_idx(full, "self".to_string());
+                return Ok((idx, curried));
             }
             _ => panic!("unexpected expression in arg_def"),
         }
@@ -874,7 +858,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: Ty::Bool,
         };
         let curried = binop.curried.clone();
-        return ok_tree!(Gt, binop, curried);
+        let full = tree!(Gt, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_cast(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -886,7 +872,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: Ty::Bool,
         };
         let curried = binop.curried.clone();
-        return ok_tree!(CastAs, binop, curried);
+        let full = tree!(CastAs, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_range(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -898,7 +886,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: Ty::Bool,
         };
         let curried = binop.curried.clone();
-        return ok_tree!(Range, binop, curried);
+        let full = tree!(Range, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_or_log(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -910,7 +900,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: Ty::Bool,
         };
         let curried = binop.curried.clone();
-        return ok_tree!(OrLog, binop, curried);
+        let full = tree!(OrLog, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_not_eq(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -922,7 +914,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: Ty::Bool,
         };
         let curried = binop.curried.clone();
-        return ok_tree!(NotEq, binop, curried);
+        let full = tree!(NotEq, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_try(&mut self, un: &UnOp) -> ResultTreeType {
@@ -932,21 +926,21 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: result.1,
         };
         let curried = unop.curried.clone();
-        return ok_tree!(BubbleError, unop, curried);
+        let full = tree!(BubbleError, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_not(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
-        let mut unop = UnaryOp {
+        let unop = UnaryOp {
             val: result.0,
             curried: result.1,
         };
-        match unop.val.as_ref().as_ref() {
-            TypeTree::BoolValue(_) => unop.curried = Ty::Bool,
-            _ => panic!("not check failed"),
-        }
         let curried = unop.curried.clone();
-        return ok_tree!(Not, unop, curried);
+        let full = tree!(Not, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_prop_access(&mut self, prop: &ast::PropAccess) -> ResultTreeType {
@@ -957,8 +951,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: prev.1,
         };
         let curried = access.curried.clone();
-
-        return ok_tree!(PropAccess, access, curried);
+        let full = tree!(PropAccess, access);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_invoke(&mut self, inv: &ast::Invoke) -> ResultTreeType {
@@ -976,13 +971,15 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                     invoke.args_curried.push(prev.1);
                     return;
                 }
-                invoke.args.push(simple_tree!(UnknownValue));
+                let idx = self.push_tt_idx(TypeTree::UnknownValue);
+                invoke.args.push(idx);
                 invoke.args_curried.push(Ty::Unknown);
             })
         };
         let curried = invoke.curried.clone();
-
-        return ok_tree!(Invoke, invoke, curried);
+        let full = tree!(Invoke, invoke);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_mul(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -994,8 +991,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: Ty::F64,
         };
         let curried = binop.curried.clone();
-
-        ok_tree!(Multiply, binop, curried)
+        let full = tree!(Multiply, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_equality(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -1007,8 +1005,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: Ty::Bool,
         };
         let curried = binop.curried.clone();
-
-        ok_tree!(Eq, binop, curried)
+        let full = tree!(Eq, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_minus(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -1020,8 +1019,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: left.1,
         };
         let curried = binop.curried.clone();
-
-        return ok_tree!(Minus, binop, curried);
+        let full = tree!(Minus, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_plus(&mut self, bin: &BinOp) -> ResultTreeType {
@@ -1033,15 +1033,17 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: left.1,
         };
         let curried = binop.curried.clone();
-
-        return ok_tree!(Plus, binop, curried);
+        let full = tree!(Plus, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_rest(&mut self) -> ResultTreeType {
         let restop = NoOp { curried: Ty::Rest };
         let curried = restop.curried.clone();
-
-        return ok_tree!(RestAccess, restop, curried);
+        let full = tree!(RestAccess, restop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_arm(&mut self, arm: &Arm) -> ResultTreeType {
@@ -1053,8 +1055,9 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             curried: left.1,
         };
         let curried = binop.curried.clone();
-
-        return ok_tree!(Arm, binop, curried);
+        let full = tree!(Arm, binop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_while(&mut self, wh: &While) -> ResultTreeType {
@@ -1067,56 +1070,67 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             var_curried: var.1,
         };
         let curried = while_op.var_curried.clone();
-
-        return ok_tree!(While, while_op, curried);
+        let full = tree!(While, while_op);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_borrow_mut(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
-        let mut unop = UnaryOp {
+        let unop = UnaryOp {
             val: result.0,
             curried: result.1,
         };
-        match unop.val.as_ref().as_ref() {
-            TypeTree::SymbolAccess(sym) => {
-                unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
-            }
-            TypeTree::SelfAccess(sym) => {
-                unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
-            }
-            _ => panic!("borrow_check failed"),
-        }
+        // todo:: at mut check back
+        // match unop.val.as_ref().as_ref() {
+        //     TypeTree::SymbolAccess(sym) => {
+        //         unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
+        //     }
+        //     TypeTree::SelfAccess(sym) => {
+        //         unop.curried = Ty::MutBorrow(Box::new(sym.curried.clone()))
+        //     }
+        //     _ => panic!("borrow_check failed"),
+        // }
         let curried = unop.curried.clone();
-        return ok_tree!(MutBorrow, unop, curried);
+        let full = tree!(MutBorrow, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_borrow_ro(&mut self, un: &UnOp) -> ResultTreeType {
         let result = self.lint_recurse(&un.val)?;
-        let mut unop = UnaryOp {
+        let unop = UnaryOp {
             val: result.0,
             curried: result.1,
         };
-        match unop.val.as_ref().as_ref() {
-            TypeTree::SymbolAccess(sym) => {
-                unop.curried = Ty::ReadBorrow(Box::new(sym.curried.clone()))
-            }
-            _ => panic!("borrow_check failed"),
-        }
+        // todo:: add read borrow back
+        // match unop.val.as_ref().as_ref() {
+        //     TypeTree::SymbolAccess(sym) => {
+        //         unop.curried = Ty::ReadBorrow(Box::new(sym.curried.clone()))
+        //     }
+        //     _ => panic!("borrow_check failed"),
+        // }
         let curried = unop.curried.clone();
-        return ok_tree!(ReadBorrow, unop, curried);
+        let full = tree!(ReadBorrow, unop);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, curried));
     }
 
     pub fn check_dec(&mut self, num: &Number) -> ResultTreeType {
         let val = num.val.slice.parse::<f64>().unwrap();
         let typ = Ty::F64;
-        return ok_tree!(F64, val, typ);
+        let full = tree!(F64, val);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, typ));
     }
 
     // todo:: convert this back to u64, need to check to see if it fits in i64 and return type
     pub fn check_num(&mut self, num: &Number) -> ResultTreeType {
         let val = num.val.slice.parse::<u64>().unwrap();
         let typ = Ty::U64;
-        return ok_tree!(U64, val, typ);
+        let full = tree!(U64, val);
+        let idx = self.push_tt_idx(full);
+        return Ok((idx, typ));
     }
 
     pub fn lint_check(&mut self, start: &Expr) -> Vec<u32> {
@@ -1164,7 +1178,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         return idx;
     }
 
-    fn get_tt_by_symbol(&mut self, sym: &str) -> &TypeTree {
+    fn get_tt_by_symbol(&self, sym: &str) -> &TypeTree {
         let scope = self.scopes.get(self.curr_scope as usize).unwrap();
         let idx = scope.get_tt_idx_same_up(sym, self.scopes).unwrap();
         return self.ttbls.get(idx as usize).unwrap();

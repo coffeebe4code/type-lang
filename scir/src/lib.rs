@@ -42,7 +42,7 @@ impl Scir {
         for item in &top_res {
             match item {
                 TypeTree::TopConstInit(ci) => {
-                    self.oir.const_init(&ci, &mut self.dtable);
+                    self.oir.const_init(&ci, &mut self.dtable, &self.types);
                 }
                 TypeTree::FuncInit(fi) => {
                     let _fn = self.make_fir(fi);
