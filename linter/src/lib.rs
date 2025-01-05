@@ -460,7 +460,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 props: vec![],
                 types: vec![],
                 curried: Ty::Custom(slice.clone()),
-                scope: prop_scope,
+                child_scope: prop_scope,
             };
             result
                 .into_iter()
@@ -549,6 +549,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_enum_decl(&mut self, _enum: &EnumDecl) -> ResultTreeType {
         self.inc_scope_tracker();
+        let temp = self.curr_scope;
         let result: Vec<ResultTreeType> = _enum
             .variants
             .iter()
@@ -560,6 +561,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             name: slice.clone(),
             props: vec![],
             curried: Ty::Enum(Box::new(Ty::U8)),
+            child_scope: temp,
         };
         result.into_iter().for_each(|res| {
             if let Ok(exp) = res {
@@ -1149,7 +1151,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         }
     }
     fn inc_scope_tracker(&mut self) -> () {
-        let new_curr = self.scopes.len() - 1;
+        // [sc0]
+        let new_curr = self.scopes.len();
         self.scopes
             .push(ScopeTable::new(self.curr_scope, new_curr as u32));
         self.curr_scope = new_curr as u32;

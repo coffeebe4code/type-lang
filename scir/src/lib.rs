@@ -1,11 +1,10 @@
-use cranelift_codegen::ir::Function;
 use cranelift_frontend::FunctionBuilderContext;
 use datatable::DataTable;
 use fir::Fir;
 use oir::Oir;
 use scopetable::ScopeTable;
 use symtable::SymTable;
-use types::{FunctionInitialize, TypeTree};
+use types::TypeTree;
 
 pub struct Scir {
     pub oir: Oir,
@@ -25,7 +24,7 @@ pub struct Scir {
 // scopes = the scopes output from linter.
 // types = the type trees
 impl Scir {
-    pub fn new(name: &str, scopes: Vec<ScopeTableNew>, types: Vec<TypeTree>) -> Scir {
+    pub fn new(name: &str, scopes: Vec<ScopeTable>, types: Vec<TypeTree>) -> Scir {
         Scir {
             oir: Oir::new(name),
             fir: Fir::new(0, SymTable::new()),
@@ -38,34 +37,31 @@ impl Scir {
         }
     }
     // top_res is the output top decls of the linter
-    pub fn loopf(&mut self, top_res: Vec<TypeTree>) -> () {
-        for item in &top_res {
-            match item {
+    pub fn loopf(&mut self, top_res: Vec<u32>) -> () {
+        for item in top_res {
+            let tt = self.types.get(item as usize).unwrap();
+            match tt {
                 TypeTree::TopConstInit(ci) => {
                     self.oir.const_init(&ci, &mut self.dtable, &self.types);
                 }
                 TypeTree::FuncInit(fi) => {
-                    let _fn = self.make_fir(fi);
+                    self.fir.refresh();
+                    let _fn = self.fir.run(
+                        fi,
+                        &mut self.fbc,
+                        self.namespace,
+                        self.index,
+                        &self.dtable,
+                        &self.scopes,
+                        &self.types,
+                        &mut self.oir,
+                    );
+                    self.index += 1;
                     self.oir.add_fn(&fi.name, _fn);
                 }
-                _ => panic!("developer error, unhandled loopfval, {:?}", item.clone()),
+                _ => panic!("developer error, unhandled loopfval, {:?}", item),
             }
         }
-    }
-    fn make_fir(&mut self, fi: &FunctionInitialize) -> Function {
-        self.fir.refresh();
-        let _fn = self.fir.run(
-            fi,
-            &mut self.fbc,
-            self.namespace,
-            self.index,
-            &self.dtable,
-            &self.scopes,
-            &self.types,
-            &mut self.oir,
-        );
-        self.index += 1;
-        return _fn;
     }
     pub fn flush_self(self) -> Vec<u8> {
         return self.oir.flush_self();

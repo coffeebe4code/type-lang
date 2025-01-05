@@ -41,6 +41,7 @@ pub struct EnumInfo {
     pub name: String,
     pub props: Vec<TypeTreeIndex>,
     pub curried: Ty,
+    pub child_scope: u32,
 }
 
 #[derive(Debug)]
@@ -48,7 +49,7 @@ pub struct StructInfo {
     pub props: Vec<String>,
     pub types: Vec<Ty>,
     pub curried: Ty,
-    pub scope: u32,
+    pub child_scope: u32,
 }
 
 #[derive(Debug)]
@@ -399,7 +400,7 @@ impl TypeTree {
     }
     pub fn into_child_scope(&self) -> u32 {
         match self {
-            TypeTree::StructInfo(x) => x.scope,
+            TypeTree::StructInfo(x) => x.child_scope,
             _ => panic!("issue property not found"),
         }
     }

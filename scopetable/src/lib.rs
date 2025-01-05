@@ -21,7 +21,7 @@ impl ScopeTable {
         if let Some(sib) = sibling {
             return Some(*sib);
         }
-        if self.parent_scope != 0 && self.this_scope != 0 {
+        if self.parent_scope < self.this_scope {
             let ptbl = scopes.get(self.parent_scope as usize).unwrap();
             let parent = ptbl.this_tree.get(symbol);
             if let Some(par) = parent {
