@@ -1,5 +1,6 @@
 use core::fmt;
-use std::rc::Rc;
+
+pub type TypeTreeIndex = u32;
 
 #[derive(Debug)]
 pub struct SigTypes {
@@ -11,7 +12,7 @@ pub struct SigTypes {
 
 #[derive(Debug)]
 pub struct ArrType {
-    pub arr_of: Rc<Box<TypeTree>>,
+    pub arr_of: TypeTreeIndex,
     pub curried: Ty,
 }
 
@@ -30,7 +31,7 @@ pub struct ErrorInfo {
 #[derive(Debug)]
 pub struct TagInfo {
     pub name: String,
-    pub props: Vec<Rc<Box<TypeTree>>>,
+    pub props: Vec<TypeTreeIndex>,
     pub types: Vec<Ty>,
     pub curried: Ty,
 }
@@ -38,8 +39,9 @@ pub struct TagInfo {
 #[derive(Debug)]
 pub struct EnumInfo {
     pub name: String,
-    pub props: Vec<Rc<Box<TypeTree>>>,
+    pub props: Vec<TypeTreeIndex>,
     pub curried: Ty,
+    pub child_scope: u32,
 }
 
 #[derive(Debug)]
@@ -47,7 +49,7 @@ pub struct StructInfo {
     pub props: Vec<String>,
     pub types: Vec<Ty>,
     pub curried: Ty,
-    pub scope: u32,
+    pub child_scope: u32,
 }
 
 #[derive(Debug)]
@@ -63,46 +65,46 @@ pub struct DeclaratorInfo {
 
 #[derive(Debug)]
 pub struct MatchOp {
-    pub expr: Rc<Box<TypeTree>>,
+    pub expr: TypeTreeIndex,
     pub curried: Ty,
-    pub arms: Vec<Rc<Box<TypeTree>>>,
+    pub arms: Vec<TypeTreeIndex>,
     pub curried_arms: Ty,
 }
 
 #[derive(Debug)]
 pub struct ForOp {
-    pub in_expr: Rc<Box<TypeTree>>,
+    pub in_expr: TypeTreeIndex,
     pub in_curried: Ty,
-    pub body: Rc<Box<TypeTree>>,
+    pub body: TypeTreeIndex,
     pub body_curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct WhileOp {
-    pub expr: Rc<Box<TypeTree>>,
+    pub expr: TypeTreeIndex,
     pub expr_curried: Ty,
-    pub var_loop: Rc<Box<TypeTree>>,
+    pub var_loop: TypeTreeIndex,
     pub var_curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct IfOp {
-    pub in_expr: Rc<Box<TypeTree>>,
+    pub in_expr: TypeTreeIndex,
     pub in_curried: Ty,
-    pub body: Rc<Box<TypeTree>>,
+    pub body: TypeTreeIndex,
     pub body_curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct BinaryOp {
-    pub left: Rc<Box<TypeTree>>,
-    pub right: Rc<Box<TypeTree>>,
+    pub left: TypeTreeIndex,
+    pub right: TypeTreeIndex,
     pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct UnaryOp {
-    pub val: Rc<Box<TypeTree>>,
+    pub val: TypeTreeIndex,
     pub curried: Ty,
 }
 
@@ -113,37 +115,37 @@ pub struct NoOp {
 
 #[derive(Debug)]
 pub struct Invoke {
-    pub args: Vec<Rc<Box<TypeTree>>>,
+    pub args: Vec<TypeTreeIndex>,
     pub args_curried: Vec<Ty>,
-    pub ident: Rc<Box<TypeTree>>,
+    pub ident: TypeTreeIndex,
     pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct Initialization {
-    pub left: Rc<Box<TypeTree>>,
-    pub right: Rc<Box<TypeTree>>,
+    pub left: TypeTreeIndex,
+    pub right: TypeTreeIndex,
     pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct TopInitialization {
-    pub left: Rc<Box<TypeTree>>,
-    pub right: Rc<Box<TypeTree>>,
+    pub left: TypeTreeIndex,
+    pub right: TypeTreeIndex,
     pub curried: Ty,
     pub vis: bool,
 }
 
 #[derive(Debug)]
 pub struct Reassignment {
-    pub left: Rc<Box<TypeTree>>,
-    pub right: Rc<Box<TypeTree>>,
+    pub left: TypeTreeIndex,
+    pub right: TypeTreeIndex,
     pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct PropAccess {
-    pub prev: Rc<Box<TypeTree>>,
+    pub prev: TypeTreeIndex,
     pub ident: String,
     pub curried: Ty,
 }
@@ -162,22 +164,22 @@ pub struct SymbolAccess {
 
 #[derive(Debug)]
 pub struct ArrayAccess {
-    pub prev: Rc<Box<TypeTree>>,
-    pub inner: Rc<Box<TypeTree>>,
+    pub prev: TypeTreeIndex,
+    pub inner: TypeTreeIndex,
     pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct StructInitialize {
-    pub idents: Vec<Rc<Box<TypeTree>>>,
-    pub vals: Vec<Rc<Box<TypeTree>>>,
+    pub idents: Vec<TypeTreeIndex>,
+    pub vals: Vec<TypeTreeIndex>,
     pub vals_curried: Vec<Ty>,
     pub curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct ArrayInitialize {
-    pub vals: Vec<Rc<Box<TypeTree>>>,
+    pub vals: Vec<TypeTreeIndex>,
     pub vals_curried: Vec<Ty>,
     pub curried: Ty,
 }
@@ -185,15 +187,15 @@ pub struct ArrayInitialize {
 #[derive(Debug)]
 pub struct FunctionInitialize {
     pub name: String,
-    pub args: Vec<Rc<Box<TypeTree>>>,
+    pub args: Vec<TypeTreeIndex>,
     pub args_curried: Vec<Ty>,
-    pub block: Rc<Box<TypeTree>>,
+    pub block: TypeTreeIndex,
     pub block_curried: Ty,
 }
 
 #[derive(Debug)]
 pub struct Block {
-    pub exprs: Vec<Rc<Box<TypeTree>>>,
+    pub exprs: Vec<TypeTreeIndex>,
     pub curried: Ty,
 }
 
@@ -398,7 +400,7 @@ impl TypeTree {
     }
     pub fn into_child_scope(&self) -> u32 {
         match self {
-            TypeTree::StructInfo(x) => x.scope,
+            TypeTree::StructInfo(x) => x.child_scope,
             _ => panic!("issue property not found"),
         }
     }
@@ -629,31 +631,9 @@ impl Ty {
         }
     }
 }
-
-#[macro_export]
-macro_rules! simple_tree {
-    ($val:ident) => {
-        Rc::new(Box::new(TypeTree::$val))
-    };
-}
-
-#[macro_export]
-macro_rules! ok_simple_tree {
-    ($val:ident, $curried:ident) => {
-        Ok((Rc::new(Box::new(TypeTree::$val)), $curried))
-    };
-}
-
-#[macro_export]
-macro_rules! ok_tree {
-    ($val:ident, $op:ident, $curried:ident) => {
-        Ok((Rc::new(Box::new(TypeTree::$val($op))), $curried))
-    };
-}
-
 #[macro_export]
 macro_rules! tree {
     ($val:ident, $op:ident) => {
-        Rc::new(Box::new(TypeTree::$val($op)))
+        TypeTree::$val($op)
     };
 }

@@ -1,68 +1,31 @@
-use std::rc::Rc;
-use types::*;
-use typetable::TypeTable;
+use std::collections::BTreeMap;
+use types::TypeTreeIndex;
 
 #[derive(Debug)]
 pub struct ScopeTable {
     pub parent_scope: u32,
-    pub self_scope: u32,
+    pub this_scope: u32,
+    pub this_tree: BTreeMap<String, TypeTreeIndex>,
 }
 
 impl ScopeTable {
-    pub fn new(parent_scope_id: u32, self_scope: u32) -> Self {
+    pub fn new(parent_scope: u32, this_scope: u32) -> Self {
         ScopeTable {
-            parent_scope: parent_scope_id,
-            self_scope,
+            parent_scope,
+            this_tree: BTreeMap::new(),
+            this_scope,
         }
     }
-    pub fn get_scope_same_up<'sco, 'ttb: 'sco>(
-        &'sco self,
-        symbol: &str,
-        ttbls: &'ttb Vec<TypeTable>,
-        scopes: &'sco Vec<ScopeTable>,
-    ) -> Option<u32> {
-        let tbl = ttbls.get(self.self_scope as usize).unwrap();
-        let sibling = tbl.table.get(symbol);
-        if sibling.is_some() {
-            return Some(self.self_scope);
+    pub fn get_tt_idx_same_up(&self, symbol: &str, scopes: &Vec<ScopeTable>) -> Option<u32> {
+        let sibling = self.this_tree.get(symbol);
+        if let Some(sib) = sibling {
+            return Some(*sib);
         }
-        if self.parent_scope != self.self_scope {
-            let ptbl = ttbls.get(self.parent_scope as usize).unwrap();
-            let parent = ptbl.table.get(symbol);
-            if parent.is_some() {
-                return Some(self.parent_scope);
-            }
-            if self.parent_scope != 0 && self.self_scope != 0 {
-                return scopes
-                    .get(self.parent_scope as usize)
-                    .unwrap()
-                    .get_scope_same_up(symbol, ttbls, scopes);
-            }
-        }
-        return None;
-    }
-    pub fn get_tt_same_up<'sco, 'ttb: 'sco>(
-        &'sco self,
-        symbol: &str,
-        ttbls: &'ttb Vec<TypeTable>,
-        scopes: &'sco Vec<ScopeTable>,
-    ) -> Option<&'sco Rc<Box<TypeTree>>> {
-        let tbl = ttbls.get(self.self_scope as usize).unwrap();
-        let sibling = tbl.table.get(symbol);
-        if sibling.is_some() {
-            return sibling;
-        }
-        if self.parent_scope != self.self_scope {
-            let ptbl = ttbls.get(self.parent_scope as usize).unwrap();
-            let parent = ptbl.table.get(symbol);
-            if parent.is_some() {
-                return parent;
-            }
-            if self.parent_scope != 0 && self.self_scope != 0 {
-                return scopes
-                    .get(self.parent_scope as usize)
-                    .unwrap()
-                    .get_tt_same_up(symbol, ttbls, scopes);
+        if self.parent_scope < self.this_scope {
+            let ptbl = scopes.get(self.parent_scope as usize).unwrap();
+            let parent = ptbl.this_tree.get(symbol);
+            if let Some(par) = parent {
+                return Some(*par);
             }
         }
         None
