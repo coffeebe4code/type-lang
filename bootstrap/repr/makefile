@@ -2,6 +2,7 @@ all: .ty/main.o .ty/integrationc.o .ty/integration.o .ty/repr-37b621cda8f778ea.r
 	cd .ty && objdump -D integrationc.o > integrationc.o.txt
 	cd .ty && objdump -D integration.o > integrationty.o.txt
 	cd .ty && objdump -D repr-37b621cda8f778ea.repr.c0ded12167d2f276-cgu.0.rcgu.o > integrationrs.o.txt
+	cc -o .ty/mainty .ty/integration.o .ty/main.o
 	touch .ty/all
 
 .ty/main.o: main.c
