@@ -44,23 +44,29 @@ impl Fir {
         types: &Vec<TypeTree>,
         oir: &mut Oir,
     ) -> Function {
-        let sig = Signature::new(CallConv::Cold);
+        let sig = Signature::new(CallConv::Fast);
         let name = UserFuncName::user(namespace, index);
         // todo:: types need to be worked out, params and returns defined
         let mut func = Function::with_name_signature(name, sig);
         let mut builder = FunctionBuilder::new(&mut func, ctx);
         let root_block = builder.create_block();
-        // todo:: this is the issue with function arguments not working simple repr add case
-        func_def.args.iter().for_each(|x| {
+        let mut result_sets = vec![];
+        for x in func_def.args.iter() {
             let z = self
                 .recurse(*x, &mut builder, dtbl, scopes, types, oir)
                 .unwrap();
             builder.func.signature.params.push(AbiParam::new(I64));
-            //let res = builder.block_params(root_block)[z.as_u32() as usize];
-        });
-        builder.func.signature.returns.push(AbiParam::new(I64));
+            result_sets.push(z);
+        }
         builder.append_block_params_for_function_params(root_block);
         builder.switch_to_block(root_block);
+
+        for (i, x) in result_sets.iter().enumerate() {
+            let res = builder.block_params(root_block)[i];
+            builder.def_var(*x, res);
+        }
+        builder.func.signature.returns.push(AbiParam::new(I64));
+
         let _result = self.recurse(func_def.block, &mut builder, dtbl, scopes, types, oir);
         builder.seal_block(root_block);
         builder.finalize();
@@ -76,6 +82,7 @@ impl Fir {
         oir: &mut Oir,
     ) -> ResultFir<Variable> {
         let result = self.add_var();
+        builder.declare_var(result, I64);
         self.sym.table.insert(op.ident.clone(), result.as_u32());
         Ok(result)
     }
