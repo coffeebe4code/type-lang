@@ -23,7 +23,7 @@ members = [
   "scir",
   "datatable",
   "repr",
-  "infotable",
+  "layout",
   ]
 resolver = "2"
 
