@@ -1,6 +1,7 @@
 use cranelift_frontend::FunctionBuilderContext;
 use datatable::DataTable;
 use fir::Fir;
+use layout::LayoutBuilder;
 use oir::Oir;
 use scopetable::ScopeTable;
 use symtable::SymTable;
@@ -15,6 +16,7 @@ pub struct Scir {
     pub namespace: u32,
     pub index: u32,
     pub fbc: FunctionBuilderContext,
+    pub layout: LayoutBuilder,
 }
 
 // Source Compiled Intermediate Representation
@@ -28,6 +30,7 @@ impl Scir {
         Scir {
             oir: Oir::new(name),
             fir: Fir::new(0, SymTable::new()),
+            layout: LayoutBuilder::new(),
             dtable: DataTable::new(),
             scopes,
             types,
@@ -42,7 +45,8 @@ impl Scir {
             let tt = self.types.get(item as usize).unwrap();
             match tt {
                 TypeTree::TopConstInit(ci) => {
-                    self.oir.const_init(&ci, &mut self.dtable, &self.types);
+                    self.oir
+                        .const_init(&ci, &mut self.dtable, &self.types, &mut self.layout);
                 }
                 TypeTree::FuncInit(fi) => {
                     self.fir.refresh();

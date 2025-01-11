@@ -34,6 +34,7 @@ pub struct TagInfo {
     pub props: Vec<TypeTreeIndex>,
     pub types: Vec<Ty>,
     pub curried: Ty,
+    pub child_scope: u32,
 }
 
 #[derive(Debug)]

@@ -581,6 +581,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_tag_decl(&mut self, tag: &TagDecl) -> ResultTreeType {
         self.inc_scope_tracker();
+        let temp = self.curr_scope;
         let result: Vec<ResultTreeType> = tag
             .declarators
             .iter()
@@ -593,6 +594,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             props: vec![],
             types: vec![],
             curried: Ty::Custom(slice.clone()),
+            child_scope: temp,
         };
         result.into_iter().for_each(|res| {
             if let Ok(exp) = res {
@@ -1314,8 +1316,15 @@ mod tests {
     }
     #[test]
     fn it_should_handle_global_data() {
-        const TEST_STR: &'static str = "const val: usize = 2
-            const main = fn() void { return 7 + val }
+        const TEST_STR: &'static str = "
+            const val: usize = 2
+            type Car = struct {
+                wheels: u64,
+            }
+            const main = fn() void { 
+                const vehicle = Car { wheels: 4 }
+                return 7 + val
+            }
         ";
         let lexer = TLexer::new(TEST_STR);
         let mut parser = Parser::new(lexer);
@@ -1323,8 +1332,11 @@ mod tests {
         let mut tts = vec![];
         let mut scps = vec![];
         let mut linter = LintSource::new(TEST_STR, &mut scps, &mut tts);
-        let _ = linter.lint_check(&result.unwrap());
+        let res = linter.lint_check(&result.unwrap());
+        println!("res = {:#?}", res);
+        println!("scps = {:#?}", linter.scopes);
+        println!("tts = {:#?}", linter.ttbls);
 
-        assert!(linter.issues.len() == 0);
+        assert!(linter.issues.len() == 24);
     }
 }

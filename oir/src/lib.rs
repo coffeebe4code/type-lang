@@ -4,6 +4,7 @@ use cranelift_codegen::Context;
 use cranelift_module::{DataDescription, Linkage, Module};
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use datatable::DataTable;
+use layout::LayoutBuilder;
 use types::TopInitialization;
 use types::TypeTree;
 use types::TypeTreeIndex;
@@ -43,6 +44,7 @@ impl Oir {
         init: &TopInitialization,
         dt: &mut DataTable,
         types: &Vec<TypeTree>,
+        layout: &mut LayoutBuilder,
     ) -> () {
         let slice = &types
             .get(init.left as usize)
