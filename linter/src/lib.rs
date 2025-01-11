@@ -236,9 +236,10 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_declarator(&mut self, decl: &Declarator) -> ResultTreeType {
         let slice = decl.ident.into_symbol().val.slice.clone();
+        let typ = self.lint_recurse(&decl.typ)?;
         let dec = DeclaratorInfo {
             name: slice.clone(),
-            curried: Ty::Undefined,
+            curried: typ.1,
         };
         let curried = dec.curried.clone();
         let idx = self.push_tt_symbol_idx(tree!(DeclaratorInfo, dec), slice);
@@ -491,6 +492,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
     pub fn check_prop_init(&mut self, prop: &PropAssignment) -> ResultTreeType {
         let result = self.lint_recurse(&prop.val)?;
         let decl = self.lint_recurse(&prop.ident)?;
+        let tt = self.get_mut_tt_by_idx(decl.0);
+        tt.into_mut_symbol_init().curried = result.1.clone();
 
         let init = Initialization {
             left: decl.0,
@@ -673,6 +676,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let result = self.lint_recurse(&inner.expr)?;
         let decl = self.lint_recurse(&inner.identifier)?;
         let slice = inner.identifier.into_symbol().val.slice;
+        let tt = self.get_mut_tt_by_idx(decl.0);
+        tt.into_mut_symbol_init().curried = result.1.clone();
 
         let mut init = Initialization {
             left: decl.0,
@@ -696,6 +701,8 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let result = self.lint_recurse(&td.expr)?;
         let decl = self.lint_recurse(&td.identifier)?;
         let slice = td.identifier.into_symbol().val.slice;
+        let tt = self.get_mut_tt_by_symbol(&slice);
+        tt.into_mut_symbol_init().curried = result.1.clone();
 
         let mut init = TopInitialization {
             left: decl.0,
@@ -949,10 +956,11 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
 
     pub fn check_prop_access(&mut self, prop: &ast::PropAccess) -> ResultTreeType {
         let prev = self.lint_recurse(&prop.prev)?;
+        let slice = prop.identifier.into_symbol().val.slice;
         let access = types::PropAccess {
             prev: prev.0,
-            ident: prop.identifier.into_symbol().val.slice,
-            curried: prev.1,
+            ident: slice.clone(),
+            curried: Ty::Access(slice),
         };
         let curried = access.curried.clone();
         let full = tree!(PropAccess, access);
@@ -1188,6 +1196,14 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
         let idx = scope.get_tt_idx_same_up(sym, self.scopes).unwrap();
         return self.ttbls.get(idx as usize).unwrap();
     }
+    fn get_mut_tt_by_symbol(&mut self, sym: &str) -> &mut TypeTree {
+        let scope = self.scopes.get(self.curr_scope as usize).unwrap();
+        let idx = scope.get_tt_idx_same_up(sym, self.scopes).unwrap();
+        return self.ttbls.get_mut(idx as usize).unwrap();
+    }
+    fn get_mut_tt_by_idx(&mut self, idx: u32) -> &mut TypeTree {
+        return self.ttbls.get_mut(idx as usize).unwrap();
+    }
 
     fn get_tt_index(&self) -> u32 {
         (self.ttbls.len() - 1) as u32
@@ -1317,14 +1333,15 @@ mod tests {
     #[test]
     fn it_should_handle_global_data() {
         const TEST_STR: &'static str = "
-            const val: usize = 2
-            type Car = struct {
-                wheels: u64,
-            }
-            const main = fn() void { 
-                const vehicle = Car { wheels: 4 }
-                return 7 + val
-            }
+        const m = 7
+        type Car = struct {
+            wheels: u64,
+        }
+        pub const main = fn() u64 { 
+            const x = 1 
+            const vehicle = Car { wheels: 4 }
+            return x + m + vehicle.wheels
+        }
         ";
         let lexer = TLexer::new(TEST_STR);
         let mut parser = Parser::new(lexer);

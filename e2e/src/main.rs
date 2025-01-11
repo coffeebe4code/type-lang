@@ -12,9 +12,13 @@ fn main() {
     println!("[run] simple exe");
     objmaker::from_buffer(
         "const m = 7
-        pub const main = fn() usize { 
-            const x = 5 
-            return x + m
+        type Car = struct {
+            wheels: u64,
+        }
+        pub const main = fn() u64 { 
+            const x = 1 
+            const vehicle = Car { wheels: 4 }
+            return x + m + vehicle.wheels
         }",
         Path::new("main.ty"),
     );

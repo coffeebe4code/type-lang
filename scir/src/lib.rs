@@ -44,6 +44,10 @@ impl Scir {
         for item in top_res {
             let tt = self.types.get(item as usize).unwrap();
             match tt {
+                TypeTree::TopMutInit(m) => {
+                    self.oir
+                        .mut_init(&m, &mut self.dtable, &self.types, &mut self.layout);
+                }
                 TypeTree::TopConstInit(ci) => {
                     self.oir
                         .const_init(&ci, &mut self.dtable, &self.types, &mut self.layout);
@@ -63,7 +67,10 @@ impl Scir {
                     self.index += 1;
                     self.oir.add_fn(&fi.name, _fn);
                 }
-                _ => panic!("developer error, unhandled loopfval, {:?}", item),
+                TypeTree::StructInfo(s) => {
+                    let scope = s.child_scope;
+                }
+                _ => panic!("developer error, unhandled loopfval, {:?}", tt),
             }
         }
     }

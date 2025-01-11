@@ -38,6 +38,26 @@ impl Oir {
             _ => panic!("unexpected type tree in oir"),
         }
     }
+    pub fn mut_init(
+        &mut self,
+        init: &TopInitialization,
+        dt: &mut DataTable,
+        types: &Vec<TypeTree>,
+        layout: &mut LayoutBuilder,
+    ) -> () {
+        let slice = &types
+            .get(init.left as usize)
+            .unwrap()
+            .into_symbol_init()
+            .ident;
+        self.recurse(init.right, types);
+        let id = self
+            .obj_mod
+            .declare_data(slice, Linkage::Export, true, false)
+            .unwrap();
+        self.obj_mod.define_data(id, &self.data).unwrap();
+        dt.table.insert(slice.to_string(), id);
+    }
 
     pub fn const_init(
         &mut self,

@@ -393,6 +393,12 @@ impl TypeTree {
             _ => panic!("issue symbol not found"),
         }
     }
+    pub fn into_mut_symbol_init(&mut self) -> &mut SymbolInit {
+        match self {
+            TypeTree::SymbolInit(x) => x,
+            _ => panic!("issue symbol not found"),
+        }
+    }
     pub fn into_symbol_access(&self) -> &SymbolAccess {
         match self {
             TypeTree::SymbolAccess(x) => x,
@@ -529,6 +535,7 @@ pub enum Ty {
     Frame(Vec<Ty>),
     Struct(Vec<Ty>),
     Error,
+    Access(String),
     Tag(Vec<Ty>),
     Enum(Box<Ty>),
     Function(Vec<Ty>, Box<Ty>),
@@ -604,6 +611,7 @@ impl fmt::Display for Ty {
             Ty::TSelf => write!(f, "self"),
             Ty::U8 => write!(f, "u8"),
             Ty::Enum(x) => write!(f, "enum({})", x),
+            Ty::Access(x) => write!(f, "property access .{}", x),
         }
     }
 }
