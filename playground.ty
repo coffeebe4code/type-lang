@@ -9,8 +9,7 @@ const y: usize = 7
 
 // Types have types
 // this is usually redundant
-type Car: struct {[char],u8} = struct {
-  name: [char],
+type Car: struct {[char],u8} = struct { name: [char],
   wheels: u8
 }
 
@@ -151,6 +150,8 @@ const counter = fn() f64 {
     }
   }
 }
+
+const type Thing = tag | 
 
 const x: error!?usize = 7
 const y: ?usize = try x 

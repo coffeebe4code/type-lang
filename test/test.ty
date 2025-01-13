@@ -17,7 +17,7 @@ const Day = enum
   | sunday
 
 const next_weekday = fn(d: Day) Day {
- // tags can be matched on
+ // enums can be matched on
  // return must be specified
  return match (d) {
   Day.monday => Day.tuesday
@@ -143,3 +143,7 @@ const mul2: fn(usize) usize = fn(a) usize {
 
 // destructuring is supported, but not yet
 // const { a, b, c } = import "std.thing"
+
+const type Layout = tag 
+  | simple: u8 
+  | container: u16

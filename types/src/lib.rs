@@ -512,14 +512,23 @@ pub enum Ty {
     Any,
     Sized,
     Scalar,
+    I128,
     I64,
     I32,
+    I16,
+    I8,
     ISize,
+    U128,
     U64,
     USize,
     U32,
+    U16,
     U8,
     F64,
+    F32,
+    F128,
+    D128,
+    D64,
     Unknown,
     Rest,
     Undefined,
@@ -533,13 +542,13 @@ pub enum Ty {
     MutBorrow(Box<Ty>),
     ReadBorrow(Box<Ty>),
     Frame(Vec<Ty>),
-    Struct(Vec<Ty>),
+    Struct((String, Vec<(String, Ty)>)),
     Error,
     Access(String),
-    Tag(Vec<Ty>),
+    Tag((String, Vec<(String, Ty)>)),
     Enum(Box<Ty>),
     Function(Vec<Ty>, Box<Ty>),
-    Custom(String),
+    Multi(Vec<Ty>),
     CustomError(String),
     Trait(String),
     TSelf,
@@ -552,13 +561,23 @@ impl fmt::Display for Ty {
             Ty::Any => write!(f, "any"),
             Ty::Scalar => write!(f, "scalar"),
             Ty::Sized => write!(f, "sized"),
+            Ty::I128 => write!(f, "i128"),
             Ty::I64 => write!(f, "i64"),
             Ty::ISize => write!(f, "isize"),
             Ty::I32 => write!(f, "i32"),
+            Ty::I16 => write!(f, "i16"),
+            Ty::I8 => write!(f, "i8"),
+            Ty::U128 => write!(f, "u128"),
             Ty::U64 => write!(f, "u64"),
             Ty::USize => write!(f, "usize"),
             Ty::U32 => write!(f, "u32"),
+            Ty::U16 => write!(f, "u16"),
+            Ty::U8 => write!(f, "u8"),
+            Ty::F128 => write!(f, "f128"),
             Ty::F64 => write!(f, "f64"),
+            Ty::F32 => write!(f, "f32"),
+            Ty::D128 => write!(f, "d128"),
+            Ty::D64 => write!(f, "d64"),
             Ty::Unknown => write!(f, "unknown"),
             Ty::Rest => write!(f, "_"),
             Ty::Undefined => write!(f, "undefined"),
@@ -582,8 +601,8 @@ impl fmt::Display for Ty {
             }
             Ty::Struct(x) => {
                 write!(f, "struct {{").unwrap();
-                for a in x {
-                    write!(f, "{},", a).unwrap();
+                for a in &x.1 {
+                    write!(f, "{}:{},", a.0, a.1).unwrap();
                 }
                 write!(f, "}}").unwrap();
                 Ok(())
@@ -605,11 +624,17 @@ impl fmt::Display for Ty {
                 write!(f, ") {}", y).unwrap();
                 Ok(())
             }
-            Ty::Custom(x) => write!(f, "type {}", x),
+            Ty::Multi(x) => {
+                write!(f, "type {{").unwrap();
+                for a in x {
+                    write!(f, "{} ", a).unwrap();
+                }
+                write!(f, "}}").unwrap();
+                Ok(())
+            }
             Ty::Array(x) => write!(f, "[{}]", x),
             Ty::Trait(x) => write!(f, "trait {}", x),
             Ty::TSelf => write!(f, "self"),
-            Ty::U8 => write!(f, "u8"),
             Ty::Enum(x) => write!(f, "enum({})", x),
             Ty::Access(x) => write!(f, "property access .{}", x),
         }
@@ -636,7 +661,13 @@ impl Ty {
     pub fn into_vec(&mut self) -> &mut Vec<Ty> {
         match self {
             Ty::Tag(x) => x,
-            _ => panic!("type lang issue. unhandled match arm"),
+            _ => panic!("type lang issue. not a vec"),
+        }
+    }
+    pub fn into_struct(&mut self) -> &mut (String, Vec<(String, Ty)>) {
+        match self {
+            Ty::Struct(x) => x,
+            _ => panic!("type lang issue. not a struct"),
         }
     }
 }

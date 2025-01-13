@@ -460,7 +460,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             let mut obj_info = StructInfo {
                 props: vec![],
                 types: vec![],
-                curried: Ty::Custom(slice.clone()),
+                curried: Ty::Struct((slice.clone(), vec![])),
                 child_scope: prop_scope,
             };
             result
@@ -468,8 +468,10 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                 .for_each(|res: Result<(u32, Ty), usize>| {
                     if let Ok(exp) = res {
                         let decl = self.ttbls.get(exp.0 as usize).unwrap().into_declarator();
-                        obj_info.props.push(decl.name.clone());
-                        obj_info.types.push(exp.1);
+                        let name = decl.name.clone();
+                        obj_info.props.push(name.clone());
+                        obj_info.types.push(exp.1.clone());
+                        obj_info.curried.into_struct().1.push((name, exp.1));
                         return;
                     }
                     obj_info.props.push("unknown".to_string());
@@ -596,13 +598,14 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             name: slice.clone(),
             props: vec![],
             types: vec![],
-            curried: Ty::Custom(slice.clone()),
+            curried: Ty::Tag(vec![]),
             child_scope: temp,
         };
         result.into_iter().for_each(|res| {
             if let Ok(exp) = res {
                 tag_info.props.push(exp.0);
-                tag_info.types.push(exp.1);
+                tag_info.types.push(exp.1.clone());
+                tag_info.curried.into_vec().push(exp.1);
                 return;
             }
             let idx = self.push_tt_idx(TypeTree::UnknownValue);
@@ -1354,6 +1357,6 @@ mod tests {
         println!("scps = {:#?}", linter.scopes);
         println!("tts = {:#?}", linter.ttbls);
 
-        assert!(linter.issues.len() == 24);
+        assert!(linter.issues.len() == 0);
     }
 }
