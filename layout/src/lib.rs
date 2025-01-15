@@ -1,40 +1,67 @@
+use std::cmp;
+
 use types::*;
 
 pub struct LayoutBuilder {}
 
-pub enum Layout {
-    Simple(SimpleLayout),
-    Container(ContainerLayout),
+pub struct Layout {
+    pub size: usize,
+    pub align: usize,
+    pub offsets: Option<Vec<(String, u32)>>,
 }
 
 impl LayoutBuilder {
     pub fn new() -> LayoutBuilder {
         LayoutBuilder {}
     }
-    pub fn scalar_layout(&self, ty: &Ty) -> SimpleLayout {
+    pub fn type_layout(&self, ty: &Ty) -> Layout {
         match ty {
-            Ty::Bool => direct!(1, 1),
-            Ty::Char => direct!(1, 1),
-            Ty::F128 => direct!(128, 16),
-            Ty::F64 => direct!(64, 8),
-            Ty::F32 => direct!(32, 4),
-            Ty::I128 => direct!(128, 16),
-            Ty::I64 => direct!(64, 8),
-            Ty::I32 => direct!(32, 4),
-            Ty::I16 => direct!(2, 2),
-            Ty::I8 => direct!(1, 1),
-            Ty::U128 => direct!(128, 16),
-            Ty::U64 => direct!(64, 8),
-            Ty::U32 => direct!(32, 4),
-            Ty::U16 => direct!(2, 2),
-            Ty::U8 => direct!(1, 1),
-            _ => panic!("unhandled scalar layout"),
+            Ty::I8 | Ty::U8 | Ty::Bool => simple!(1, 1),
+            Ty::I16 | Ty::U16 => simple!(2, 2),
+            Ty::I32 | Ty::U32 | Ty::F32 => simple!(4, 4),
+            Ty::I64 | Ty::U64 | Ty::F64 => simple!(8, 8),
+            Ty::I128 | Ty::U128 | Ty::F128 | Ty::D128 => simple!(16, 16),
+            Ty::Void | Ty::Never => simple!(1, 0),
+            Ty::String => simple!(8, 8),
+            Ty::Array(inner) => {
+                let layout = self.type_layout(inner);
+            }
+            _ => panic!("unhandled_type_layout"), // Default alignment and size for other types
+        }
+    }
+    pub fn struct_layout(&self, fields: &[(String, Ty)]) -> Layout {
+        let mut offset = 0;
+        let mut max_alignment = 1;
+        let mut new_order = vec![];
+
+        for (val, field_ty) in fields {
+            let layout = self.type_layout(field_ty);
+            let alignment = layout.align;
+            let size = layout.size;
+            max_alignment = cmp::max(max_alignment, alignment);
+
+            if offset % alignment != 0 {
+                offset += alignment - (offset % alignment);
+            }
+
+            offset += size;
+        }
+
+        // Align the total size to the max alignment of the struct
+        if offset % max_alignment != 0 {
+            offset += max_alignment - (offset % max_alignment);
+        }
+
+        Layout {
+            align: max_alignment,
+            size: 0,
+            offsets: new_order,
         }
     }
 }
 
 #[macro_export]
-macro_rules! PointerSimple {
+macro_rules! pointer_simple {
     ($size:expr, $align:expr) => {
         Layout::PointerSimple(SimpleLayout {
             size: $size,
@@ -44,22 +71,13 @@ macro_rules! PointerSimple {
 }
 
 #[macro_export]
-macro_rules! direct {
-    ($size:expr, $align:expr) => {
-        SimpleLayout {
-            size: $size,
-            align: $align,
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! simple {
     ($size:expr, $align:expr) => {
-        Layout::Simple(SimpleLayout {
+        Layout {
             size: $size,
             align: $align,
-        })
+            offsets: None,
+        }
     };
 }
 
@@ -72,14 +90,4 @@ macro_rules! container {
             offsets: $offsets,
         })
     };
-}
-
-pub struct SimpleLayout {
-    pub size: u16,
-    pub align: u8,
-}
-
-pub struct ContainerLayout {
-    pub layout: SimpleLayout,
-    pub offsets: Vec<(String, u32)>,
 }

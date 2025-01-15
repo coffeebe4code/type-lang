@@ -69,6 +69,8 @@ impl Scir {
                 }
                 TypeTree::StructInfo(s) => {
                     let scope = s.child_scope;
+                    self.layout.scalar_layout
+
                 }
                 _ => panic!("developer error, unhandled loopfval, {:?}", tt),
             }
