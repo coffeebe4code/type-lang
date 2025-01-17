@@ -23,8 +23,8 @@ pub enum Container {
 impl Container {
     pub fn get_layout(&self) -> Layout {
         match self {
-            Container::Simple(x) => x,
-            Container::Struct(x) => x.layout,
+            Container::Simple(x) => x.to_owned(),
+            Container::Struct(x) => x.layout.to_owned(),
         }
     }
 }

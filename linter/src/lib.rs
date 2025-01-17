@@ -216,18 +216,18 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             expr: res.0,
             curried: res.1,
             arms: vec![],
-            curried_arms: Ty::Tag(vec![]),
+            curried_arms: Ty::Arms(vec![]),
         };
         _match.arms.iter().for_each(|m| {
             let mres = self.lint_recurse(m);
             if let Ok(arm) = mres {
                 mat.arms.push(arm.0);
-                mat.curried_arms.into_vec().push(arm.1);
+                mat.curried_arms.into_arms().push(arm.1);
                 return;
             }
             let idx = self.push_tt_idx(TypeTree::UnknownValue);
             mat.arms.push(idx);
-            mat.curried_arms.into_vec().push(Ty::Unknown);
+            mat.curried_arms.into_arms().push(Ty::Unknown);
         });
         let cur = mat.curried.clone();
         let idx = self.push_tt_idx(tree!(Match, mat));
@@ -385,7 +385,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             sig_info.undefined = c_undefined;
             sig_info.right = c_right;
             let full = tree!(SigTypes, sig_info);
-            curried = Ty::Tag(tag);
+            curried = Ty::SigTag(tag);
             let idx = self.push_tt_idx(full);
             return Ok((idx, curried));
         }
@@ -471,7 +471,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
                         let name = decl.name.clone();
                         obj_info.props.push(name.clone());
                         obj_info.types.push(exp.1.clone());
-                        obj_info.curried.into_struct().1.push((name, exp.1));
+                        obj_info.curried.into_struct_mut().1.push((name, exp.1));
                         return;
                     }
                     obj_info.props.push("unknown".to_string());
@@ -598,14 +598,18 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             name: slice.clone(),
             props: vec![],
             types: vec![],
-            curried: Ty::Tag(vec![]),
+            curried: Ty::Tag((slice.clone(), vec![])),
             child_scope: temp,
         };
         result.into_iter().for_each(|res| {
             if let Ok(exp) = res {
-                tag_info.props.push(exp.0);
+                tag_info.props.push(exp.0.clone());
                 tag_info.types.push(exp.1.clone());
-                tag_info.curried.into_vec().push(exp.1);
+                tag_info
+                    .curried
+                    .into_tag()
+                    .1
+                    .push((exp.0.to_string(), exp.1));
                 return;
             }
             let idx = self.push_tt_idx(TypeTree::UnknownValue);

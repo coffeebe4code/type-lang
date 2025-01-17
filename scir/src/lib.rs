@@ -1,6 +1,7 @@
 use cranelift_frontend::FunctionBuilderContext;
 use datatable::DataTable;
 use fir::Fir;
+use infotable::InfoTable;
 use layout::LayoutBuilder;
 use oir::Oir;
 use scopetable::ScopeTable;
@@ -13,8 +14,10 @@ pub struct Scir {
     pub dtable: DataTable,
     pub scopes: Vec<ScopeTable>,
     pub types: Vec<TypeTree>,
+    pub info: InfoTable,
     pub namespace: u32,
     pub index: u32,
+    pub curr_scope: u32,
     pub fbc: FunctionBuilderContext,
     pub layout: LayoutBuilder,
 }
@@ -36,6 +39,8 @@ impl Scir {
             types,
             namespace: 0,
             index: 0,
+            info: InfoTable::new(),
+            curr_scope: 0,
             fbc: FunctionBuilderContext::new(),
         }
     }
@@ -69,8 +74,10 @@ impl Scir {
                 }
                 TypeTree::StructInfo(s) => {
                     let scope = s.child_scope;
-                    self.layout.scalar_layout
+                    let curr = s.curried.into_struct();
 
+                    let layout = self.layout.struct_layout(&curr.1);
+                    self.info.layout.
                 }
                 _ => panic!("developer error, unhandled loopfval, {:?}", tt),
             }

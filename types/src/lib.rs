@@ -546,6 +546,8 @@ pub enum Ty {
     Error,
     Access(String),
     Tag((String, Vec<(String, Ty)>)),
+    SigTag(Vec<Ty>),
+    Arms(Vec<Ty>),
     Enum(Box<Ty>),
     Function(Vec<Ty>, Box<Ty>),
     Multi(Vec<Ty>),
@@ -611,6 +613,13 @@ impl fmt::Display for Ty {
             Ty::CustomError(x) => write!(f, "error {}", x),
             Ty::Tag(x) => {
                 write!(f, "tag ").unwrap();
+                for a in &x.1 {
+                    write!(f, "| {}:{}", a.0, a.1).unwrap();
+                }
+                Ok(())
+            }
+            Ty::SigTag(x) => {
+                write!(f, "signature of tag ").unwrap();
                 for a in x {
                     write!(f, "| {}", a).unwrap();
                 }
@@ -637,6 +646,12 @@ impl fmt::Display for Ty {
             Ty::TSelf => write!(f, "self"),
             Ty::Enum(x) => write!(f, "enum({})", x),
             Ty::Access(x) => write!(f, "property access .{}", x),
+            Ty::Arms(x) => {
+                for a in x {
+                    write!(f, "=> {},", a).unwrap();
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -658,13 +673,25 @@ impl Ty {
             _ => panic!("type lang issue. type not able to be associated to const"),
         }
     }
-    pub fn into_vec(&mut self) -> &mut Vec<Ty> {
+    pub fn into_tag(&mut self) -> &mut (String, Vec<(String, Ty)>) {
         match self {
             Ty::Tag(x) => x,
             _ => panic!("type lang issue. not a vec"),
         }
     }
-    pub fn into_struct(&mut self) -> &mut (String, Vec<(String, Ty)>) {
+    pub fn into_arms(&mut self) -> &mut Vec<Ty> {
+        match self {
+            Ty::Arms(x) => x,
+            _ => panic!("type lang issue. not a vec"),
+        }
+    }
+    pub fn into_struct_mut(&mut self) -> &mut (String, Vec<(String, Ty)>) {
+        match self {
+            Ty::Struct(x) => x,
+            _ => panic!("type lang issue. not a struct"),
+        }
+    }
+    pub fn into_struct(&self) -> &(String, Vec<(String, Ty)>) {
         match self {
             Ty::Struct(x) => x,
             _ => panic!("type lang issue. not a struct"),
