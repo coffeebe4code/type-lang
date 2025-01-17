@@ -24,6 +24,7 @@ members = [
   "datatable",
   "repr",
   "layout",
+  "infotable",
   ]
 resolver = "2"
 
