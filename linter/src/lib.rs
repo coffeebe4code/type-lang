@@ -458,6 +458,7 @@ impl<'buf, 'ttb, 'sco> LintSource<'buf, 'ttb, 'sco> {
             self.dec_scope_tracker();
             let slice = obj.identifier.into_symbol().val.slice;
             let mut obj_info = StructInfo {
+                name: slice.clone(),
                 props: vec![],
                 types: vec![],
                 curried: Ty::Struct((slice.clone(), vec![])),

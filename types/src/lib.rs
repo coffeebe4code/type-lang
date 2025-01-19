@@ -47,6 +47,7 @@ pub struct EnumInfo {
 
 #[derive(Debug)]
 pub struct StructInfo {
+    pub name: String,
     pub props: Vec<String>,
     pub types: Vec<Ty>,
     pub curried: Ty,

@@ -10,11 +10,13 @@ pub struct Layout {
     pub align: usize,
 }
 
+#[derive(Debug)]
 pub struct StructLayout {
     pub layout: Layout,
     pub offsets: Vec<(String, usize)>,
 }
 
+#[derive(Debug)]
 pub enum Container {
     Simple(Layout),
     Struct(StructLayout),

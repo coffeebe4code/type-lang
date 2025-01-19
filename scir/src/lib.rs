@@ -2,7 +2,7 @@ use cranelift_frontend::FunctionBuilderContext;
 use datatable::DataTable;
 use fir::Fir;
 use infotable::InfoTable;
-use layout::LayoutBuilder;
+use layout::{Container, LayoutBuilder};
 use oir::Oir;
 use scopetable::ScopeTable;
 use symtable::SymTable;
@@ -17,7 +17,6 @@ pub struct Scir {
     pub info: InfoTable,
     pub namespace: u32,
     pub index: u32,
-    pub curr_scope: u32,
     pub fbc: FunctionBuilderContext,
     pub layout: LayoutBuilder,
 }
@@ -40,8 +39,23 @@ impl Scir {
             namespace: 0,
             index: 0,
             info: InfoTable::new(),
-            curr_scope: 0,
             fbc: FunctionBuilderContext::new(),
+        }
+    }
+    pub fn resolve_layouts(&mut self, item: usize, scope: u32) {
+        let tt = self.types.get(item as usize).unwrap();
+        match tt {
+            TypeTree::StructInfo(s) => {
+                let curr = s.curried.into_struct();
+
+                let layout = self.layout.struct_layout(&curr.1);
+                self.info
+                    .insert(scope, curr.0.clone(), Container::Struct(layout));
+                for x in s.props {
+                    self.resolve_layouts(x, s.child_scope);
+                }
+            }
+            _ => panic!("developer error, unhandled layout resolution, {:?}", tt),
         }
     }
     // top_res is the output top decls of the linter
@@ -73,11 +87,13 @@ impl Scir {
                     self.oir.add_fn(&fi.name, _fn);
                 }
                 TypeTree::StructInfo(s) => {
-                    let scope = s.child_scope;
                     let curr = s.curried.into_struct();
-
                     let layout = self.layout.struct_layout(&curr.1);
-                    self.info.layout.
+                    self.info
+                        .insert(0, s.name.clone(), Container::Struct(layout));
+                    for x in s.props {
+                        self.resolve_layouts(x, s.child_scope);
+                    }
                 }
                 _ => panic!("developer error, unhandled loopfval, {:?}", tt),
             }
